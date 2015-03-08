@@ -40,7 +40,10 @@
 \newcommand{\hangp}[1]{\makebox[0pt][r]{(}#1\makebox[0pt][l]{)}} % New command to create parentheses around text in tables which take up no horizontal space - this improves column spacing
 \newcommand{\hangstar}{\makebox[0pt][l]{*}} % New command to create asterisks in tables which take up no horizontal space - this improves column spacing
 
-\usepackage{xspace} % Used for printing a trailing space better than using a tilde (~) using the \xspace command
+\usepackage{xspace} % Used for printing a trailing space better than
+                    % using a tilde (~) using the \xspace command
+
+\usepackage{hyperref} %web links/URLs
 
 \newcommand{\monthyear}{\ifcase\month\or January\or February\or March\or April\or May\or June\or July\or August\or September\or October\or November\or December\fi\space\number\year} % A command to print the current month and year
 
@@ -115,6 +118,7 @@ Copyright \copyright\ \the\year\ \thanklessauthor
 
 %----------------------------------------------------------------------------------------
 
+\setcounter{tocdepth}{1}
 \tableofcontents % Print the table of contents
 
 %----------------------------------------------------------------------------------------
@@ -214,21 +218,29 @@ Your job as a contributing lab member is to help us to achieve our
 collective peak efficiency (as a lab) while also maximizing your own training and
 career potential.
 
+\newpage
 \section{The lab hierarchy}
-Our lab is organized in a roughly hierarchical structure.  Each lab
+Our lab is organized in a roughly hierarchical structure.  Importantly, the lab hierarchy does \textit{not} serve an
+excuse for disrespecting or discounting the opinions of lab members at
+similar or different levels of the hierarchy.  The hierarchy is an
+organizational tool that helps to define lab policies and expectations. Each lab
 member's position in this hierarchy is determined by two factors: the
 lab member's job title and the amount of time they have worked in the
-lab.  Moving up in the hierarchy generally entails working in the lab
+lab.  Moving ``up'' in the hierarchy generally entails working in the lab
 for some amount of time, gaining experience by working in other labs,
 and/or earning academic degrees.  The lab hierarchy is intended to
 serve as a general framework for estimating what is expected of each
 lab member (e.g.\ in terms of research, supervising and mentoring,
 training roles, and other lab responsibilities).  The hierarchy also
 serves as a general framework for determining lab member salaries and
-benefits.  The levels of the lab hierarchy are defined as follows:
-
+benefits.   There are two branches of the lab hierarchy; although
+personnel on different branches may have overlapping responsibilities,
+the first branch is primarly concerned with directly carrying out lab research and the
+second branch is primariy concerned with supporting or managing the
+lab's research objectives.  The research-focused levels of the lab
+hierarchy are defined as follows:
 \newcounter{levels}
-\begin{list}{L\arabic{levels}-$x$:~}{\usecounter{levels}}
+\begin{list}{R\arabic{levels}-$x$:~}{\usecounter{levels}}
 \item \textbf{Undergraduate research assistants.}  This category
   includes undergraduate students (currently enrolled at \ourschool)
   who are pursing an active undergraduate research program in the lab.
@@ -253,32 +265,126 @@ benefits.  The levels of the lab hierarchy are defined as follows:
   members who have successfully obtained external funding for an
   independent research or training project, and whose funding is
   currently active.
-\item \textbf{Lab director.}  \textit{There can be only one...}
 \end{list}
-Note that the ``$x$'' should be replaced with the time elapsed since
-you joined the lab, in years.  In addition to the primary levels
-enumerated above, certain support roles in the lab
-exist outside of the main lab hierarchy:
+Note that the $x$'s above should be replaced with the time elapsed since
+you joined the lab, in years.  The supporting and manageareal roles
+in the lab are:
 \newcounter{supportlevels}
 \begin{list}{S\arabic{supportlevels}-$x$:~}{\usecounter{supportlevels}}
 \item \textbf{Administrative support staff.}  This category includes
-  lab members who, regardless of their academic degree, are hired
-  primarily to provide administrative assistance (e.g.\ assisting with
+  lab members whose primary roles, regardless of their academic
+  degree, are to provide administrative assistance (e.g.\ assisting with
   grant or paper submissions, registration, scheduling, coordination)
   to facilitate scientific research in the lab.
-\item \textbf{Research specialists.}  This category includes lab
-  members who, regardless of their academic degree, are hired to bring
+\item \textbf{Specialists.}  This category includes lab
+  members who, regardless of their academic degree, bring
   a specific special scientific skill to the lab (e.g.\ programmers, graphic
-  artists).
+  artists).  However, unlike research-focused positions, the primary
+  role of specialist lab members is to provide research \textit{expertise}
+  rather than determine research \textit{direction}.
+\item \textbf{Project managers.}  This category includes lab members
+  whose primary role is to provide managerial support to the lab by
+  helping to direct and organize personnel and lab resources.
+  Generally project managers will have earned a graduate degree.
+\end{list}
+In addition to the above components of the lab hierarchy, there's one more
+lab position that plays an important role:
+\newcounter{directorlevel}
+\begin{list}{J\arabic{directorlevel}:~}{\usecounter{directorlevel}}
+\item \textbf{Lab director.}  ``\textit{There can be only one...}''
+  Becoming the lab director entails convincing a search committee
+  at this or another department/university that you have what it takes to be a
+  Supreme Ruler of Laboratory Science. Note: this position may or may not come with
+  tenure and/or additional people to report to (e.g.\ senior
+  colleagues, funding
+  agencies, deans, provosts, presidents, etc.).  This position is both
+  research-focused and support-focused, hence its own designation.
 \end{list}
 
+\newpage
 \section{Project hierarchies}
-Lab members at any level may play a lead role on particular projects.
-The role you play on a given project determines (for that project) your research and administrative
-responsibilities, your supervisory responsibilities, your role in
-decision making or strategizing, and your authorship position in papers or
-conference presentations about the project.  Generally speaking, the
-roles assigned to 
+Lab members at any level in the lab hierarchy\marginnote{The mapping
+  between people and project roles is many-to-many: one person may play multiple project roles, and one
+  project role may be shared by multiple people.} may play different
+roles on different projects.
+The role you play on a given project determines (for that project)
+your research and administrative responsibilities, your supervisory
+responsibilities, your role in decision making or strategizing, and
+your authorship position in papers or conference presentations about
+the project.  The project roles are:\marginnote{Authorship on project communications requires
+    meeting ALL of the following criteria:\begin{itemize}
+\item Substantial contributions to the conception or design of the
+  work; or the acquisition, analysis, or interpretation of the data
+\item Drafting the work or revising it critically for important
+  intellectual content
+\item Final approval of the version to be published
+\item Agreement to be accountable for all apsects of the work in
+  ensuring that questions related to the accuracy or integrity of any
+  part of the work are appropriately investigated and resolved.
+\end{itemize}
+If a project collaborator does not meet all of the above criteria (but meets some of
+them), they may be listed in the ``acknowledgements'' section at the
+discresion of the lab director.}
+ \newcounter{roles}
+\begin{list}{P\arabic{roles}:~}{\usecounter{roles}}
+\item \textbf{Project assistant.}  This is a minor ``non-authorship''
+  role (generally project assitants will be listed in manuscript
+  acknowledgements).  This role is assumed by all project participants
+  who do not satisfy the criteria for paper
+  authorship, but who directly
+  participant in the project's conceptual or scientific development.
+  An example might be an undergraduate research assistant who helps to
+  run participants but who does not contribute to any analyses or to
+  the itellectual development of the project.
+\item \textbf{Junior co-author.}  This role is generally assumed by
+  junior lab members (e.g.\ research assistants, junior grad
+  students).  Junior co-authors assist with all aspects of carrying
+  out the research (e.g.\ helping to write code, run participants,
+  generate graphics, review communications, etc.).  The primary
+  difference from a senior co-author role is that junior co-authors
+  provde less conceptual guidance than senior co-authors.  Junior
+  co-authors will generally hold ``middle author'' positions on
+  communications related to the project.
+\item \textbf{Senior co-author.}  This role is generally assumed by
+  senior lab members (e.g.\ postdocs, senior grad students).  Senior
+  co-authors provide conceptual guidance, research assistance (though
+  to a lesser extent than a project lead), experimental assistance
+  (though to a lesser extant than a project lead), and writing
+  assistance (e.g.\ providing comments on manuscript drafts, posters,
+  and/or slides).  Senior co-authors will generally hold ``middle
+  author'' positions on communications related to the project.
+\item \textbf{Project lead.}  This person is responsible for
+  overseeing day-to-day operations for the project, and reports to the
+  PI (or co-PI).  This person's responsibilities include: writing and
+  running experiments (or directly overseeing these processes), coding
+  and running analyses (or directly overseeing these processes),
+  writing the first complete draft of the manuscript(s), editing the
+  manuscript(s), submitting the manuscript(s), designing conference
+  posters, and putting together slides for talks (which may be
+  presented by the project lead or lab director).  The project lead is
+  also responsible for scheduling project meetings and organizing all
+  materials (code, data, etc.) related to the project.  The project
+  lead will generally be the first author on communications
+  (manuscripts, abstracts, posters, talks) related to
+  the project.
+\item \textbf{Principle investigator (PI).}  This is the person listed
+  as the PI (or co-PI) on the grant that's funding the project.  (This
+  role may be shared, e.g.\ in the case of a co-PI.)  Generally the
+  (co-)PI will also be the project lead and/or will be the lab
+  director.  The PI is responsible for overseeing the project's budget
+  (in collaboration with the lab director) and ensuring that the
+  project timeline is adhered to (in collaboration with the lab
+  director).  The PI should discuss ``order of authorship'' on project
+  communications with the lab director and ensure that all project
+  members are informed of their order in the author sequence at the
+  start of the project.  Prior to the project starting, the PI is also
+  responsible for drafting and submitting the grant application (in
+  collaboration with the lab director).
+\item \textbf{Lab director.}  This is the most senior person on the
+  project.  Generally this will be the lab director of the
+  computational memory lab (Jeremy Manning).  For collaborative
+  projects, the lab director role may fall to another faculty-level collaborator.
+\end{list}
 
 % Generally speaking, your immediate
 % supervisor on a given project will be someone at a higher level of the
@@ -286,38 +392,87 @@ roles assigned to
 % for help with a particular technique, your best bet is to find someone
 % who has been in the lab longer than you have, and who 
 
+\newpage
 \section{Starting a new project}
-% create bitbucket repo with the following folders (invite team
-% members to have write access to repo; project lead and PI should have admin
-% access):
+Our lab uses\marginnote{JEREMY TO DO: create a ``Getting started checklist''
+  and add it to the lab manual.} a number of project management tools and policies to
+promote continuity across projects and lab members.  When you start a
+new project as a project lead, here are the steps you should
+take:
+\begin{enumerate}
+\item Come up with a project name to uniquely identify your project
+  (e.g.\ ``EEG mind decoder'').  Keep lab naming conventions
+  consistent; the project will be referred to using this name from now on.
+\item Create a
+  \href{https://redbooth.com/}{RedBooth}\marginnote{\texttt{TASK:}
+    Create a RedBooth account if you don't already have one.} project and add
+  all team members.  See \textit{Task management using Redbooth} for
+  detailed instructions on how to organize the new Redbooth project.
+\item Create a \href{https://bitbucket.org/}{Bitbucket}\marginnote{\texttt{TASK:}
+    Create a Bitbucket account if you don't already have one.} repository for
+  your project.  Give all team members write access to the repository;
+  PIs and the lab director should have administrative access.  See
+  \textit{Code and document management using Bitbucket} for detailed instructions on how to
+  organize the Bitbucket repository.  Add a link to the Redbooth
+  project in the project's Bitbucket wiki page.  Also add a link to
+  the Bitbucket repository in Redbooth.
+\item Create a proposed budget\marginnote{All equipment purchases or
+    other lab charges must be approved in writing by Jeremy Manning
+    \textit{prior to spending lab funds}.  IMPORTANT NOTE: Budget
+    spreasheets should not be attached to the Redbooth project.
+    All budgets are to be kept confidential within the lab.} spreadsheet (in
+  \href{https://docs.google.com/}{Google Docs}) for project equipment
+  purchases and subject payments.  Other project costs (travel
+  expenses, publication fees, conference registration fees, textbooks,
+  etc.) should be added to the spreadsheet as they become known.  Send
+  a link to the spreadsheet to Jeremy and cc the project PI (if not
+  Jeremy).
+\item Create a spreadsheet outlining all project personnel and their project roles.  This should
+  include each project member's:
+\begin{itemize}
+\item Full name
+\item Lab hierarchy code (e.g.\ R4-0, J1, etc.)
+\item Project hierarchy codes (e.g.\ P4 and P5)
+\item Expected project role (keep it brief-- e.g.\ ``Project management; Code
+  experiment; Run participants; Ensure consistent levels of caffenation
+  maintained by all project members during lab business hours.'')
+\item Proposed authorship order (this will apply to any project communication-- manuscripts,
+  abstracts, talks, etc.)
+\item Contact information (preferred email, preferred phone number, preferred mailing address,
+  and primary office number or address if different from mailing address)
+\end{itemize}
+Add a link to the personnel spreadsheet in Redbooth.
+\item Create a \href{https://calendar.google.com}{Google Calendar}\marginnote{\texttt{TASK:}
+    Create a Google account if you don't already have one (or if you'd
+    like to create a new one for lab-only use).  Make sure your
+    account is linked with the lab's Google Apps account, which will
+    give you access to extra storage space and some other additional functionality.} for
+  project meetings and events.
+\item Add a line to your lab snippet template for this project.  (See
+  \textit{Lab Snippets}.)
+\item Send a polite but brief email to all project personnel welcoming them to the
+  project.  Include the following information:
+\begin{itemize}
+\item A 1-2 sentence description of the project.
+\item A link to a \href{http://www.doodle.com}{Doodle
+    Poll} proposing some times for a first team meeting.
+\item A request that all team members join the project in Redbooth and
+  Bitbucket.  If any team members are not current lab members, also
+  include a brief description of what Redbooth and Bitbucket are.  (A
+  project management tool and version control system, respectively.)
+\item A iCal link to the project's Google calendar.
+\item A note that you have outlined expected project roles and
+  responsibilities in Redbooth, and that these roles and
+  responsibilities will be discussed during the first project
+  meeting.  Ask the project members to look over what you've proposed
+  and make note of any comments, questions, or concerns (either within
+  Redbooth or elsewhere) prior to that first meeting.
+\end{itemize}
+\end{enumerate}
 
-% code/main -- code for running experiments and analyses.  this folder will eventually
-% be made publically available (e.g. when a paper is published).
+\newpage
+\section{Joining a project}
 
-% code/dev -- under-development and/or half-baked code should go
-% here.  all code starts here, and is moved to code/main after proper
-% debugging and unit tests are written.
-
-% code/debug -- unit tests 
-
-% docs/papers -- each paper should exist as a
-% subfolder of this directory.  each paper should also include a
-% subfolder called "replicate" with links to data and code, along with
-% *detailed* helpful instructions that would allow someone to download
-% the repository and data and reproduce figures from each paper.  the
-% document must list system requirements and dependencies, along with
-% installation instructions for any required packages.  the directory
-% should also include a "make_figs" script for each paper and poster;
-% running the script should reproduce figures from the relevant
-% paper/poster.  the folder should also include a spreadsheet (.csv)
-% indicating which make_figs script goes with which paper/poster.  
-
-%docs/posters -- each poster should
-% exist as a subfolder of this directory 
-
-%  also create a README file (in docs) containing a high-level
-%  description of the project and an index describing the project
-%  folder organization
 
 %create shared evernote notebook; invite team members
 
@@ -331,7 +486,7 @@ roles assigned to
 %  
 
 
-
+\newpage
 \section{Scheduling}
 Complex dynamic systems can be difficult to understand (e.g.\
 describe, compute with).  Fortunately for us, we do not need to start
@@ -357,8 +512,9 @@ our collaborators, and our experimental participants.
 
 
 
+
  \subsection{Lab calendar}
- \subsection{Scheduling lab events using Doodle}
+% \subsection{Scheduling lab events using Doodle}
  \subsection{Mandatory lab events}
  \subsection{Optional lab events}
  \subsection{Scheduling participants}
@@ -384,10 +540,110 @@ our collaborators, and our experimental participants.
 
 % \section{Lab mailing list and contact information}
 
-% \section{Task management using Redbooth}
+\section{Task management using Redbooth}
 
-% \section{Code and document management using Bitbucket}
+ \section{Code and document management using Bitbucket}\label{sec:bitbucket}
+ We use \href{https://www.bitbucket.org/}{Bitbucket}\marginnote{The lab's standard practice is to use the
+ Git version control system, although lab members may use Mercurial
+ (Hg) instead at their discretion.  All projects \textit{must} be
+ managed using either Git or Hg via Bitbucket.} as a means of organizing, maintaining, and sharing
+ our code and documents.  Bitbucket provides a unified framework for
+ documenting changes over time, managing and integrating code from
+ multiple users, and submitting bug reports or feature requests. 
+Atlassian's
+ \href{https://www.atlassian.com/software/sourcetree/overview?_mid=1ba3573dadf246f44f2a97bc50bfd72e&gclid=Cj0KEQiA4OqnBRDAj9aazvPji9ABEiQANq28oBGvgRhznXBb_RDL6QRe0IM7vvEUXFkRDoWBSbpmsmAaAkCE8P8HAQ}{SourceTree}
+ client provides a convenient and easy-to-use desktop client for OS X
+ and Windows systems.  Each project should have its own Bitbucket
+ repository, and should be organized using the following directory structure:
+\begin{itemize}
+\item \textit{code/main}: contains code for running experiments and
+  analyses.  When the paper is published, this folder (and/or its contents) will be made
+  publically available.  How this folder gets organized is up to the
+  project lead.
+\item \textit{code/main/contents.txt}: a list of 
+\item \textit{code/main/README.txt}: quick start instructions for
+  using the code.
+\item \textit{code/dev}: contains under-development and/or half-baked
+  code.  All project-related code should start life in this folder,
+  and should be moved to code/main after it has been debugged and
+  after its unit tests have been written.
+\item \textit{code/debug}: contains unit tests for code in code/main.
+  Unit tests should provide example scripts for running code/main code
+  along with specific detailed descriptions of the expected behavior
+  or output.
+\item \textit{docs/admin}: contains organizational files related to the
+  project, including:
+\begin{itemize}
+\item \textbf{Project vision.}  A high level description of the
+  project along with a (rough) proposed timeline for the project's
+  phases.
+\item \textbf{Personnel list.}  A description of all project members
+  and their expected roles on the project.  Authorship order must be
+  specified in this document, and changes must be approved by the lab
+  director.
+\end{itemize}
+\item \textit{docs/admin/forms}: official forms and approvals related to
+  the project.  Each experiment should have its own sub-folder
+  containing:
+\begin{itemize}
+  \item IRB approval forms
+  \item Participant consent forms
+  \item Participant exit surveys (if applicable)
+  \item Participant instructions
+  \item Participant debriefing document
+  \item Ammendments to any forms (e.g. IRB approval extensions)
+  \item A document listing budget codes for grants that fund any part
+    of the project  
+\end{itemize}
 
+\item \textit{docs/papers}: each paper should exist as a sub-folder of
+  this directory.  Each paper's sub-folder should contain the following:
+\begin{itemize}
+\item \textit{paper\_name.tex}: main source file for document text
+\item \textit{boneyard.tex}: a source file containing pasted snippets of
+  discarded text that might conceivably be useful at some later point
+  (in this or other projects).
+\item Other files needed to compile the main source file into a
+  complete PDF.
+\item \textit{figs}: sub-folder containing complete PDF figures.
+\item \textit{figs/source}: sub-folder containing files relevant to
+  constructing each manuscript figure (e.g. the images for each panel
+  in a figure).  Each figure should have its own sub-folder.  For compound figures (e.g. a panel that has
+  multiple sub-panels), each panel should have its own \textit{source}
+  directory that lives in its parent figure's source directory.  Raw
+  data should not be stored in these folders, but intermediate files
+  or images that would be time consuming to regenerate (or that are
+  useful to have in an easily accessed location) should be included.
+  In addition, Adobe source files (e.g.\ .ai or .psd files) should be
+  included in the source folders.
+\item \textit{replicate}: sub-folder containing links to the data and code
+  relevant to the paper, along with \textbf{detailed} helpful
+  instructions that would allow someone to download the project's
+  Bitbucket repository and data, and reproduce figures from each paper
+  from scratch (assuming they had the appropriate hardware to run the
+  analyses).  The instructions should also list system requirements
+  (as applicable) and software dependencies (along with download links
+  and installation instructions).  This folder should also contain a
+  ``make\_figs'' script that, when run, should reproduce the basic 
+  versions of the paper's figures (e.g.\ before editing fonts and line
+  styles or composing figure panels in Illustrator).
+\end{itemize}
+\item \textit{docs/posters}: each poster should exist as a sub-folder
+  of this directory.  Each poster's sub-folder should contain:
+\begin{itemize}
+  \item The main .ai, .pdf, or .pptx poster file.
+  \item A copy of the associated conference abstract or paper.
+  \item A README.txt file containing bibliographic information for the
+    poster.
+  \item \textit{source}: sub-folder containing all source materials
+    linked to in the main poster file.  This folder may contain other
+    sub-folders as needed (at the discretion of the poster maker).
+\end{itemize}
+\item \textit{docs/slides}: sub-folder containing the .key, .pptx, or
+  .pdf files for each presentation.
+\item \textit{docs/slides/source}: sub-folder containing all source
+  materials (figures, etc.) linked to in any presentation.
+\end{itemize}
 % \section{Data repository}
 % \subsection{Lab Dropbox account}
 
