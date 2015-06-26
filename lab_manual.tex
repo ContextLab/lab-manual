@@ -20,9 +20,12 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass{tufte-book} % Use the tufte-book class which in turn uses the tufte-common class
+\documentclass{tufte-book} % Use the tufte-book class which in turn
+                           % uses the tufte-common class
 
-\hypersetup{colorlinks} % Comment this line if you don't wish to have colored links
+\definecolor{dartmouthgreen}{RGB}{0, 112, 60}
+
+\hypersetup{colorlinks=true,linkcolor=dartmouthgreen} % Comment this line if you don't wish to have colored links
 
 \usepackage{microtype} % Improves character and word spacing
 
@@ -68,11 +71,11 @@
 %	BOOK META-INFORMATION
 %----------------------------------------------------------------------------------------
 
-\title{Laboratory Manual} % Title of the book
+\title{Lab Manual} % Title of the book
 
 \author{Jeremy R. Manning, Ph.D.} % Author
 
-\publisher{Computational Memory Laboratory, \ourschool} % Publisher
+\publisher{Contextual Dynamics Lab, \ourschool} % Publisher
 
 %----------------------------------------------------------------------------------------
 
@@ -107,7 +110,7 @@
 \setlength{\parskip}{\baselineskip}
 Copyright \copyright\ \the\year\ \thanklessauthor
 
-\par\smallcaps{Published by \thanklesspublisher}
+\par\smallcaps{Published by the \thanklesspublisher}
 
 \par\smallcaps{\url{http://www.princeton.edu/manning3}}
 
@@ -170,7 +173,7 @@ completing the relevant \texttt{TASK} items.
 
 \newthought{What should you do if you don't understand something?}
 \marginnote{\texttt{TASK:} If you don't understand something, ask
-  another lab member for help!}  If you don't understand something you
+  another lab member for help!}If you don't understand something you
 read in this manual, it is important that you \textit{ask another lab
   member for help}.  Every member of the lab brings their own unique
 knowledge base, training, life experiences, and perspectives.
@@ -220,26 +223,28 @@ career potential.
 
 \newpage
 \section{The lab hierarchy}
-Our lab is organized in a roughly hierarchical structure.  Importantly, the lab hierarchy does \textit{not} serve an
-excuse for disrespecting or discounting the opinions of lab members at
-similar or different levels of the hierarchy.  The hierarchy is an
-organizational tool that helps to define lab policies and expectations. Each lab
+Our lab is organized in a roughly hierarchical structure.  The
+hierarchy is an organizational tool that helps to define lab policies
+and expectations. Importantly, the lab hierarchy does \textit{not}
+serve an excuse for disrespecting or discounting the opinions of lab
+members at similar or different levels of the hierarchy.  Each lab
 member's position in this hierarchy is determined by two factors: the
 lab member's job title and the amount of time they have worked in the
-lab.  Moving ``up'' in the hierarchy generally entails working in the lab
-for some amount of time, gaining experience by working in other labs,
-and/or earning academic degrees.  The lab hierarchy is intended to
-serve as a general framework for estimating what is expected of each
-lab member (e.g.\ in terms of research, supervising and mentoring,
-training roles, and other lab responsibilities).  The hierarchy also
-serves as a general framework for determining lab member salaries and
-benefits.   There are two branches of the lab hierarchy; although
-personnel on different branches may have overlapping responsibilities,
-the first branch is primarly concerned with directly carrying out lab research and the
-second branch is primariy concerned with supporting or managing the
-lab's research objectives.  The research-focused levels of the lab
-hierarchy are defined as follows:
-\newcounter{levels}
+lab.  Moving ``up'' in the hierarchy generally entails working in the
+lab for some amount of time, gaining experience by working in other
+(academic or industrial)
+labs, and/or earning academic degrees.  The lab hierarchy is intended
+to serve as a general framework for estimating what is expected of
+each lab member (e.g.\ in terms of research, supervising and
+mentoring, training roles, and other lab responsibilities).  The
+hierarchy also serves as a general framework for determining lab
+member salaries and benefits.  There are two branches of the lab
+hierarchy; although personnel on different branches may have
+overlapping responsibilities, the first branch is primarly concerned
+with directly carrying out lab research and the second branch is
+primariy concerned with supporting or managing the lab's research
+objectives.  The research-focused levels of the lab hierarchy are
+defined as follows: \newcounter{levels}
 \begin{list}{R\arabic{levels}-$x$:~}{\usecounter{levels}}
 \item \textbf{Undergraduate research assistants.}  This category
   includes undergraduate students (currently enrolled at \ourschool)
@@ -261,10 +266,12 @@ hierarchy are defined as follows:
 \item \textbf{Postdoctoral researchers.}  This category includes lab
   members who have earned a doctorate degree and are not currently
   enrolled in a degree-granting program.
-\item \textbf{Principle investigator.}  This category includes lab
-  members who have successfully obtained external funding for an
-  independent research or training project, and whose funding is
-  currently active.
+% \item \textbf{Principle investigators.}  This category includes lab
+%   members (at any level or designation) who have successfully obtained external funding for an
+%   independent research or training project, and whose funding is
+%   currently active.  If you secure your own research funding, you are
+%   granted a corresponding increase in the level of control over and
+%   responsibility for your project-related lab duties.
 \end{list}
 Note that the $x$'s above should be replaced with the time elapsed since
 you joined the lab, in years.  The supporting and manageareal roles
@@ -401,7 +408,7 @@ new project as a project lead, here are the steps you should
 take:
 \begin{enumerate}
 \item Come up with a project name to uniquely identify your project
-  (e.g.\ ``EEG mind decoder'').  Keep lab naming conventions
+  (e.g.\ ``EEG mind decoder'').  Keep naming conventions
   consistent; the project will be referred to using this name from now on.
 \item Create a
   \href{https://redbooth.com/}{RedBooth}\marginnote{\texttt{TASK:}
