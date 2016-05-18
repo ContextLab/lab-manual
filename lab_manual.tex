@@ -112,7 +112,7 @@ Copyright \copyright\ \the\year\ \thanklessauthor
 
 \par\smallcaps{Published by the \thanklesspublisher}
 
-\par\smallcaps{\url{http://caligari.dartmouth.edu/\~jmanning}}
+\par\smallcaps{\url{http://www.context-lab.com}}
 
 %\par License information.\index{license}
 
@@ -152,18 +152,15 @@ Copyright \copyright\ \the\year\ \thanklessauthor
 
 \cleardoublepage
 \chapter{Introduction}\label{ch:intro} % Adding an asterisk leaves out this chapter from the table of contents
-This lab manual is intended to serve two purposes.  First, the manual
-provides a comprehensive overview of official lab policies,
-expectations, facilities, and personnel.  Second, it provides a set of
-general tutorials and a list of relevant links, pointers, and/or
-references related to the techniques we employ in our research.
+This lab manual is intended to provide a crash course in doing
+research in the Contextual Dynamics Lab.  It introduces our general research
+approach and some basic lab policies.
 
 \newthought{Who is this lab manual for?}  \marginnote{\texttt{TASK:}
   Upon reading through this lab manual for the first time, please make
   at least one edit.  You could correct a typo, clarify something
-  that's unclear, add a comment, etc.  Focus your edits or additions
-  on sections that are most relevant to the work you want to do.
-  Importantly, be sure to push your edits to the manual's
+  that's unclear, add a comment, etc.  Importantly, be sure to push
+  your edits to the manual's
   \href{https://bitbucket.org/manning3/lab-manual}{Bitbucket
     repository} so that everyone can benefit.} Every new lab member
 should read the latest version of this lab manual in detail and
@@ -173,7 +170,7 @@ your read through entails both reading the contents of the manual and
 completing the relevant \texttt{TASK} items.
 
 \newthought{What should you do if you don't understand something?}
-\marginnote{\texttt{TASK:} If you don't understand something, ask
+\marginnote{\texttt{TIP:} If you don't understand something, ask
   another lab member for help!}If you don't understand something you
 read in this manual, it is important that you \textit{ask another lab
   member for help}.  Every member of the lab brings their own unique
@@ -183,329 +180,243 @@ If you're new to the lab or new to a particular technique, you might
 feel like a newbie today--- but chances are good that if you stick
 around for a bit someone else will be seeking your expert opinion
 before you know it.  In addition to learning, there's another good
-reason for asking for help: if you don't understand something you read
-in this manual, there's a reasonable chance that you've discovered a
-mistake!
+reason for asking for help: if you don't understand something, there's
+a reasonable chance that you've discovered a mistake or a logical
+inconsistency!
 
 \newthought{Why is it worth my time to read through the manual?}
 Aside from pursuing your own curiosity, a major reason that you've
 decided to join an academic research lab is probably because you want
-to gain training or career-advancing experiences.  This manual
+to gain training or career-advancing experiences.  This manual briefly
 summarizes the collective wisdom of past and present lab members in a
 way that we think will best allow you to achieve your objectives.
 \textit{Learn from it}, \textit{challenge it}, and \textit{add to it}.
 
+\newthought{What ``isn't'' this lab manual?}
+This lab manual is
+\textit{not} intended to provide a comprehensive overview of
+everything you need to know to do your research projects.  As
+described next, you may not even \textit{know} what you need to know
+to do your projects!  Nevertheless, you need somewhere to start, and
+this is that place.
 
 
-\chapter{Official lab policies}\label{ch:policy}
-Our lab's policies are intended to provide a framework for
-\textit{maximizing efficiency}.  Achieving our peak efficiency as a
-lab means we are being as scientifically productive as possible, in terms of knowledge
-discovery (learning new stuff) and disemination (papers, talks,
-conference presentations, publicly released datasets, software,
-etc.). It also means that our fellow lab members are achieving their
-training and career objectives.  To achieve peak efficiency we need to
-succeed on two fronts:
+
+
+\chapter{Official lab practices and policies}\label{ch:policy}
+Our lab's practices and policies are intended to provide a framework
+for \textit{maximizing efficiency}.  Achieving our peak efficiency as
+a lab means we are being as scientifically productive as possible, in
+terms of knowledge discovery (learning new stuff) and disemination
+(papers, talks, conference presentations, publicly released datasets,
+software, etc.). It also means that our fellow lab members are
+achieving their training and career objectives.  To achieve peak
+efficiency we need to succeed on three fronts:
 \begin{itemize}
 \item \textbf{Communication.}  We want to foster an environment where
   everyone feels comfortable contributing to the collective dialogue.
-  Our lab meets regularly to discuss logistical (e.g.\ temporal, financial,
+  Our lab meets regularly to discuss logistical (e.g.\ scheduling, financial,
   sociological) and technical issues.  We also use a variety of
   software packages to synchronize and facilitate communication within
   our lab and between our lab and the broader scientific community.
 \item \textbf{Resource allocation.}  Our lab resources (e.g.\
   equipment, time, money, attention) are finite.  We want to foster an
   environment where lab resources are used as efficiently as possible
-  to achieve our collective goals.
+  to achieve our collective goals.  We also want to foster
+  sustainable use of resources by regularly pursuing research funding opportunities.
+\item \textbf{Adaptability.}  The whole point of \textit{research} is that we
+  don't already know the answer to the questions we're exploring or
+  how to make the tools we're working on.  That means that we won't
+  necessarily be able to plan out everything in advance.  We often need to
+  be focused and efficient \textit{without knowing the end goal}!
 \end{itemize}
-Your job as a contributing lab member is to help us to achieve our 
-collective peak efficiency (as a lab) while also maximizing your own training and
-career potential.
+Your job as a contributing lab member is to help us to achieve our
+collective peak efficiency (as a lab) while also maximizing your own
+training and career potential.  To do this, the Contextual Dynamics
+Lab practices \textbf{agile science}, as described in the next section.
 
 \newpage
-\section{The lab hierarchy}
-Our lab is organized in a roughly hierarchical structure.  The
-hierarchy is an organizational tool that helps to define lab policies
-and expectations. Importantly, the lab hierarchy does \textit{not}
-serve an excuse for disrespecting or discounting the opinions of lab
-members at similar or different levels of the hierarchy.  Each lab
-member's position in this hierarchy is determined by two factors: the
-lab member's job title and the length of time they have worked in the
-lab.  Moving ``up'' in the hierarchy generally entails working in the
-lab for some amount of time, gaining experience by working in other
-(academic or industrial) labs, and/or earning academic degrees.  The
-lab hierarchy is intended to serve as a general framework for
-estimating what is expected of each lab member (e.g.\ in terms of
-research, supervising and mentoring, training roles, and other lab
-responsibilities).  The hierarchy also serves as a general framework
-for determining lab member-specific budgets (e.g.\ resource
-allocation, salary if applicable, travel expenses, etc.).  There are two
-branches of the lab hierarchy; although personnel on different
-branches may have overlapping responsibilities, the first branch is
-primarly concerned with directly carrying out lab research and the
-second branch is primarily concerned with supporting or managing the
-lab's research objectives.  The research-focused levels of the lab
-hierarchy are defined as follows: \newcounter{levels}
-\begin{list}{R\arabic{levels}-$x$:~}{\usecounter{levels}}
-\item \textbf{Undergraduate research
-    assistants.}\marginnote{Research-focused levels of the lab hierarchy}  This category
-  includes undergraduate students (currently enrolled at \ourschool)
-  who are pursing an active undergraduate research program in the lab.
-  An active undergraduate research program may include for-credit
-  projects (such as an independent study or an honors thesis project)
-  or not-for-credit projects.
-\item \textbf{Postbaccalaureate research assistants.}  This category
-  includes lab members who have already earned an undergraduate degree
-  (e.g.\ BA, BS) but who have not earned a graduate degree, and who
-  are not currently enrolled in a degree-granting graduate program.
-\item \textbf{Postgraduate research assistants.}  This category
-  includes lab members who have already earned a non-doctorate
-  graduate degree (e.g.\ MA, MS) but who are not currently enrolled in
-  a degree-granting graduate program.
-\item \textbf{Graduate students.}  This category includes lab memebers
-  who are currently enrolled in a degree-granting graduate program
-  (generally working towards a master's degree or doctorate).
-\item \textbf{Postdoctoral researchers.}  This category includes lab
-  members who have earned a doctorate degree and are not currently
-  enrolled in a degree-granting program.
-% \item \textbf{Principle investigators.}  This category includes lab
-%   members (at any level or designation) who have successfully obtained external funding for an
-%   independent research or training project, and whose funding is
-%   currently active.  If you secure your own research funding, you are
-%   granted a corresponding increase in the level of control over and
-%   responsibility for your project-related lab duties.
-\end{list}
-Note that the $x$'s above should be replaced with the time elapsed since
-you joined the lab, in years.  The supporting and manageareal roles
-in the lab are:
-\newcounter{supportlevels}
-\begin{list}{S\arabic{supportlevels}-$x$:~}{\usecounter{supportlevels}}
-\item \textbf{Administrative support staff.}\marginnote{Support-focused levels of the lab hierarchy}  This category includes
-  lab members whose primary roles, regardless of their academic
-  degree, are to provide administrative assistance (e.g.\ assisting with
-  grant or paper submissions, registration, scheduling, coordination)
-  to facilitate scientific research in the lab.
-\item \textbf{Specialists.}  This category includes lab
-  members who, regardless of their academic degree, bring
-  a specific special scientific skill to the lab (e.g.\ programmers, graphic
-  artists).  However, unlike research-focused positions, the primary
-  role of specialist lab members is to provide research \textit{expertise}
-  rather than determine research \textit{direction}.
-\item \textbf{Project managers.}  This category includes lab members
-  whose primary role is to provide managerial support to the lab by
-  helping to direct and organize personnel and lab resources.
-  Generally project managers will have earned a graduate degree.
-\end{list}
-In addition to the above components of the lab hierarchy, there's one more
-lab position that plays an important role:
-\newcounter{directorlevel}
-\begin{list}{J\arabic{directorlevel}-$\infty$:~}{\usecounter{directorlevel}}
-\item \textbf{Lab director.}  ``\textit{There can be only one...}''
-  Becoming the lab director entails convincing a search committee
-  at this or another department/university that you have what it takes to be a
-  Supreme Ruler of Laboratory Science. Note: this position may or may not come with
-  tenure and/or additional people to report to (e.g.\ senior
-  colleagues, funding
-  agencies, deans, provosts, presidents, etc.).  This position is both
-  research-focused and support-focused, hence its own designation.
-\end{list}
+\section{The Agile Science Approach}
+The Agile Science approach used in the Contextual Dynamics Lab is
+inspired by the Agile Movement in the software development world.  The
+fundamental idea is to respond to unpredictability in research through
+incremental, iterative work ``sprints.''  This is different from
+traditional approaches, where a project team might try to plan out
+every part of a project in advance.  We do try to break projects into
+tiny bite-sized chunks, but the key is that we only need to know what
+the \textit{next} chunk is.  Although it's helpful to have a general
+sense of where things are going, we never actually need to know where
+the project will ultimately end up.  The goals and process are
+constantly evolving.
 
-\newpage
-\section{Project hierarchies}
-Lab members at any level in the lab hierarchy\marginnote{The mapping
-  between people and project roles is many-to-many: one person may play multiple project roles, and one
-  project role may be shared by multiple people.} may play different
-roles on different projects.
-The role you play on a given project determines (for that project)
-your research and administrative responsibilities, your supervisory
-responsibilities, your role in decision making or strategizing, and
-your authorship position in papers or conference presentations about
-the project.  The project roles are:\marginnote{Authorship on project communications requires
-    meeting ALL of the following criteria:\begin{itemize}
-\item Substantial contributions to the conception or design of the
-  work; or the acquisition, analysis, or interpretation of the data
-\item Drafting the work or revising it critically for important
-  intellectual content
-\item Final approval of the version to be published
-\item Agreement to be accountable for all apsects of the work in
-  ensuring that questions related to the accuracy or integrity of any
-  part of the work are appropriately investigated and resolved.
-\end{itemize}
-If a project collaborator does not meet all of the above criteria (but meets some of
-them), they may be listed in the ``acknowledgements'' section at the
-discresion of the lab director.}
- \newcounter{roles}
-\begin{list}{P\arabic{roles}:~}{\usecounter{roles}}
-\item \textbf{Project assistant.}  This is a minor ``non-authorship''
-  role (generally project assitants will be listed in manuscript
-  acknowledgements).  This role is assumed by all project participants
-  who do not satisfy the criteria for paper
-  authorship, but who directly
-  participant in the project's conceptual or scientific development.
-  An example might be an undergraduate research assistant who helps to
-  run participants but who does not contribute to any analyses or to
-  the itellectual development of the project.
-\item \textbf{Junior co-author.}  This role is generally (but not
-  always) assumed by junior lab members (e.g.\ research
-  assistants, junior grad students).  Junior co-authors assist with
-  all aspects of carrying out the research (e.g.\ helping to write
-  code, run participants, generate graphics, review communications,
-  etc.).  The primary difference from a senior co-author role is that
-  junior co-authors provde less conceptual guidance than senior
-  co-authors.  Junior co-authors will generally hold ``middle author''
-  positions on communications related to the project.
-\item \textbf{Senior co-author.}  This role is generally (but not
-  always) assumed by senior lab members (e.g.\ postdocs, senior grad
-  students).  Senior co-authors provide conceptual guidance, research
-  assistance (though to a lesser extent than a project lead),
-  experimental assistance (though to a lesser extant than a project
-  lead), and writing assistance (e.g.\ providing comments on
-  manuscript drafts, posters, and/or slides).  Senior co-authors will
-  generally hold ``middle author'' positions on communications related
-  to the project.
-\item \textbf{Project lead.}  ``\textit{If it's your project, then you
-    are the project lead...}''  This person is responsible for
-  overseeing day-to-day operations for the project, and reports to the
-  PI (or co-PI).  This person's responsibilities include: writing and
-  running experiments (or directly overseeing these processes), coding
-  and running analyses (or directly overseeing these processes),
-  writing the first complete draft of the manuscript(s), editing the
-  manuscript(s), submitting the manuscript(s), designing conference
-  posters, and putting together slides for talks (which may be
-  presented by the project lead or lab director).  The project lead is
-  also responsible for scheduling project meetings and organizing all
-  materials (code, data, etc.) related to the project.  The project
-  lead will generally be the first author on communications
-  (manuscripts, abstracts, posters, talks) related to
-  the project.
-\item \textbf{Principle investigator (PI).}  This is the person listed
-  as the PI (or co-PI) on the grant that's funding the project.  (This
-  role may be shared, e.g.\ in the case of a co-PI.)  Generally the
-  (co-)PI will also be the project lead and/or will be the lab
-  director.  The PI is responsible for overseeing the project's budget
-  (in collaboration with the lab director) and ensuring that the
-  project timeline is adhered to (in collaboration with the lab
-  director).  The PI should discuss ``order of authorship'' on project
-  communications with the lab director and ensure that all project
-  members are informed of their order in the author sequence at the
-  start of the project.  Prior to the project starting, the PI is also
-  responsible for drafting and submitting the grant application (in
-  collaboration with the lab director).
-\item \textbf{Lab director.}  This is the most senior person on the
-  project.  Generally this will be the lab director of the
-  computational memory lab (Jeremy Manning).  For collaborative
-  projects, the lab director role may fall to another faculty-level collaborator.
-\end{list}
-
-% Generally speaking, your immediate
-% supervisor on a given project will be someone at a higher level of the
-% hierarchy than you (and probably L4 or higher).  If you are looking
-% for help with a particular technique, your best bet is to find someone
-% who has been in the lab longer than you have, and who 
-
-\newpage
-\section{Starting a new project}
-Our lab uses\marginnote{JEREMY TO DO: create a ``Getting started checklist''
-  and add it to the lab manual.} a number of project management tools and policies to
-promote continuity across projects and lab members.  When you start a
-new project as a project lead, here are the steps you should
-take:
+There are \href{http://www.agilemanifesto.org/principles.html}{twelve
+  principles} behind our approach:\marginnote{\texttt{TASK:} Watch the
+  \href{http://scrumtrainingseries.com/}{Scrum Training Series videos}.  While watching, mentally replace
+  ``software'' with ``software, papers, and posters.''  (Note:
+  ``Scrum'' is an implementation of the agile process.)}
 \begin{enumerate}
-\item Come up with a project name to uniquely identify your project
-  (e.g.\ ``EEG mind decoder'').  Keep naming conventions
-  consistent; the project will be referred to using this name from now on.
-\item Create a
-  \href{https://redbooth.com/}{RedBooth}\marginnote{\texttt{TASK:}
-    Create a RedBooth account if you don't already have one.  Make
-    sure you add yourself to the lab's group.} project and add
-  all team members.  See \textit{Task management using Redbooth} for
-  detailed instructions on how to organize the new Redbooth project.
-\item Create a \href{https://bitbucket.org/}{Bitbucket}\marginnote{\texttt{TASK:}
-    Create a Bitbucket account if you don't already have one.} repository for
-  your project.  Give all team members write access to the repository;
-  PIs and the lab director should have administrative access.  See
-  \textit{Code and document management using Bitbucket} for detailed instructions on how to
-  organize the Bitbucket repository.  Add a link to the Redbooth
-  project in the project's Bitbucket wiki page.  Also add a link to
-  the Bitbucket repository in Redbooth.
-\item Create a proposed budget\marginnote{All equipment purchases or
-    other lab charges must be approved in writing by Jeremy Manning
-    \textit{prior to spending lab funds}.  IMPORTANT NOTE: Budget
-    spreasheets should not be attached to the Redbooth project.
-    All budgets are to be kept confidential within the lab.} spreadsheet (in
-  \href{https://docs.google.com/}{Google Docs}) for project equipment
-  purchases and subject payments.  Other project costs (travel
-  expenses, publication fees, conference registration fees, textbooks,
-  etc.) should be added to the spreadsheet as they become known.  Send
-  a link to the spreadsheet to Jeremy and cc the project PI (if not
-  Jeremy).
-\item Create a \href{https://docs.google.com/}{Google Docs}\marginnote{\texttt{TASK:}
-    Create a Google account if you don't already have one (or if you'd
-    like to create a new one for lab-only use).}  %Make sure your
-    %account is linked with the lab's Google Apps account, which will
-    %give you access to extra storage space and some other additional functionality.}
-  spreadsheet outlining all project personnel and their project roles,
-  and share it with all team member (the PI may ask other project
-  members to fill in personal information and contact details).  This should
-  include each project member's:
-\begin{itemize}
-\item Full name
-\item Lab hierarchy code (e.g.\ R4-0, J1, etc.)
-\item Project hierarchy codes (e.g.\ P4 and P5)
-\item Expected project role (keep it brief-- e.g.\ ``Project management; Code
-  experiment; Run participants; Ensure consistent levels of caffenation
-  maintained by all project members during lab business hours.'')
-\item Proposed authorship order (this will apply to any project communication-- manuscripts,
-  abstracts, talks, etc.)
-\item Contact information (preferred email, preferred phone number, preferred mailing address,
-  and primary office number or address if different from mailing
-  address)
-\item Acknowledgement that the project member has joined the project,
-  looked over (and corrected as necessary) their information, 
-  and accepts their project role.  This column must be filled out
-  individually by each team member (each team member should type their
-  initials into the project field).
-\end{itemize}
-Add a link to the personnel spreadsheet in \href{https://redbooth.com/}{RedBooth}.
-\item Create a \href{https://calendar.google.com}{Google Calendar} for
-  project meetings and events.
-\item Add a line to your lab snippet template for this project.  (See
-  \textit{Lab Snippets}.)
-\item Create a new
-  \href{https://groups.google.com/forum/#!overview}{Google Group} for
-  the project and invite all team members.  Via Google Groups, send a polite but brief message to all project personnel welcoming them to the
-  project.  Include the following information:
-\begin{itemize}
-\item A 1-2 sentence description of the project.
-\item A link to a \href{http://www.doodle.com}{Doodle
-    Poll} proposing some times for a first team meeting.
-\item A request that all team members join the project in Redbooth and
-  Bitbucket.  If any team members are not current lab members, also
-  include a brief description of what Redbooth and Bitbucket are.  (A
-  project management tool and version control system, respectively.)
-\item A iCal link to the project's Google calendar.  Instructions for
-  sharing calendars may be found \href{https://support.google.com/calendar/answer/37082?hl=en}{here}.
-\item A note that you have outlined expected project roles and
-  responsibilities in Redbooth, and that these roles and
-  responsibilities will be discussed during the first project
-  meeting.  Ask the project members to look over what you've proposed
-  and make note of any comments, questions, or concerns (either within
-  Redbooth or elsewhere) prior to that first meeting.
-\end{itemize}
+\item Our highest priority is to benefit the research community
+  through the early and continuous delivery of documentation (papers,
+  presentations) and tools (software and devices).
+
+\item Welcome changing requirements, even late in development.  Agile
+  processes harness change to gain a competitive advantage.
+
+\item Deliver working software and papers frequently, from a couple of
+  weeks to a couple of months, with a preference to the shorter
+  timescale.
+
+\item Researchers in different roles must work together daily
+  throughout the project.
+
+\item Build projects around motivated individuals.  Give them the
+  environment and support they need and trust them to get the job
+  done.
+
+\item The most effective and efficient method of conveying information
+  to and within a research team is face-to-face conversation.
+
+\item The product itself (software, paper, poster,
+  presentation, grant) is the primary measure of progress.
+
+\item Agile science promotes sustainable research.  Researchers should
+  be able to maintain a constant pace indefinitely.
+
+\item Continuous attention to technical excellence and good design
+  enhances agility.
+
+\item Simplicity---the art of maximizing the amount of work not
+  done---is essential.
+
+\item The best architectures, requirements, and designs emerge from
+  self-organizing teams.
+
+\item At regular intervals, the team reflects on how to become more
+  effective, then tunes and adjusts its behavior accordingly.
+\end{enumerate}
+
+
+\section{Projects roles}
+Every project has just three roles.  You will play one or more of
+these roles on each project:
+\begin{enumerate}
+\item \textbf{Project Owner.}  This is the person responsible for
+  maximizing ``return on investment'' of the project effort:
+\begin{enumerate}
+\item Responsible for project vision
+\item Constantly re-prioritizes the research backlog, adjusting any
+  long-term expectations such as publication and release plans
+\item Final arbiter of requirements questions
+\item Accepts or rejects each project increment
+\item Decides whether to publish/ship the project
+\item Decides whether to continue development
+\item Considers interests of funding bodies (e.g. NIH, NSF, DARPA,
+  private organizations) and the scientific community
+\item May contribute as a team member
+\item Has a leadership role
+\item Usually the project owner will be Jeremy
+\end{enumerate}
+
+\item \textbf{Team Member.}  Team members are responsible for carrying
+  out the project work.  Team members are:
+\begin{enumerate}
+\item Cross-functional: includes members with development skills
+  (write code or papers/grants), testing skills (e.g.\ test software,
+  proofread papers/grants), and/or domain expertise (e.g.\ knowledge
+  or interest in a relevant research area)
+\item Self-organizing and self-managing without externally assigned
+  roles
+\item Negotiates commitments with the Project Owner, one ``sprint'' at
+  a time
+\item Has autonomy regarding how to reach commitments
+\item Intensely collaborative
+\item (Ideally) located in one team room (usually this will be the lab)
+\item (Ideally) committed to long-term, full-time lab membership
+\item (Ideally) members of a single team/project
+\item Has a leadership role
+\end{enumerate}
+
+\item \textbf{Project Coordinator}
+\begin{enumerate}
+\item Facilitates the agile science process
+\item Helps resolve impediments
+\item Creates an environment conducive to team self-organization
+\item Captures empirical data to adjust forecasts
+\item Shields the team from external interference and distraction to
+  keep it ``in the zone''
+\item Enforces timelines
+\item Has no management authority over the team (anyone with authority
+  over the team is by definition not its Project
+  Coordinator)\marginnote{NOTE: we do not currently have a dedicated
+    Lab Coordinator, so Jeremy is playing that role.  Therefore the
+    Project Coordinator role is less ``pure'' than in a traditional agile
+    approach.  The intended role description is outlined here, but in
+    practice the Project Coordinator role may have management
+    authority until we have a dedicated Lab Coordinator.}
+\item Has a leadership role
+\item Usually the Lab Coordinator will also be the Project Coordinator
+\end{enumerate}
 \end{enumerate}
 
 %\newpage
+\section{Getting started in the lab}
+The very first thing you need to do is to create three accounts that
+will enable you to interact with the rest of the lab, download and use
+the lab's software packages, and accomplish various necessary
+administrative tasks:
+\begin{enumerate}
+\item \href{https://context-lab.slack.com}{\textbf{Slack.}}  This is where
+  almost all not-in-person lab communications take place.  It provides
+  an interface for asking questions, storing notes, and sharing
+  ideas.  If you have an @dartmouth.edu email address, you can create
+  an account.  Otherwise you'll need to get invited by the Lab Coordinator.
+
+\item \href{https://www.trello.com}{\textbf{Trello.}}  This is used to
+  manage all projects and tasks.  It provides a way of tracking
+  progress and imediments to progress.  You'll need to sign up for a
+  free account and then have the Lab Coordinator invite you to the
+  lab's Trello Team.
+
+\item \href{https://www.bitbucket.org}{\textbf{BitBucket.}}  This is
+  used to manage all code, papers, grants, presentations, and
+  posters.  In other words, anything where it'd be useful to track
+  multiple versions, anything that we might ultimately want to release
+  to the public, and/or anything that multiple lab members will be
+  collaborating on.  Each project has one or more BitBucket repositories.
+\end{enumerate}
+
+Once you've created those accounts (and once you've been invited to
+the lab-specific team on Trello), you can start working through the
+\href{https://trello.com/b/Mgs45iEJ/lab-setup}{Lab Setup Trello
+  Board}.  You can ask any questions through Slack (use the \href{https://context-lab.slack.com/messages/general/}{\#general
+channel} or the channel specific your project).
+
+
+\section{Starting a new project}
+Our lab uses a number of project management tools and policies to
+promote continuity across projects and lab members.  To start a new
+project, follow the steps
+\href{https://trello.com/b/s4L8fbot/initiate-a-project}{here}.
+
+%\newpage
 \section{Joining a project}
-If you are starting a new project (as the project lead), you
-automatically ``join'' the project.  If you are a non-project lead
-team member, your agreement to join the project is officially
-signified when you add your initials to the project's Google Doc (sent
-out by the project lead) and agree to the project responsibilities
-outlined there.  All project communications should be sent via the
-project's Google Groups mailing list.
+To join a project, simply subscribe to the project's Slack channel and
+update the
+\href{https://trello.com/b/IWQ00r69/project-staffing-collaborators}{Project
+  Staffing \& Collaborators} board on Trello.  All project
+communications should occur through Slack, whenever possible.  This
+keeps notes searchable and visible to all team members (except direct
+messages, which are useful for private communications between one or
+more team members).
 
 
-\newpage
+\section{Meetings}
+Effective lab communication requires forums for communicating.  As
+described above, we use Slack to facilitate non-in-person
+communications, but Slack cannot replace in-person meetings.
+%http://scrumtrainingseries.com/BacklogRefinementMeeting/BacklogRefinementMeeting.htm
+
+
 \section{Scheduling}
 Complex dynamic systems can be difficult to understand (e.g.\
 describe, compute with).  Fortunately for us, we do not need to start
@@ -533,25 +444,16 @@ basic tools the lab uses to organize and schedule events:
   \item A brief description of the event and/or other relevant information
   \item Attach any relevant documents via Google Docs
 \end{itemize}
-\item \href{http://www.doodle.com}{Doodle}.  We use Doodle to converge
-  on mutually good meeting times that fit (as well as possible) with
-  everyone's busy schedules.
-\item \href{http://www.groups.google.com}{Google Groups}.  We use
-  Google Groups to send coordination-related emails to all relevant
-  lab or project personnel.
+\item \href{http://www.doodle.com}{Doodle} and
+  \href{http://www.when2meet.com}{When2Meet}.  We use Doodle and
+  When2Meet to converge on mutually good meeting times that fit (as
+  well as possible) with everyone's busy schedules.  Doodle is most
+  useful for selecting a date from a large number of options, and
+  When2Meet is most useful for selecting a specfic time on a
+  relatively small number of dates.
 \end{itemize}
 
  \subsection{Attendance policy}
- % As you move up in the lab hierarchy, our policy is to afford you
- % increasing scheduling flexibility (which, in turn, assumes increasing
- % responsibility on your part).  Increased \textit{scheduling
- %   flexibility} comes in the form of less frequent check-ins (e.g.\
- % times you are required to meet with your supervisor) and less
- % structured research time (e.g.\ your level of independence as a
- % researcher, as determined by your supervisor).  Increased
- % \textit{responsibility} comes in the form of increased expectations
- % placed on you as a researcher (in terms of research effort and
- % productivity).  
  We abide by a ``common sense'' attendance policy that relies on an
  honor system.  If you cannot attend a lab event or meeting, your
  privacy will be respected: you do not (generally speaking) need to
@@ -559,312 +461,157 @@ basic tools the lab uses to organize and schedule events:
  to abuse this system!)-- but you are expected to responsibly manage
  your schedule so that you get your work done and minimize
  inconvenience to others to the extent possible.  The one exception is
- that if you seem to be
- abusing this system (as determined by your supervisor), you may be
- asked to provide additional information (in a way that does not
- invade your privacy-- and if you are worried that this policy is overly
- intrusive, please bring your concerns to Jeremy).  Here's the official
- lab attendance policy:
+ that if you seem to be abusing this system (as determined by your
+ project owner or project coordinator), you may be asked to provide
+ additional information (in a way that does not invade your privacy--
+ and if you are worried that this policy is overly intrusive, please
+ bring your concerns to Jeremy or the Lab Coordinator).  Here's the
+ official lab attendance policy:
 \begin{itemize}
-\item All absenses should be entered into the out-of-lab calendar.
-  This should be done prior to your absense if possible; the
-  out-of-lab calendar is used to track vacation time, sick leave, etc.
-  If you will be out of the lab unexpectedly, it is your
-  responsibility to notify your immediate supervisor (cc'ing Jeremy)
-  as well as anyone else your absense will affect (e.g. people you're
-  scheduled to meet with, etc.).  To enter an absense, simply create a
-  new out-of-lab event with your first name followed by the word
-  ``out.''  (E.g. if Jeremy is out of the lab he would create an event
-  called ``Jeremy out''.)  Out-of-lab events can be all day events,
-  multi-day events, or partial day events.  You do not need to (and
-  should not) label your event (e.g.\ sick time, vacation time,
-  conference time, etc.\ will be indistinguishable on the out-of-lab
-  calendar); this is done to protect the privacy of all lab members.
-\begin{itemize}
+\item It is your responsibility to notify anyone your absense will
+  affect (e.g. people you're scheduled to meet with, etc.).  The best
+  way to do this is via email or Slack.  We also use an ``out-of-lab''
+  calendar to keep track of things like vacations or longer planned absences.
+
 \item If you are feeling sick, \textit{do not come into the lab}.  We can
   arrange virtual meetings (if you are feeling well enough) or
   re-schedule as needed.  The health and safety of the lab is the top
-  priority.  Enter your expected ``out of lab'' duration into the
-  out-of-lab calendar (update as you have more information so that we
-  can correctly track your time).
-\item If you must be out for an unexpected emergency, simply give as
-  much notice as is possible.  Enter your expected ``out of lab''
-  duration into the out-of-lab calendar (update as you have more
-  information).
-\item If you know that you will be out of the lab well in advance
-  (e.g.\ classes, vacations, religious holidays, conferences, job interviews,
-  doctor appointments, etc.) enter this into the out-of-lab calendar.  This should be done
-  at least 2 weeks in advance, and preferably as far in advance as
-  possible.  Enter this information into the out-of-lab calendar.
-\end{itemize}
+  priority.
+
+\item If you need to be out of the lab for an unexpected non-illness-related
+  emergency, simply give as much notice and information as possible.
+
 \item You are expected to attend all lab meetings and other regularly
   scheduled meetings that are directly relevant to your work in the
   lab.
+
 \item If you are scheduled to present at a conference (i.e.\ you
   submit an abstract and the abstract is accepted as a talk or
   poster), you are expected to attend the conference to present your
   work.
-\item You are strongly encouraged to attend relevant PBS talks, DHMC
+
+\item You are strongly encouraged (but never required) to attend
+  relevant journal clubs, PBS talks, DHMC
   meetings and talks, thesis defenses, and other relevant lab and/or
   Dartmouth-affiliated events.  If you are overwhelmed with other
   work, have a conflicting meeting, are running an experimental
   participant, or are out of the lab for other reasons, you do not
-  need to provide a reason for your absense (unless you've previously agreed to
-  attend).
-\item You are expected to tend to your out-of-lab responsibilities
-  (classes, family duties, etc.) as a top priority.  If these conflict
-  with your lab responsibilities please discuss with your supervisor
-  and/or Jeremy as applicable.
+  need to provide a reason for your absense (unless you're presenting
+  or are otherwise playing a key role).
 \end{itemize}
 
 
  \section{Lab finances}
  As with most academic research labs, we (sadly!) must conduct our
- research within a limited research budget.  The lab's financial
- policy is the following: we will do whatever is possible to ensure
- you have the equipment and resources you \textit{need} to do your best work.
- If you can adequately justify an expense (typically done when proposing a
- project budget except when first starting out in the lab) and sufficient funds
- are available, then we will spend what it takes to get the job done.
- If you cannot justify an expense, or if the lab does not have
- sufficient funds, then we will need to get creative by
- figuring out how to get the job done anyway on a seemingly too-small
- budget.  Usually we'll find ourselves somewhere in the middle of this
- continuum, which will help us to stretch our limited budget as far as
- possible while not making ourselves crazy or losing too much
- productivity in the process.
+ research within a limited research budget.  In practice, the
+ important thing is to communicate with Jeremy and/or the Lab
+ Coordinator before you spend (or commit to spending) lab funds.
 
-\subsection{Startup money}
-Startup money is \textit{unrestricted} money that may be used to
-purchase equipment, hire personnel, pay travel expenses, fund lab
-renovations, and grease the day-to-day wheels of the labs existance.
-Critically, startup money may be used for any project, and is
-therefore extremely valuable and special.  (Grant money is generally
-designated for a specific project and may only be used for that one
-project.)  Also, startup money never gets replenshed, which adds an
-extra dimension of caution to the mix.
+ Generally, the lab's financial policy is the following: we will do
+ whatever is possible to ensure you have the equipment and resources
+ you \textit{need} to do your best work.  If you can adequately
+ justify an expense and sufficient funds are available, then we will
+ spend what it takes to get the job done.  If you cannot justify an
+ expense, or if the lab does not have sufficient funds, then we will
+ need to get creative by figuring out how to get the job done anyway
+ on a seemingly too-small budget.  Usually we'll find ourselves
+ somewhere in the middle of this continuum, which will help us to
+ stretch our limited budget as far as possible while not making
+ ourselves crazy or losing too much productivity in the process.
 
-As a new lab member, you will get your own little share of the lab's
-startup money.  \marginnote{Although you'll get some degree of flexibility with
-respect to how you choose to spend this money (with more senior lab
-members getting more flexibility), all purchase decisions must
-still be approved by Jeremy (just as Jeremy's purchases must in turn
-be approved by the administration, whose purchases must in turn be
-approved by the senior administration, and so on).  Futher, all
-equipment you buy is the property of the lab.  With the exception of
-laptop computers, all equipment, books, etc. are expected to remain in
-the lab.  If you leave the lab,
-you are expected to return the lab's property!}  Your budget will
-generally consist of:\marginnote{NOTE: ``Mini startup'' money may not be used
-  to pay anyone's salary.}
-\begin{itemize}
-\item An intitial pool of money to be used to buy a computer (laptop,
-  desktop, or both) plus any minor computer-related accessories you'll
-  need (monitor, keyboard/mouse, etc.).  You may also be allocated an
-  existing computer from the available lab stock in leu of a dollar amount.  Any computer
-  equipment you need, repairs, or other computing costs you incur,
-  will be expected to come from this pool.
-\item A yearly travel budget.  Any lab-related travel you do will be
-  expected to come from this pool.
-\item An equipment budget.  Any experiment-specific equipment you buy
-  will be expected to come from this pool.
-\item A ``miscellaneous'' budget.  This is expected to cover things
-  like textbooks, publication costs, poster printing, etc.
-\end{itemize}
+ Some of our projects are intended to be self-funded and/or to support
+ other projects (e.g.\ StockProphet).  Any use of project-generated
+ funds should be discussed with Jeremy and/or the Lab Coordinator.
 
-The precise amount of your mini startup fund will depend on:
-\begin{itemize}
-\item How long you expect
-to stay in the lab.  For example, a short-term rotation or senior thesis
-student will generally be allocated less money than a longer term
-student, research assistant, or postdoctoral researcher.
-\item What research you expect to do.  Some people need special
-  equipment, money for subjects, etc., and may be
-  allocated more money accordingly.
-\item How much you are expected to travel.  If you're going to be
-  going to lots of conferences, you'll need more money to get there!
-\item How much you're expected to publish.
-\end{itemize}
-
-You will be allocated a modest (default) amount of money when you start
-in the lab.  To get additional money, you can write a short (1-2 page)
-mini ``grant'' proposal describing how you want to use the money.  You
-may apply as often as you want and there is no limit to how much you
-request (although in practice funding decisions will depend on lab
-priorities, availability of funds, etc.).  You may appeal a decision by
-submitting a revised proposal.
-
- \subsection{Applying for research and training grants}
-All lab members are strongly encouraged to apply for research and/or
-training grants.  Obtaining independent funding is how you become a PI
-(P5) on a project, and affords you a substantially higher level of
-research independence.  
-
- \subsection{Equipment policy}
  \subsection{Computers}
+All lab members need a computer to get their work done.  We generally
+prefer to use Macs, as this maximizes compatibility across lab
+members.  Depending on your expected role in the lab and the specifics
+of your project, the lab may provide a computer to you, or you may be
+expected to use your personal computer to complete your work.  Any
+equipment purchased by the lab, including personal computers, is the
+official property of the Contextual Dynamics Lab and should be treated
+as such.  All equipment must be returned to the lab when your
+association with the lab is complete.
+
+In addition to personal computers, we also maintain a lab account on
+Dartmouth's Discovery Supercomputing Cluster.  We use Discovery for
+our most computationally intensive work.  The
+\href{https://trello.com/b/Mgs45iEJ/lab-setup}{Lab Setup Trello Board}
+contains instructions for creating an account and accessing the
+Discovery cluster.  Our suggested workflow is to do
+non-intensive computations and analyses on your personal desktop or
+laptop computer, and to offload more intensive analyses to Discovery.
+The lab's code repository includes sample MATLAB scripts for
+submitting analyses to Discovery.
+
  \subsection{Other research equipment}
+Many research projects require specialized research equipment
+(e.g.\ for neuroimaging using fMRI, EEG, ECoG, etc.).  Some of the
+necessary research equipment is owned by the Contextual Dynamics Lab,
+and other equipment is shared with other labs or with PBS.  All
+equipment should be treated with care and respect.  Any malfunctions
+should be reported immediately.
 
  \subsection{Travel policy}
+ A major component of doing scientific research is communicating with
+ other scientists.  The Contextual Dynamics Lab regularly presents at
+ several international scientific conferences.  If you are presenting
+ your work (i.e., you are the presenting author for a talk or poster),
+ then your travel expenses and conference registration fees will be
+ guaranteed by the lab, under the assumption that you will also make
+ reasonable efforts to seek out alternative sources of travel funding
+ (e.g.\ through PBS, other internal Dartmouth sources, apply for
+ travel awards, use personal grants like NRSAs or NSF fellowships,
+ etc.).  You are also expected to keep costs low (e.g.\ fly economy
+ class, seek out cheaper tickets, stay in reasonably priced hotels,
+ share a room with other lab members, etc.).  By the same token, we
+ also want to be cognizant of your comfort and time, and it is not
+ always necessary to use the cheapest option.  More specific travel
+ guidelines will be given on a per-conference or per-trip basis.
+
+If you are not presenting your work, but you are a full-time graduate student,
+postdoctoral reseracher, or lab coordinator, then the lab will cover
+your travel expenses to a limited number of conferences each year.
+These should be discussed with Jeremy.
+
+If you are an undergraduate research not presenting your work, the lab
+will generally not pay for you to attend conferences.  However, if you
+are interested in attending a conference, and you aren't able to
+secure funding through non-lab sources, you should discuss your
+options with Jeremy.
 
  \subsection{Poster printing}
+There are two on-campus poster printers.  One is maintained through
+the Thayer School of Engineering.  More information may be found
+\href{http://kb.thayer.dartmouth.edu/article/286-printing}{here}.
+This is the preferred printing method, as it is free to use.  The
+second on-campus option is to use the Map Room through the Baker
+Library.  More information may be found
+\href{http://www.dartmouth.edu/~library/maproom/printingfaq.html}{here}.
+This is a relatively low-cost option, and is sometimes more convenient
+than using Thayer's printer.
+
 
  \subsection{Publication costs}
+All costs related to lab publications will be fully covered by the
+lab.  The Lab Coordinator can help facilitate these payments.
 
  \subsection{Subject payments}
+ Subject payments for lab reseach projects will be fully covered by
+ the lab.  Subject payment guidelines are generally found in the IRB
+ approval documentation relevant to your project.  For Mechanical Turk
+ experiments, a subject payments budget should be approved prior to
+ beginning the experiment.
 
-
-
-
-
- \section{Lab mailing list and contact information}
-
-\section{Task management using Redbooth}
-
- \section{Code and document management using Bitbucket}\label{sec:bitbucket}
- We use \href{https://www.bitbucket.org/}{Bitbucket}\marginnote{The lab's standard practice is to use the
- Git version control system.  All projects \textit{must} be
- managed using Git and hosted on Bitbucket unless there is a
- compelling (and documented!) reason to use another system.} as a means of organizing, maintaining, and sharing
- our code and documents.  Bitbucket provides a unified framework for
- documenting changes over time, managing and integrating code from
- multiple users, and submitting bug reports or feature requests. 
-Atlassian's
- \href{https://www.atlassian.com/software/sourcetree/overview?_mid=1ba3573dadf246f44f2a97bc50bfd72e&gclid=Cj0KEQiA4OqnBRDAj9aazvPji9ABEiQANq28oBGvgRhznXBb_RDL6QRe0IM7vvEUXFkRDoWBSbpmsmAaAkCE8P8HAQ}{SourceTree}
- client provides a convenient and easy-to-use desktop client for OS X
- and Windows systems.  Each project should have \textit{two} Bitbucket
- repositories.  The first repository ($<$projectname$>$-main) is used to
- manage experiment and analysis code and related (non-data) files.
- The second repository ($<$projectname$>$-communications) is used to
- manage documents and images (papers, posters, slides, etc.) related
- to \textit{communicating} the work to the broader scientific
- community.  This two repository system is intended to prevent the main project
- repository (which will eventually be shared publically in most cases)
- from (a) growing too large and (b) containing information or files
- that would not normally be shared publically (e.g.\ in-progress
- drafts of manuscripts, raw image files for posters, editable figures,
- etc.).  The \textit{main} repository should be organized using the following directory structure:
-\begin{itemize}
-\item \textit{code/main}: contains code for running experiments and
-  analyses.  When the paper is published, this folder (and/or its contents) will be made
-  publically available.  How this folder gets organized is up to the
-  project lead.
-\item \textit{code/main/contents.txt}: a list of 
-\item \textit{code/main/README.txt}: quick start instructions for
-  using the code.
-\item \textit{code/dev}: contains under-development and/or half-baked
-  code.  All project-related code should start life in this folder,
-  and should be moved to code/main after it has been debugged and
-  after its unit tests have been written.
-\item \textit{code/debug}: contains unit tests for code in code/main.
-  Unit tests should provide example scripts for running code/main code
-  along with specific detailed descriptions of the expected behavior
-  or output.
-\item \textit{docs/admin}: contains organizational files related to the
-  project, including:
-\begin{itemize}
-\item \textbf{Project vision.}  A high level description of the
-  project along with a (rough) proposed timeline for the project's
-  phases.
-\item \textbf{Personnel list.}  A description of all project members
-  and their expected roles on the project.  Authorship order must be
-  specified in this document, and changes must be approved by the lab
-  director.
-\end{itemize}
-\item \textit{docs/admin/forms}: official forms and approvals related to
-  the project.  Each experiment should have its own sub-folder
-  containing:
-\begin{itemize}
-  \item IRB approval forms
-  \item Participant consent forms
-  \item Participant exit surveys (if applicable)
-  \item Participant instructions
-  \item Participant debriefing document
-  \item Ammendments to any forms (e.g. IRB approval extensions)
-  \item A document listing budget codes for grants that fund any part
-    of the project  
-\end{itemize}
-\end{itemize}
-
-The \textit{communications} repository should be organized using the following directory structure:
-\begin{itemize}
-\item \textit{papers}: each paper should exist as a sub-folder of
-  this directory.  Each paper's sub-folder should contain the following:
-\begin{itemize}
-\item \textit{paper\_name.tex}: main source file for document text
-\item \textit{boneyard.tex}: a source file containing pasted snippets of
-  discarded text that might conceivably be useful at some later point
-  (in this or other projects).
-\item Other files needed to compile the main source file into a
-  complete PDF.
-\item \textit{figs}: sub-folder containing complete PDF figures.
-\item \textit{figs/source}: sub-folder containing files relevant to
-  constructing each manuscript figure (e.g. the images for each panel
-  in a figure).  Each figure should have its own sub-folder.  For compound figures (e.g. a panel that has
-  multiple sub-panels), each panel should have its own \textit{source}
-  directory that lives in its parent figure's source directory.  Raw
-  data should not be stored in these folders, but intermediate files
-  or images that would be time consuming to regenerate (or that are
-  useful to have in an easily accessed location) should be included.
-  In addition, Adobe source files (e.g.\ .ai or .psd files) should be
-  included in the source folders.
-\item \textit{replicate}: sub-folder containing links to the data and code
-  relevant to the paper, along with \textbf{detailed} helpful
-  instructions that would allow someone to download the project's \textit{main}
-  Bitbucket repository and data, and reproduce figures from each paper
-  from scratch (assuming they had the appropriate hardware to run the
-  analyses).  The instructions should also list system requirements
-  (as applicable) and software dependencies (along with download links
-  and installation instructions).  This folder should also contain a
-  ``make\_figs'' script that, when run, should reproduce the basic 
-  versions of the paper's figures (e.g.\ before editing fonts and line
-  styles or composing figure panels in Illustrator), assuming the
-  \textit{main} project repository has been downloaded to the specified location.
-\end{itemize}
-\item \textit{posters}: each poster should exist as a sub-folder
-  of this directory.  Each poster's sub-folder should contain:
-\begin{itemize}
-  \item The main .ai, .pdf, .pptx, or .tex poster file.
-  \item A copy of the associated conference abstract or paper.
-  \item A README.txt file containing bibliographic information for the
-    poster.
-\end{itemize}
-\item \textit{slides}: sub-folder containing the .key, .pptx, or
-  .pdf files for each presentation.
-\item \textit{source}: sub-folder containing all source
-  materials (figures, etc.) linked to in any poster or presentation.  The source
-  directory may contain additional sub-folders, but does not need
-  to be separated by poster or presentation.  This is because oftentimes the
-  same source file(s) will be shared across multiple posters or presentations.
-\end{itemize}
-
- \section{Data repository}
- \subsection{Lab Dropbox account}
-
- \section{Internal Review Board (IRB) approval process}
+ \section{Internal Review Board (IRB) approvals}
  \subsection{List of active protocols}
+The lab does not currently have any active protocols.  When protocols
+are approved, they will be added here.
+
  \subsection{List of inactive protocols}
+The lab does not have any inactive protocols.
 
-
- \chapter{Official lab techniques}\label{ch:techniques}
- \section{Document formatting using \LaTeX}
- \section{Coding experiments using PsychToolbox}
- \section{Data analysis using MATLAB and Python}
-
-
-
- \section{Behavioral experiments}
-
- \section{fMRI}
- \subsection{Running fMRI participants}
- \subsection{Data preprocessing}
- \subsection{Multivariate Pattern Analysis}
- \subsection{Topographic Factor Analysis}
-
- \section{Scalp EEG and ECoG}
- \subsection{Running EEG participants}
- \subsection{Running hospital patients (ECoG)}
-
- \section{Cluster computing}
 
 
 % Citation example \cite{Tufte2001}, notice how the citation is in the margin. This is an example of how to add something to the index at the end of the document.\index{citation}
