@@ -150,6 +150,9 @@ Copyright \copyright\ \the\year\ \thanklessauthor
 %	INTRODUCTION
 %----------------------------------------------------------------------------------------
 
+\newcommand{\director}{Jeremy}
+\newcommand{\coordinator}{Kirsten}
+
 \cleardoublepage
 \chapter{Introduction}\label{ch:intro} % Adding an asterisk leaves out this chapter from the table of contents
 This lab manual is intended to provide a crash course in doing
@@ -233,13 +236,13 @@ efficiency we need to succeed on three fronts:
 Your job as a contributing lab member is to help us to achieve our
 collective peak efficiency (as a lab) while also maximizing your own
 training and career potential.  To do this, the Contextual Dynamics
-Lab practices \textbf{agile science}, as described in the next section.
+Lab practices \textbf{agile research}, as described in the next section.
 
-\newpage
+%\newpage
 \section{Doing agile research}
 \marginnote{\texttt{TASK:} Watch the
   \href{http://scrumtrainingseries.com/}{Scrum Training Series videos}
-  and answer the quiz questions. (Note: ``Scrum'' is an implementation
+  and answer the quiz questions as you go. (Note: ``Scrum'' is an implementation
   of the agile process.) In the lab we'll adapt this approach
   somewhat, but we will try to preserve the core ideas.  For example,
   you can mentally replace ``software'' with ``software, papers, and
@@ -273,12 +276,12 @@ entire project?\marginnote{\texttt{NOTE:} Our adapted approach also
   \href{http://technocalifornia.blogspot.com/2008/06/agile-research.html}{this
     blog}.}
 
-Our \href{http://agilemanifesto.org/}{agile science manifesto} has three key
+Our \href{http://agilemanifesto.org/}{agile research manifesto} has three key
 tenets:
 \begin{enumerate}
 \item Value \textbf{individuals and interactions} over
   \textit{processes and tools}.
-\item Value \textbf{working tools and research products} over
+\item Value \textbf{working, intuitive, tools and research products} over
   \textit{comprehensive documentation}.
 \item Value \textbf{responding to change} over \textit{following a plan}.
 \end{enumerate}
@@ -310,7 +313,7 @@ While there is value to the \textit{italicized} items, we value
 \item The product itself (software, paper, poster,
   presentation, grant) is the primary measure of progress.
 
-\item Agile science promotes sustainable research.  Researchers should
+\item Agile research is sustainable research.  Researchers should
   be able to maintain a constant pace indefinitely.
 
 \item Continuous attention to technical excellence and good design
@@ -348,7 +351,7 @@ these roles on your project:
   private organizations) and the scientific community
 \item May contribute as a team member
 \item Has a leadership role
-\item Usually the project owner will be Jeremy
+\item Usually the project owner will be \director
 \end{enumerate}
 
 \item \textbf{Team Member.}  Team members are responsible for carrying
@@ -371,7 +374,7 @@ these roles on your project:
 \end{enumerate}
 
 \item \textbf{Project Coordinator.} The Project Coordinator facilitates
-  the agile science process by:
+  the agile research process by:
 \begin{enumerate} 
 \item Helping to resolve impediments
 \item Creating an environment conducive to team self-organization
@@ -381,14 +384,9 @@ these roles on your project:
 \item Enforcing timelines
 \item Having no management authority over the team (anyone with authority
   over the team is by definition not its Project
-  Coordinator)\marginnote{NOTE: we do not currently have a dedicated
-    Lab Coordinator, so Jeremy is playing that role.  Therefore the
-    Project Coordinator role is less ``pure'' than in a traditional agile
-    approach.  The intended role description is outlined here, but in
-    practice the Project Coordinator role may have management
-    authority until we have a dedicated Lab Coordinator.}
+  Coordinator)
 \item Having a leadership role
-\item Usually the Lab Coordinator will also be the Project Coordinator
+\item Usually the Lab Coordinator (\href{mailto:Kirsten.K.Ziman@dartmouth.edu}{Kirsten Ziman}) will also be the Project Coordinator
 \end{enumerate}
 
 \item \textbf{Collaborator.}  Collaborators are not formally part of
@@ -421,16 +419,18 @@ are not normally co-authors.
 
 \subsection{Project meetings}
 Effective lab communication requires forums for communicating.  As
-described below, we use \href{http://www.slack.com}{Slack} to facilitate non-in-person
-communications, but Slack cannot replace in-person meetings.  In fact,
-our approach is set up to encourage in-person interactions as often as
-possible-- ideally at least once per day.  We'll have the following
-regularly scheduled meetings:
+described below, we use \href{http://www.slack.com}{Slack} to
+facilitate non-in-person communications, but Slack cannot replace
+in-person meetings.  In fact, our approach is set up to encourage
+in-person interactions as often as possible-- ideally at least once
+per day.  We'll have the following regularly scheduled meetings:
 \begin{enumerate}
 \item \textbf{Lab meeting.}  We will have, as a lab, a regular weekly
   2 hour meeting where we discuss current progress, impediments to
   progress, and plans for the upcoming week.  We will also use the
-  meeting time to prioritize the research backlog and plan sprints for
+  meeting time to update and prioritize the research
+  backlog\marginnote{\texttt{TIP:} The research backlog is our list of project
+    ideas.  It will grow and change over time.} and plan sprints for
   that week.  (In \href{http://scrumtrainingseries.com/}{Scrum}
   terminology, lab meeting will combine the notions of the
   \href{http://scrumtrainingseries.com/BacklogRefinementMeeting/BacklogRefinementMeeting.htm}{Backlog
@@ -482,20 +482,29 @@ administrative tasks:
   almost all not-in-person lab communications take place.  It provides
   an interface for asking questions, storing notes, and sharing
   ideas.  If you have an @dartmouth.edu email address, you can create
-  an account without an invitation.  Otherwise you'll need to get invited by the Lab Coordinator.
+  an account without an invitation.  Otherwise you'll need to get invited by \coordinator.
 
-\item \href{https://www.trello.com}{\textbf{Trello.}}  This is used to
-  manage all projects and tasks.  It provides a way of tracking
-  progress and impediments to progress.  You'll need to sign up for a
-  free account and then have the Lab Coordinator invite you to the
-  lab's Trello Team.
+\item \href{https://www.trello.com}{\textbf{Trello.}}
+  \marginnote{\texttt{TASK:} If you've never used Trello before, you
+    may find it useful to work through this
+    \href{https://trello.com/b/I7TjiplA/trello-tutorial}{Trello
+      tutorial}.}  This is used to manage all projects and tasks.  It
+  provides a way of tracking progress and impediments to progress.
+  You'll need to sign up for a free account and then have the Lab
+  Coordinator invite you to the lab's Trello Team.
 
-\item \href{https://www.bitbucket.org}{\textbf{BitBucket.}}  This is
-  used to manage all code, papers, grants, presentations, and
-  posters.  In other words, anything where it'd be useful to track
-  multiple versions, anything that we might ultimately want to release
-  to the public, and/or anything that multiple lab members will be
-  collaborating on.  Each project has one or more BitBucket repositories.
+\item \href{https://www.bitbucket.org}{\textbf{BitBucket.}}
+  \marginnote{\texttt{TASK:} If you've never used BitBucket (Git)
+    before, please work through the
+    \href{https://confluence.atlassian.com/bitbucket/bitbucket-tutorials-teams-in-space-training-ground-755338051.html}{BitBucket
+      Tutorials}.}  This is used to manage all code, papers, grants,
+  presentations, and posters.  In other words, anything where it'd be
+  useful to track multiple versions, anything that we might ultimately
+  want to release to the public, and/or anything that multiple lab
+  members will be collaborating on.  Each project has one or more
+  BitBucket repositories.  We also use
+  \href{https://www.atlassian.com/software/sourcetree}{SourceTree} as
+  a graphical interface for Bitbucket.
 \end{enumerate}
 
 Once you've created those accounts (and once you've been invited to
@@ -526,15 +535,10 @@ more team members).
 
 
 \section{Scheduling}
-Complex dynamic systems can be difficult to understand (e.g.\
-describe, compute with).  Fortunately for us, we do not need to start
-entirely from scratch with respect to attempting to organize some
-complex dynamic system we care about in our lab.  For example, we can
-use tools like calendars and other software packages to organize and
-understand our own temporal dynamics.  Our lab's scheduling policies
-are intended to facilitate lab member interactions between ourselves,
-our collaborators, and our experimental participants.  There are three
-basic tools the lab uses to organize and schedule events:
+Our lab's scheduling practices and policies are intended to facilitate
+lab member interactions between ourselves, our collaborators, and our
+experimental participants.  There are three basic tools the lab uses
+to organize and schedule events:
 \begin{itemize}
 \item \href{http://calendar.google.com}{Google Calendar}.  We use the
   \href{https://calendar.google.com/calendar/ical/5ta50cfv4uih0a0k8m2di9dhjo\%40group.calendar.google.com/private-ff1338ddce84ac37d5ab682cd94e7f69/basic.ics}{main lab calendar} to keep track of lab-wide events including lab
@@ -542,12 +546,15 @@ basic tools the lab uses to organize and schedule events:
   calendar} to keep track of important events and meetings at the
   DHMC.  We use the \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{out-of-lab calendar} to keep track of known
   absences (e.g. illness, travel, holidays,
-  etc.).\marginnote{\texttt{TASK:} ask the Lab Coordinator to send you
+  etc.).\marginnote{\texttt{TASK:} ask \coordinator~to send you
     an invite to the out-of-lab calendar so that you can add your
-    planned absences.} We use the
-  meetings calendar to keep track of scheduled meetings (regularly
-  scheduled meetings with Jeremy or senior lab members, project
-  meetings, etc.).  When you add an event, it is important to include
+    planned absences.}  We use the
+  \href{https://calendar.google.com/calendar/ical/dgcv8l8a8s10hfg2s5h0qec0q0\%40group.calendar.google.com/private-4810aed94f818d5748045447ab46c62d/basic.ics}{CDL
+    resources calendar} to coordinate the use of shared rooms and
+  equipment, such as testing rooms, our EEG system, hospital
+  equipment, etc.  You may also choose to create project-specific
+  Google Calendars, inviting project team members.  When you add an
+  event (in any lab calendar), it is important to include
   the following information as a comment (this does not apply to ``out-of-lab'' events):
 \begin{itemize}
   \item Key contact names and contact information (email or phone)
@@ -565,24 +572,70 @@ basic tools the lab uses to organize and schedule events:
 \end{itemize}
 
  \subsection{Attendance policy}
- We abide by a ``common sense'' attendance policy that relies on an
- honor system.  If you cannot attend a lab event or meeting, your
- privacy will be respected: you do not (generally speaking) need to
- provide a reason for your absence (although you are honor bound not
- to abuse this system!)-- but you are expected to responsibly manage
- your schedule so that you get your work done and minimize
- inconvenience to others to the extent possible.  The one exception is
- that if you seem to be abusing this system (as determined by your
- project owner or project coordinator), you may be asked to provide
- additional information (in a way that does not invade your privacy--
- and if you are worried that this policy is overly intrusive, please
- bring your concerns to Jeremy or the Lab Coordinator).  Here's the
- official lab attendance policy:
+ In general, we expect full time employees to be in the lab during
+ ``standard'' working hours-- roughly between 9 AM and 5 PM.  The
+ precise range of hours you work is less important to us than putting
+ in an effort to help form a cohesive lab culture where lab members
+ can interact in person to share ideas, leverage expertise, solve
+ problems, etc.  Therefore, even if you end up deciding to shift your
+ hours, we'd like you to make a strong effort to be physically present
+ in the lab between 1 and 4 pm (prior arrangements notwithstanding;
+ e.g. if you have a long commute and we've agreed that you won't come
+ in every day, and if you need to occasionally schedule an
+ appointment during the 1--4 pm window you can do so).  Similarly, if
+ you are a part time employee, we'd like you to try to put in your
+ in-the-lab hours during the 1 to 4 pm time window as often as
+ possible.
+
+The lab also abides by Dartmouth's standard paid time off policies for
+benefits-eligible (full-time, non-student) employees.  If you are a
+salaried employee, you can find the official policy
+\href{http://www.dartmouth.edu/~hrs/pdfs/paid_time_off_salaried.pdf}{here},
+and if you are an hourly employee, you can find the official policy
+\href{http://www.dartmouth.edu/~hrs/pdfs/Paid_Time_Off_Hourly.pdf}{here}.
+If you are a student employee, you are generally ineligible for paid
+time off (you can take time off, but you won't normally be paid for it).
+
+If you know that you'll be unable to meet any of these general attendance
+guidelines, please coordinate with \director~to make appropriate
+arrangements.  With the above in mind, we abide by a ``common sense''
+attendance policy that relies on an honor
+system.\marginnote{\texttt{TIP:} If you are an hourly employee, you'll
+  need to track your hours using the Kronos system as described on the
+  \href{https://trello.com/b/Mgs45iEJ/lab-setup}{Lab Setup Trello
+    Board}.}  If you cannot attend a lab event or meeting, your
+privacy will be respected: you do not (generally speaking) need to
+provide a reason for your absence (although you are honor bound not to
+abuse this system!)-- but you are expected to responsibly manage your
+schedule so that you get your work done and minimize inconvenience to
+others to the extent possible.  The one exception is that if you seem
+to be abusing this system (e.g.\ as determined by your project owner,
+project coordinator, or fellow team members), you may be asked to
+provide additional information (in a way that does not invade your
+privacy-- and if you are worried that this policy is overly intrusive,
+please bring your concerns to \director~or \coordinator).  Here's the
+official lab attendance policy:
 \begin{itemize}
-\item It is your responsibility to notify anyone your absence will
-  affect (e.g. people you're scheduled to meet with, etc.).  The best
-  way to do this is via email or Slack.  We also use an \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{``out-of-lab''
-  calendar} to keep track of things like vacations or longer planned absences.
+\item It is your responsibility to provide notice, well in advance, to anyone your absence will
+  affect (e.g. \director, \coordinator, people you're scheduled to
+  meet with, etc.).  The best way to do this is via email or Slack.
+  We also use an
+  \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{``out-of-lab''
+    calendar} to keep track of things like vacations or longer planned
+  absences.
+\begin{itemize}
+\item You are responsible for accounting for your planned absences
+  when we plan our weekly sprints.  If you agree to take on work
+  during a sprint, you're responsible for it until you make
+  alternative plans with your team!
+\item Prolonged (more than 1 day, excluding weekends and
+  lab-related absences) planned
+  absences should be scheduled at least 1 week in advance, and ideally
+  2 weeks in advance.
+\item Brief (one day) absences (excluding weekends, and lab-related
+  absences) should be scheduled as far in advance as possible, but at
+  least at the beginning of the week.
+\end{itemize}
 
 \item If you are feeling sick, \textit{do not come into the lab}.  We can
   arrange virtual meetings (if you are feeling well enough) or
@@ -611,11 +664,56 @@ basic tools the lab uses to organize and schedule events:
   or are otherwise playing a key role).
 \end{itemize}
 
+\subsection{Compensation and benefits}
+If you are a non-student full-time on-campus employee, it's likely that
+you're eligible for Dartmouth benefits, such as medical insurance,
+dental insurance, life insurance, etc.  You can read more about the
+comprehensive benefits package \href{http://www.dartmouth.edu/~hrs/benefits/}{here}.
+
+Dartmouth also sponsors various health-benefits programs (for all
+members of the Dartmouth community).  For example, you are likely
+eligible to get a free (or subsidized) fitness tracker, fitness
+equipment, race fees, gym membership, etc.  You can also earn cash (up
+to \$400/year) for meeting your fitness goals.  Go
+\href{http://join.virginpulse.com/dartmouth/}{here} to learn more or
+sign up for this program.
+
+If you are a student employee, you may be paid or unpaid.  In general,
+full-time student employees are paid and part-time student employees
+are unpaid until they have been a full-time employee for at least one
+term.  Your precise level of compensation will depend on your
+position, how your work in the lab is funded, your prior research
+experience, etc.
+
+\subsection{Interpersonal issues}
+All lab members, regardless of position or status, are protected by
+(and must abide by) Dartmouth's human resources policies.  This means
+behaving professionally and respectfully towards others (including,
+but not limited to, your fellow lab members).  On (hopefully) rare
+occasions, despite your best efforts, you may find yourself in an
+interpersonal situation that you feel unable to resolve on your own.
+You have many resources at your disposal to help get you back on
+track.
+
+The \href{http://www.dartmouth.edu/~hrs/}{Office of Human Resources}
+provides assistance and resources to all faculty, staff, retirees, and
+prospective employees. The
+\href{http://www.dartmouth.edu/~seo/}{Student Employment Office}
+provides a similar suite of services to student employees.  The
+\href{http://www.dartmouth.edu/~ombuds/}{Dartmouth Ombuds Office} also
+provides confidential and informal assistance in resolving concerns
+related to interpersonal issues.  If you are experiencing an
+interpersonal issue with another lab member and are having trouble
+resolving it on your own, please seek out
+assistance from \director, \coordinator, your Project Owner, your
+Project Coordinator, or one of the above Dartmouth community resources
+as early as possible.
+
 
  \section{Lab resources}
  As with most academic research labs, we (sadly!) must conduct our
  research within a limited research budget.  In practice, the
- important thing is to communicate with Jeremy and/or the Lab
+ important thing is to communicate with \director~and/or the Lab
  Coordinator before you spend (or commit to spending) lab funds.
 
  Generally, the lab's financial policy is the following: we will do
@@ -632,7 +730,7 @@ basic tools the lab uses to organize and schedule events:
 
  Some of our projects are intended to be self-funded and/or to support
  other projects (e.g.\ StockProphet).  Any use of project-generated
- funds should be discussed with Jeremy and/or the Lab Coordinator.
+ funds should be discussed with \director~and/or \coordinator.
 
  \subsection{Computers}
 All lab members need a computer to get their work done.  We generally
@@ -646,15 +744,22 @@ as such.  All equipment must be returned to the lab when your
 association with the lab is complete.
 
 In addition to personal computers, we also maintain a lab account on
-Dartmouth's Discovery Supercomputing Cluster.  We use Discovery for
-our most computationally intensive work.  The
+Dartmouth's \href{http://techdoc.dartmouth.edu/discovery/}{Discovery
+  Supercomputing Cluster}.  In addition to having access to the
+compute nodes shared amongst the entire Dartmouth community, we have
+purchased several dedicated servers and a powerful head node that is
+shared with the \href{http://www.cosanlab.com/}{COSAN Lab} and the
+\href{http://www.dartmouth.edu/~bil/}{Dartmouth Brain Imaging Lab}.
+When you link your Discovery account with the lab, you will
+automatically have access to those additional computing resources.  We
+use Discovery for our most computationally intensive work.  The
 \href{https://trello.com/b/Mgs45iEJ/lab-setup}{Lab Setup Trello Board}
 contains instructions for creating an account and accessing the
-Discovery cluster.  Our suggested workflow is to do
-non-intensive computations and analyses on your personal desktop or
-laptop computer, and to offload more intensive analyses to Discovery.
-The lab's code repository includes sample MATLAB scripts for
-submitting analyses to Discovery.
+Discovery cluster.  Our suggested workflow is to do non-intensive
+computations and analyses on your personal desktop or laptop computer,
+and to offload more intensive analyses to Discovery.  The lab's code
+repository includes sample MATLAB scripts for submitting analyses to
+Discovery.
 
  \subsection{Other research equipment}
 Many research projects require specialized research equipment
@@ -668,45 +773,49 @@ should be reported immediately.
  A major component of doing scientific research is communicating with
  other scientists.  The Contextual Dynamics Lab regularly presents at
  several international scientific conferences.  If you are presenting
- your work (i.e., you are the presenting author for a talk or poster),
- then your travel expenses and conference registration fees will be
- guaranteed by the lab, under the assumption that you will also make
- reasonable efforts to seek out alternative sources of travel funding
- (e.g.\ through PBS, other internal Dartmouth sources, apply for
- travel awards, use personal grants like NRSAs or NSF fellowships,
- etc.).  You are also expected to keep costs low (e.g.\ fly economy
- class, seek out cheaper tickets, stay in reasonably priced hotels,
- share a room with other lab members, etc.).  By the same token, we
- also want to be cognizant of your comfort and time, and it is not
- always necessary to use the cheapest option.  More specific travel
- guidelines will be given on a per-conference or per-trip basis.
+ your work from the lab (i.e., you are the presenting author for a
+ talk or poster), then your travel expenses and conference
+ registration fees will be guaranteed by the lab, under the assumption
+ that you will also make reasonable efforts to seek out alternative
+ sources of travel funding (e.g.\ through PBS, other internal
+ Dartmouth sources, apply for travel awards, use personal grants like
+ NRSAs or NSF fellowships, etc.).  You are also expected to keep costs
+ low (e.g.\ fly economy class, seek out cheaper tickets, stay in
+ reasonably priced hotels, share a room with other lab members, etc.).
+ By the same token, we also want to be cognizant of your comfort and
+ time, and it is not always necessary to use the cheapest option.
+ More specific travel guidelines will be given on a per-conference or
+ per-trip basis.
 
-If you are not presenting your work, but you are a full-time graduate student,
-postdoctoral researcher, or lab coordinator, then the lab will cover
-your travel expenses to a limited number of conferences each year.
-These should be discussed with Jeremy.
+ If you are not presenting your work (or if you're presenting non-lab
+ work), but you are a full-time graduate student, postdoctoral
+ researcher, or lab coordinator, then the lab may cover your travel
+ expenses to a limited number of conferences each year.  These should
+ be discussed with \director.
 
 If you are an undergraduate research not presenting your work, the lab
 will generally not pay for you to attend conferences.  However, if you
 are interested in attending a conference, and you aren't able to
 secure funding through non-lab sources, you should discuss your
-options with Jeremy.
+options with \director.
 
  \subsection{Poster printing}
-There are two on-campus poster printers.  One is maintained through
-the Thayer School of Engineering.  More information may be found
-\href{http://kb.thayer.dartmouth.edu/article/286-printing}{here}.
-This is the preferred printing method, as it is free to use.  The
-second on-campus option is to use the Map Room through the Baker
-Library.  More information may be found
-\href{http://www.dartmouth.edu/~library/maproom/printingfaq.html}{here}.
-This is a relatively low-cost option, and is sometimes more convenient
-than using Thayer's printer.
+ There are two on-campus poster printers.  One is in the Map Room of
+ Baker Library.  More information may be found
+ \href{http://www.dartmouth.edu/~library/maproom/printingfaq.html}{here}.
+ The Map Room printer should be used in most cases.  The other printer
+ maintained through the Thayer School of Engineering.  More
+ information may be found
+ \href{http://kb.thayer.dartmouth.edu/article/286-printing}{here}.  It
+ is important to schedule your printing time as far in advance as
+ possible, particularly before conferences when many people will want
+ to print.  Advanced planning can help us avoid the additional costs
+ associated with off-campus printers.
 
 
  \subsection{Publication costs}
 All costs related to lab publications will be fully covered by the
-lab.  The Lab Coordinator can help facilitate these payments.
+lab.  \coordinator~can help facilitate these payments.
 
  \subsection{Subject payments}
  Subject payments for lab research projects will be fully covered by
@@ -715,12 +824,21 @@ lab.  The Lab Coordinator can help facilitate these payments.
  experiments, a subject payments budget should be approved prior to
  beginning the experiment.
 
- \section{Internal Review Board (IRB) approvals}
- \subsection{List of active protocols}
+
+\chapter{Internal Review Board (IRB) approvals}
+Experimental \marginnote{\texttt{TASK:} prior to running any out-of-lab
+  participants in your study, you must (a) verify that your experiment has
+  been approved by the IRB and (b) verify that your name is
+  specifically listed on the associated protocol.} protocols and IRB approval forms are maintained and
+coordinated through our
+\href{https://context-lab.slack.com/archives/admin}{dedicated Slack
+  channel}.
+
+ \section{List of active protocols}
 The lab does not currently have any active protocols.  When protocols
 are approved, they will be added here.
 
- \subsection{List of inactive protocols}
+ \section{List of inactive protocols}
 The lab does not have any inactive protocols.
 
 
