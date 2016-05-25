@@ -35,7 +35,10 @@
 
 \usepackage{graphicx} % Needed to insert images into the document
 \graphicspath{{graphics/}} % Sets the default location of pictures
-\setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio} % Improves figure scaling
+\setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio}
+% Improves figure scaling
+
+\usepackage[export]{adjustbox}
 
 \usepackage{fancyvrb} % Allows customization of verbatim environments
 \fvset{fontsize=\normalsize} % The font size of all verbatim text can be changed here
@@ -97,7 +100,6 @@
 %----------------------------------------------------------------------------------------
 
 \maketitle % Print the title page
-
 %----------------------------------------------------------------------------------------
 %	COPYRIGHT PAGE
 %----------------------------------------------------------------------------------------
@@ -108,6 +110,9 @@
 \thispagestyle{empty}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{\baselineskip}
+
+\includegraphics[width=0.3in,left]{./lab_logo/CDL_Avatar_Cropped.png}\\\vspace{0.2in}
+
 Copyright \copyright\ \the\year\ \thanklessauthor
 
 \par\smallcaps{Published by the \thanklesspublisher}
@@ -164,7 +169,7 @@ approach and some basic lab policies.
   at least one edit.  You could correct a typo, clarify something
   that's unclear, add a comment, etc.  Importantly, be sure to push
   your edits to the manual's
-  \href{https://bitbucket.org/manning3/lab-manual}{Bitbucket
+  \href{https://bitbucket.org/cdl-dartmouth/lab-manual}{Bitbucket
     repository} so that everyone can benefit.}
 Every new lab member should read
 the latest version of this lab manual in detail and reference it later
@@ -433,7 +438,10 @@ per day.  We'll have the following regularly scheduled meetings:
   progress, and plans for the upcoming week.  We will also use the
   meeting time to update and prioritize the research
   backlog\marginnote{\texttt{TIP:} The research backlog is our list of project
-    ideas.  It will grow and change over time.} and plan sprints for
+    ideas.  It will grow and change over time.  If you have an idea
+    you're excited about,
+    \href{https://trello.com/b/rqdTWimD/cdl-research-priorities}{add
+      it to the backlog}!} and plan sprints for
   that week.  (In \href{http://scrumtrainingseries.com/}{Scrum}
   terminology, lab meeting will combine the notions of the
   \href{http://scrumtrainingseries.com/BacklogRefinementMeeting/BacklogRefinementMeeting.htm}{Backlog
@@ -453,8 +461,9 @@ Because of the content of this meeting, it's ideal to schedule the
 meetings for early in the day.  This meeting is based on the notion of
 a
 \href{http://scrumtrainingseries.com/DailyScrumMeeting/DailyScrumMeeting.htm}{Daily
-  Scrum Meeting}. Attendees: all team members (except the Project Owner
-and Project Coordinator).
+  Scrum Meeting}. Attendees: all team members (the Project Owner
+and Project Coordinator will only attend if specifically invited by
+the rest of the team).
 \item \textbf{Weekly team meeting.}  Each team will meet for 1 hour
   each week to do live demonstrations of working products for the
   Project Owner and any external collaborators.  This could be in the
@@ -525,6 +534,12 @@ doesn't already exist, follow the steps
 \href{https://trello.com/b/s4L8fbot/initiate-a-project}{here} to
 initiate a new project.
 
+The general steps to starting a project are to set up or configure
+accounts with the various lab tools (Trello, Bitbucket, Slack, Google
+Calendar, etc.), and to ensure that the project has an active IRB
+protocol (and that all team members are added to it).  A list of
+active IRB protocols appears at the end of the lab manual.
+
 %\newpage
 \section{Joining a project}
 To join a project, simply subscribe to the project's Slack channel and
@@ -535,6 +550,21 @@ communications should occur through Slack, whenever possible.  This
 keeps notes searchable and visible to all team members (except direct
 messages, which are useful for private communications between one or
 more team members).
+
+Note that, as a general rule, you should focus the majority of your
+efforts on one project at a time.  This doesn't mean you need to do
+the same thing every day (each project has many components and, as
+described above, the focus of lab projects will change over time), but
+it gives some sense of how you should be allocating your work time.
+
+If you are a part-time employee of the lab, prior experience has shown
+that you will be able to make a meaningful contribution to a single
+project at a time.  If you are a full-time employee, you may choose to
+devote some of your time to a secondary project (with the
+understanding that you will always prioritize your primary project).
+If you want to change which project is your primary project, or if you
+want to divide you time across multiple projects, you should
+coordinate this with \director, \coordinator, and your team members.
 
 
 \section{Scheduling}
@@ -601,9 +631,9 @@ time off (you can take time off, but you won't normally be paid for it).
 
 If you know that you'll be unable to meet any of these general attendance
 guidelines, please coordinate with \director~to make appropriate
-arrangements.  With the above in mind, we abide by a ``common sense''
+arrangements.  \textbf{With the above in mind, we abide by a ``common sense''
 attendance policy that relies on an honor
-system.\marginnote{\texttt{TIP:} If you are an hourly employee, you'll
+system.}\marginnote{\texttt{TIP:} If you are a (paid) hourly employee, you'll
   need to track your hours using the Kronos system as described on the
   \href{https://trello.com/b/Mgs45iEJ/lab-setup}{Lab Setup Trello
     Board}.}  If you cannot attend a lab event or meeting, your
@@ -642,8 +672,8 @@ official lab attendance policy:
 
 \item If you are feeling sick, \textit{do not come into the lab}.  We can
   arrange virtual meetings (if you are feeling well enough) or
-  re-schedule as needed.  The health and safety of the lab is the top
-  priority.
+  re-schedule as needed.  Your recovery, and the health and safety of the lab, are the top
+  priorities.
 
 \item If you need to be out of the lab for an unexpected non-illness-related
   emergency, simply give as much notice and information as possible.
@@ -689,6 +719,12 @@ position, how your work in the lab is funded, your prior research
 experience, etc.
 
 \subsection{Interpersonal issues}
+ If you are experiencing an
+interpersonal issue with another lab member and are having trouble
+resolving it on your own, please seek out assistance from \director,
+\coordinator, your Project Owner, your Project Coordinator, or one of
+the above Dartmouth community resources as early as possible.
+
 All lab members, regardless of position or status, are protected by
 (and must abide by) Dartmouth's human resources policies.  This means
 behaving professionally and respectfully towards others (including,
@@ -705,12 +741,7 @@ prospective employees. The
 provides a similar suite of services to student employees.  The
 \href{http://www.dartmouth.edu/~ombuds/}{Dartmouth Ombuds Office} also
 provides confidential and informal assistance in resolving concerns
-related to interpersonal issues.  If you are experiencing an
-interpersonal issue with another lab member and are having trouble
-resolving it on your own, please seek out
-assistance from \director, \coordinator, your Project Owner, your
-Project Coordinator, or one of the above Dartmouth community resources
-as early as possible.
+related to interpersonal issues.
 
 
  \section{Lab resources}
