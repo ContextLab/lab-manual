@@ -20,7 +20,7 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass{tufte-book} % Use the tufte-book class which in turn
+\documentclass[openany]{tufte-book} % Use the tufte-book class which in turn
                            % uses the tufte-common class
 
 \definecolor{dartmouthgreen}{RGB}{0, 112, 60}
@@ -169,18 +169,92 @@ This document contains a log of common issues and errors encountered by lab memb
 \\~\\
 \noindent If you run into a tricky issue you think is likely to come up again, consider adding it to this document, and adding the solution when you resolve it.  Additionally, if you find yourself helping another lab member with a problem you encountered in the past, document the problem and its solution here for future lab members.
 
+
+\chapter{Who to go to with questions}\label{ch: questions}
+This section contains guidelines of where to direct questions related to technical and interpersonal issues that may arise, or any issues you encounter not already listed in the sections below. In general, resolving \textit{technical} issues within the lab saves time, but there will inevitably be some we cannot resolve on our own. In general, interpersonal issues should be resolved in accordance with your comfort, but it is important to be aware of the below resources should you encounter a situation in which you want to use them.
+
+\subsection{Tech issues}
+\begin{itemize}
+\item For issues related to our lab's fileserver, seek assistance from \director.
+
+\item For issues with other lab-owned equipment (e.g.~computers, research equipment, etc.) \coordinator~ or the senior lab member actively using the equipment should be your first-sought resource.
+
+\item For issues withDartmouth IT, \href{help@dartmouth.edu}{open a ticket} with the Information, Technology, and Consulting office, or contact \href{mailto:Andrew.C.Knutsen@Dartmouth.edu}{Andrew Knutsen}.
+
+\item For issues related to the the Discovery computing cluster, contact \href{mailto:John.P.Hudson@Dartmouth.edu}{John Hudson}.
+\end{itemize}
+
+\subsection{Lab documents}
+\begin{itemize}
+\item For questions about non-paper documents (e.g. receipts, consent forms, IRB protocols, the lab website, etc.), talk to \coordinator.
+
+\item For questions on papers or posters, talk to \director.
+\end{itemize}
+
+\subsection{Lab policy}
+\begin{itemize}
+\item If you have a question about the lab's policies, first try to find the answer in the \href{https://github.com/ContextLab/lab-manual/tree/master/lab_manual.pdf}{Lab Manual}.
+
+\item If you feel your question is not adequately answered in the Lab Manual, post your question on Slack (or, if it's a private issue, talk to \director).
+
+\item If you think your question is likely to be of general interest, update the lab manual to reflect the answer.
+\end{itemize}
+
+\subsection{Specific methods}
+\begin{itemize}
+\item If you have questions about specific methods related to a project, ask a senior lab member working on the project.
+
+\item It may also be helpful to check the \href{https://github.com/contextLab/cdl-tutorials}{CDL tutorials} repo, and contact the author(s) or contributors of a related tutorial. 
+
+\item You can also post your question in the \href{https://context-lab.slack.com/messages/computrons/}{\#computrons channel} on Slack.
+ 
+\item Remember, \href{https://www.google.com/}{Google} and \href{https://stackoverflow.com/}{Stack Overflow} are your best friends! You'll rarely ever encounter a problem someone else hasn't faced before.
+
+\item For more general methods questions, talk to \coordinator.
+
+\item If you still cannot find an answer to your question, talk to \director.
+\end{itemize}
+
+\subsection{Interpersonal issues}
+\begin{itemize}
+\item Clear, direct communication is often the best way to address interpersonal issues. However, if you are having trouble resolving something (or feel uncomfortable doing so on your own) you should reach out to one of the following resources:
+
+\item Senior lab members (e.g. your immediate supervisor)
+
+\item \director
+
+\item The PBS department chair
+
+\item The \href{https://students.dartmouth.edu/undergraduate-deans/}{Undergraduate Deans Office} or the \href{mailto:Graduate.and.Advanced.Studies@Dartmouth.edu}{Graduate and Professional Schools Deans Office}
+
+\item Dartmouth's \href{https://www.dartmouth.edu/~hrs/}{Office of Human Resources}
+
+\item Dartmouth's \href{https://www.dartmouth.edu/~eap/}{Faculty/Employee Assistance Program}
+
+\item Dartmouth's \href{https://sexual-respect.dartmouth.edu/}{Title IX office} (for concerns about sexual misconduct, harassment, or assault)
+
+\item \href{https://www.hanovernh.org/hanover-police-department}{Hanover Police} (if criminal activity is involved)
+\end{itemize}
+
 \chapter{Testing rooms}\label{ch: testrooms}
 This section contains common issues and errors encountered when running subjects in our testing rooms. 
 
 
-\chapter{Git/GitHub}\label{ch: git}
+\chapter{Git \& GitHub}\label{ch: git}
 This section contains common errors encountered using Git locally or syncing with the lab's GitHub repositories.
+
 
 \chapter{Data analysis}\label{ch: analysis}
 This section contains common errors encountered with many of the analysis-related software packages frequently used by the lab
 
+
 \chapter{Computing cluster}\label{ch: cluster}
 This section contains common errors encountered submitting and running jobs on Dartmouth's computing cluster.
+
+\chapter{Other assorted issues}\label{ch: other}
+This section contains commonly encountered issues that don't fit well in any of the above sections. Over time, if multiple issues begin to accumulate here that seem related to a broad topic, feel free to create a new section and move the related issues there.
+
+
 
 
 
