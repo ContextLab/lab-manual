@@ -161,6 +161,7 @@ Copyright \copyright\ \the\year\ \thanklessauthor
 
 \newcommand{\director}{Jeremy}
 \newcommand{\coordinator}{Paxton}
+\newcommand{\labmeetingtime}{Wednesdays at 12:00pm}
 
 \cleardoublepage
 \chapter{Introduction}\label{ch:intro} % Adding an asterisk leaves out this chapter from the table of contents
@@ -178,11 +179,9 @@ our general research approach and lab policies.
   issue via the
   \href{https://github.com/ContextLab/lab-manual/issues}{GitHub issues
     page}; you can use the existing issues to help decide what to
-  focus on for own edits if you'd like.  Importantly, be sure to submit
-  a pull request with your edits to the manual's
-  \href{https://github.com/ContextLab/lab-manual}{GitHub
-    repository} so that everyone can benefit.}
-Every new lab member should read
+  focus on for own edits if you'd like.  Importantly, be sure to fork the \href{https://github.com/ContextLab/lab-manual}{GitHub
+    repository}, make your edits on your personal fork, and submit
+  a pull request with your edits so that everyone can benefit.}Every new lab member should read
 the latest version of this lab manual in detail and reference it later
 as needed.  Periodically throughout the document, you will see margin
 notes with listed \texttt{TASK} items.  Completing your read through
@@ -192,19 +191,22 @@ relevant \texttt{TASK} items.  You will also see non-task
 \texttt{NOTE} items; these provide helpful tips and additional
 commentary on the nearby text.
 
+\noindent This lab manual is meant to be a "living document." All lab members are welcome (and encouraged!) to submit edits that improve the content, clarity, and overall helpfulness of this document at any point throughout their tenure in the lab.
+
 \newthought{What should you do if you don't understand something?}
 
 \noindent \marginnote{\texttt{TASK:} If you haven't used \LaTeX~before (i.e.,
   the document formatting language in which this manual is written),
-  you'll want to take a look at
+  you'll want to \href{https://www.latex-project.org/get/}{download \LaTeX} and take a look at
   \href{https://www.latex-tutorial.com/tutorials/quick-start/}{this
-    ``quick start'' tutorial}.}If you don't understand something you
+    ``quick start'' tutorial}.} 
+    If you don't understand something you 
 read in this manual, it is important that you \textit{ask another lab
   member for help}.  Every member of the lab brings their own unique
 knowledge base, training, life experiences, and perspectives.
 Respecting and celebrating those differences drives the science we do.
 If you're new to the lab or new to a particular technique, you might
-feel like a newbie today--- but chances are good that if you stick
+feel like a newbie today---but chances are good that if you stick
 around for a bit someone else will be seeking your expert opinion
 before you know it.  In addition to learning, there's another good
 reason for asking for help: if you don't understand something, there's
@@ -234,12 +236,17 @@ way that we think will best allow you to achieve your objectives.
 everything you need to know to do your research projects.  As
 described next, you may not even \textit{know} what you need to know
 to do your projects!  Nevertheless, you need somewhere to start, and
-this is that place.  We also maintain a repository of
+this is that place.  
+
+We also maintain a repository of
 \href{https://github.com/ContextLab/CDL-tutorials}{lab tutorials} that
 provide guidance on specific tasks.  If you are looking for help on a
 particular task (or understanding a particular concept) that isn't
 covered by the existing set of tutorials, please consider contributing
 a tutorial of your own once you've figured things out!
+
+If you encounter an error or problem you don't know how to fix, try checking the \hyperref[ch:faq]{ask a question, answer a question} section, where we maintain a log of common problems lab members run into and solutions. If your don't see a solution to your question there, consider adding the question so that you or someone else can later add the answer for future readers!
+
 
 \chapter{Bill of rights and responsibilities}\label{ch:billofrights}
 \marginnote{\texttt{TASK:} Read
@@ -256,25 +263,25 @@ certain rights, and you agree to take on certain responsibilities.
     members.
   \item You are entitled to openly share your scientific ideas and
     constructive feedback with all lab members.
-  \item You are entitled to appropriate credit (authorship,
+  \item You are entitled to appropriate credit (e.g.\ authorship,
     acknowledgement, letter of recommendation) for your work and
     ideas.
 \end{enumerate}
 
 \newthought{Your responsibilities as a lab member}
 \begin{enumerate}
-  \item You agree to contribute to a safe work environment, refrain
+  \item You agree to contribute to a safe work environment and to refrain
     from behaviors that harass, abuse, expose to violence, or
     discriminate.
   \item You agree to support and respect all lab members, including
     yourself.
-  \item You agree to share your scientific ideas and constructive
+  \item You agree to openly share your scientific ideas and constructive
     feedback with other lab members.
   \item You agree to clearly communicate and document your
     contributions to each research project (e.g.\ through GitHub
     commits, reports, updates on Slack, etc.).
   \item You agree to establish open lines of communication between
-    yourself and other lab members, to address concerns or issues promptly and
+    yourself and other lab members, and to address concerns or issues promptly and
     directly with the relevant parties (to the extent that you feel
     safe doing so).
   \item You agree to carry out your work with integrity and diligence,
@@ -283,7 +290,7 @@ certain rights, and you agree to take on certain responsibilities.
   \item You agree to utilize lab resources (including equipment,
     money, time, etc.) responsibly and sustainably.
   \item You agree to maintain a clean workspace free from clutter,
-    including both private spaces (e.g.\ personal desks) and public
+    including both personal spaces (e.g.\  desks) and shared
     areas (couch, sink, testing rooms, etc.).
 \end{enumerate}
 
@@ -305,7 +312,7 @@ terms of knowledge discovery (learning new stuff) and dissemination
 (papers, talks, conference presentations, publicly released datasets,
 software, etc.). It also means that our fellow lab members are
 achieving their training and career objectives.  To achieve peak
-efficiency we need to succeed on three fronts:
+efficiency, we need to succeed on three fronts:
 \begin{itemize}
 \item \textbf{Communication.}  We want to foster an environment where
   everyone feels comfortable contributing to the collective dialogue.
@@ -319,8 +326,8 @@ efficiency we need to succeed on three fronts:
   to achieve our collective goals.  We also want to foster
   sustainable use of resources by regularly pursuing research funding opportunities.
 \item \textbf{Adaptability.}  The whole point of \textit{research} is that we
-  don't already know the answer to the questions we're exploring or
-  how to make the tools we're working on.  That means that we won't
+  don't already know the answers to the questions we're exploring or
+  how to create the tools we're working on.  That means that we won't
   necessarily be able to plan out everything in advance.  We often need to
   be focused and efficient \textit{without knowing the end goal}!
 \end{itemize}
@@ -391,16 +398,16 @@ While there is value to the \textit{italicized} items, we value
   through the early and continuous delivery of scientific outputs
   (ideas, presentations, papers, tutorials, tools, devices, etc.).
 
-\item Welcome changing goals and requirements, even late in the process.  Doing
+\item We welcome changing goals and requirements, even late in the process.  Doing
   awesome science means keeping an open mind.  Your original goals and
   plans may no longer apply as your project progresses.  Your original
   hypotheses may be proven false.  Your assumptions may be
   incompatible with your data.  Learn from these challenges and grow
-  with them.  Avoid getting ``stuck'' by refusing to change.
+  with them.  Avoid getting ``stuck'' by refusing to change, and allow your questions to follow where your data leads, rather than be constrained by your initial ideas.
 
-\item Deliver research products frequently, from a couple of weeks to
+\item We deliver research products frequently, from a couple of weeks to
   a couple of months, with a preference for shorter timescales.
-  Before you have something to show for your work (a figure, a
+  Before you have a concrete manifestation of your work (a figure, a
   statistic, a presentation, a paper draft, a dataset, a GitHub
   commit, etc.) you have nothing you can show the world for your
   efforts.  Produce research products, even if they're small and
@@ -439,16 +446,16 @@ While there is value to the \textit{italicized} items, we value
   your project.  Commit your changes to GitHub, or document your
   progress in Slack or a Google Doc.  Maintain careful records and
   logs so that someone can pick up your work in the future (and that
-  someone might be yourself in the future!).  Remember that your
+  future someone might be you!).  Remember that your
   greatest ally is your past self, but they'll never respond to email or
   Slack messages!  Help ``future you'' maintain peak efficiency
-  through slow and steady, well-documented, work.  (Note: don't spend
-  \textit{too} much time on documentation-- e.g. GitHub commits are
+  through slow and steady, well-documented work.  (Note: don't spend
+  \textit{too} much time on documentation; e.g. GitHub commits are
   themselves often sufficient for documentation, since once can always
   compare different versions of a particular file.)
 
 \item Build projects around motivated individuals.  Give them the
-  environment and support they need and trust them to get the job
+  environment and support they need, and trust them to get the job
   done.  Each day, ask yourself: ``am I motivated to do my best work
   on my project today?''  If the answer is ``no,'' try to understand
   why.  Is it lack of resources?  Lack of support?  Distractions?
@@ -464,9 +471,9 @@ While there is value to the \textit{italicized} items, we value
   you're excited to work on!
 
 \item The most effective and efficient method of conveying information
-  to and within a research team is face-to-face conversation.  We use
+  within a research team is face-to-face conversation.  We use
   the
-  \href{https://calendar.google.com/calendar?cid=NXRhNTBjZnY0dWloMGEwazhtMmRpOWRoam9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{CDL
+  \hyperref[sec: scheduling]{CDL
     Google calendar} to coordinate formal meetings between lab
   members.  You can also sign up for meetings with \director~via
   \href{https://context-lab.youcanbook.me/}{YouCanBook.Me}.  We also
@@ -477,14 +484,14 @@ While there is value to the \textit{italicized} items, we value
   able to maintain a constant pace indefinitely.  To be sure, we
   sometimes have crunch times where we absolutely must meet a deadline
   (e.g.\ a grant submission, project milestone, etc.).  However, it is
-  far more efficient to make gradual progress over an extended
-  timeframe than to lump all of your work time into a single period.
+  far more efficient to make steady progress over an extended
+  timeframe than to fluctuate between periods of high and low productivity.
   By distributing your workload you'll help yourself avoid burnout,
-  preserve your mental and physical health, allow yourself time to
+  preserve your mental and physical health, and allow yourself time to
   ``step back'' and think about the big picture (effectively getting
   stuff done between your work sessions!).  Sustainable work habits
   also promote good communication and coordination between project
-  group members.
+  team members.
 
 \item At regular intervals, the team reflects on how to become more
   effective, then tunes and adjusts its behavior accordingly.  At
@@ -496,14 +503,15 @@ While there is value to the \textit{italicized} items, we value
   discuss:
   \begin{itemize}
   \item What your goals are for the upcoming term (start-of-term
-    meetings), or what you worked on over the prior term (end-of-term meetings)
+    meetings), or what you worked on over the prior term and how
+    well you feel you met your goals (end-of-term meetings)
   \item Reflections on how things are going in the lab (you will
     report how things have been going from your perspective, and will
     receive feedback about how things have been going from \director's
     perspective).
   \item Insights you've come to regarding how we can (for your
     project, as a lab, as a department, etc.) further optimize
-    efficiency.
+    efficiency or otherwise improve our work environment.
   \item Any other issues, comments, questions, or concerns that you'd
     like to check in about.
   \end{itemize}
@@ -519,12 +527,12 @@ contributes to a paper.
 
 \subsection{General procedure}
 All lab papers should be coordinated with \director.  A paper starts
-with a discussion about:
+with a discussion of:
 \begin{enumerate}
 \item What the paper is going to be about
 \item What the key results are
 \item What the overall ``story'' is
-\item The current status of the various components of the project
+\item The current status of various components of the project
   (e.g.\ data collection, analyses, figures, interpretation,
   literature review, etc.)
 \item Who is a potential candidate for authorship on the paper
@@ -627,6 +635,9 @@ happen immediately after you notice the mistake):
   clear.  Also try Google and/or Stack Exchange.
 \end{enumerate}
 
+\noindent \textit{If you think you might have caught a mistake but aren't 
+  sure, consult with another lab member! It never hurts to be safe!}
+
 
 
 \newthought{Project roles}
@@ -635,12 +646,12 @@ happen immediately after you notice the mistake):
 these roles on your project:
 \begin{enumerate}
 \item \textbf{Project Owner.}  This is the person responsible for
-  maximizing ``return on investment'' of the project effort:
+  maximizing ``return on investment'' of the project effort.  The project owner:
 \begin{enumerate}
-\item Responsible for project vision
+\item Is responsible for project vision
 \item Constantly re-prioritizes the research backlog, adjusting any
   long-term expectations such as publication and release plans
-\item Final arbiter of requirements questions
+\item Acts as the final arbiter of requirements questions
 \item Accepts or rejects each project increment
 \item Decides whether to publish/ship the project
 \item Decides whether to continue development
@@ -648,52 +659,57 @@ these roles on your project:
   private organizations) and the scientific community
 \item May contribute as a team member
 \item Has a leadership role
-\item Usually the project owner will be \director
+\item Will usually be \director
 \end{enumerate}
 
 \item \textbf{Team Member.}  Team members are responsible for carrying
-  out the project work.  Team members are:
+  out the project work.  Team members:
 \begin{enumerate}
-\item Cross-functional: includes members with development skills
+\item Are cross-functional: includes members with development skills
   (write code or papers/grants), testing skills (e.g.\ data
   collection, test software, proofread papers/grants), and/or domain
   expertise (e.g.\ knowledge or interest in a relevant research area)
-\item Self-organizing and self-managing without externally assigned
+\item Are self-organizing and self-managing without externally assigned
   roles
-\item Negotiates commitments with the Project Owner, one ``sprint'' at
+\item Negotiate commitments with the Project Owner, one ``sprint'' at
   a time
-\item Has autonomy regarding how to reach commitments
-\item Intensely collaborative
-\item (Ideally) located in one team room (usually this will be the lab)
-\item (Ideally) committed to long-term, full-time lab membership
-\item (Ideally) members of a single team/project
-\item Has a leadership role
+\item Have autonomy regarding how to reach commitments
+\item Are intensely collaborative
+\item Are (ideally) located in one team room (usually this will be the lab)
+\item Are (ideally) committed to long-term, full-time lab membership
+\item Are (ideally) focused on a single team/project at a time
+\item Often act in various leadership roles
 \end{enumerate}
 
 \item \textbf{Project Coordinator.} The Project Coordinator facilitates
-  the agile research process by:
+  the agile research process both directly and indirectly. The Project Coordinator:
 \begin{enumerate} 
-\item Helping to resolve impediments
-\item Creating an environment conducive to team self-organization
-\item Capturing empirical data to adjust forecasts (e.g.\ weekly Slack
+\item Help to resolve impediments
+\item Create an environment conducive to team self-organization
+\item Capture empirical data to adjust forecasts (e.g.\ weekly Slack
   reports summarizing progress)
-\item Shielding the team from external interference and distraction to
+\item Shield the team from external interference and distraction to
   keep it ``in the zone''
-\item Enforcing timelines
-\item Having no management authority over the team (anyone with authority
+\item Enforce timelines
+\item Have no management authority over the team (anyone with authority
   over the team is by definition not its Project
   Coordinator)
-\item Having a leadership role
-\item Usually the Lab Coordinator (\href{mailto:contextualdynamics@gmail.com}{\coordinator}) will also be the Project Coordinator
+\item Occasionally act in a leadership role
+\item Will usually be the Lab Coordinator (\href{mailto:contextualdynamics@gmail.com}{\coordinator})
 \end{enumerate}
 
 \item \textbf{Collaborator.}  Collaborators are not formally part of
-  the project team, and generally will not attend regular meetings as
+  the project team and generally will not attend regular meetings as
   part of the team.  Collaborators do not have a leadership role in
   the project.  They may carry out one or more of the
   following roles:
 \begin{enumerate}
 \item Provide data or share equipment
+\marginnote{\texttt{NOTE:} A project may never be held up by a collaborator.  If the
+  collaborator fails to provide a promised service, the project team
+  must adapt.  If the collaborator fails to meet a non-critical
+  deadline, the project will proceed without that component of the
+  project.  Involvement as a collaborator is fluid.}
 \item Provide occasional consulting services
 \item Provide occasional feedback on project results
 \item Carry out minor analyses
@@ -701,11 +717,7 @@ these roles on your project:
 \item Help with administrative tasks such as scheduling
 \item Help with information technology tasks such as computer
   maintenance
-\item A project may never be held up by a collaborator.  If the
-  collaborator fails to provide a promised service, the project team
-  must adapt.  If the collaborator fails to meet a non-critical
-  deadline, the project will proceed without that component of the
-  project.  Involvement as a collaborator is fluid.
+
 \end{enumerate}
 By definition, collaborators play a minor role in the project, and they are not
 responsible for managing any aspect of the project.  They may become Team
@@ -723,51 +735,52 @@ are not normally co-authors.
     one thing that you can present at a lab meeting.  Junior lab
     members (undergraduates) are not obligated to present at lab
     meetings, but may schedule a time to do so upon request by
-    coordinating with \director.  Exception: if you are presenting
+    coordinating with \director.  \textbf{Exception: if you are presenting
     your work outside of the lab, and if it is the first time you are
     presenting that project, you \textit{must} do a practice talk for
-    the lab (regardless of whether you are a junior or senior lab member).}
+    the lab (regardless of whether you are a junior or senior lab member).}}
 \noindent  Effective lab communication requires forums for communicating.  As
 described below, we use \href{http://www.slack.com}{Slack} to
 facilitate non-in-person communications, but Slack cannot replace
 in-person meetings.  In fact, our approach is set up to encourage
-in-person interactions as often as possible-- ideally several times a
+in-person interactions as often as possible---ideally several times a
 week for group projects.  We'll have the following regularly scheduled
 meetings:
 \begin{enumerate}
 \item \textbf{Lab meeting.}  We will have, as a lab, a regular weekly
-  1.5 hour meeting on \textbf{Wednesdays at 12:30pm}.  The precise
+  1.5 hour meeting on \textbf{\labmeetingtime}.  The precise
   format of this meeting varies from week to week according to lab
-  needs and interests. Attendees: all active lab members.  Subscribe
-  to calendar \href{https://calendar.google.com/calendar?cid=NXRhNTBjZnY0dWloMGEwazhtMmRpOWRoam9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{here}.
+  needs and interests. Attendees: all active lab members.
+  
 \item \textbf{Project meetings.}  Several of our collaborative
   projects involve regular coordination with external lab members.
   These are organized on an \textit{ad hoc} basis for each project.
   Attendees: all project team members, and any other interested active
-  lab members.  Subscribe
-  to calendar \href{https://calendar.google.com/calendar?cid=NXRhNTBjZnY0dWloMGEwazhtMmRpOWRoam9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{here}.
+  lab members. 
+  
   \item \textbf{Hackathons.}  We occasionally organize hackathon
     style events whereby spontaneously organized groups work towards
     one or more very short term projects or goals.  These are
     scheduled on an \textit{ad hoc} basis.  Attendees: all interested
     lab members, any interested member of the Dartmouth community,
-    external collaborators.  Subscribe
-  to calendar
-  \href{https://calendar.google.com/calendar?cid=NXRhNTBjZnY0dWloMGEwazhtMmRpOWRoam9AZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{here}.
-  \marginnote{\texttt{TASK:} Each term, sign up for a beginning-of-term or
+    external collaborators.  
+
+\marginnote{\texttt{NOTE:} Each term, you'll sign up for a beginning-of-term and
     end-of-term meeting time with \director~via \href{https://context-lab.youcanbook.me/}{YouCanBook.Me}.}
+
   \item \textbf{Beginning-of-term and end-of-term meetings.} At the
     start or end of each term, you should schedule a 30 minute
     meeting slot with \director~to discuss your research
     plans, progress, goals, etc.  It is your responsibility to sign up
     for a slot via \href{https://context-lab.youcanbook.me/}{YouCanBook.Me}.
+    
+  \marginnote{\texttt{NOTE:} Department talks and colloquia are listed on the \hyperref[sec: scheduling]{PBS Department Events} calendar.}
   \item \textbf{Department talks and colloquia.} Each week the
     Department of Psychological and Brain Sciences invites internal
     and external researchers to present on a wide variety of research
     topics.  You are encouraged to attend any that seem interesting.
     Attendees: all interested lab and non-lab Dartmouth community
-    members.  Subscribe to calendar
-    \href{https://calendar.google.com/calendar?cid=bXAxYnVqYjM5dWQ1YmdtbW5xOXI4ZGJpdWtAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{here}.
+    members.
     \marginnote{\texttt{TASK:} If you are a paid lab employee, or if
       you would like to submit weekly snippets, email \director to get
       added to the Howdy script.}
@@ -787,7 +800,8 @@ meetings:
       weekly snippet schedules means that you will receive a link via
       the ``Howdy'' survey bot (through Slack) each Monday at 9am.
       Your answers are then compiled into reports that I receive each
-      Tuesday at the end of the day (5pm).  If you are an unpaid
+      Wednesday at 10am.
+      If you are an unpaid
       employee but are likely to request a letter of recommendation,
       weekly snippets are a good way for me to maintain a detailed
       sense of what you are working on from week to week and how you
@@ -824,7 +838,7 @@ accomplish various necessary administrative tasks:
   \marginnote{\texttt{TASK:} If you've never used GitHub (Git)
     before, please work through these
     \href{https://try.github.io/}{GitHub
-      Tutorials}.}  This is used to manage all code, papers, grants,
+      Tutorials}. You may also find it useful to refer to this \href{https://github.com/ContextLab/lab-manual/tree/master/resources/git-cheatsheet.pdf}{Git cheatsheet} and this \href{https://github.com/ContextLab/lab-manual/tree/master/resources/workflow-of-version-control.pdf}{Git workflow} sheet when using Git/GitHub at first.}  This is used to manage all code, papers, grants,
   presentations, and posters.  In other words, anything where it'd be
   useful to track multiple versions, anything that we might ultimately
   want to release to the public, and/or anything that multiple lab
@@ -834,10 +848,8 @@ accomplish various necessary administrative tasks:
   \marginnote{\texttt{TASK:} If you are a senior lab member, request a
     1Password invite from \director.} This platform is used by senior
   lab members to manage secure notes and passwords (e.g.\ shared
-  software licenses, card numbers and chart strings, etc.).  Request
-  an invite from \director~in order to be added to the lab 1password
-  account.
-\item \href{http://www.context-lab.com/}{\textbf{Lab website.}}
+  software licenses, card numbers and chart strings, etc.).  
+  \item \href{http://www.context-lab.com/}{\textbf{Lab website.}}
   \marginnote{\texttt{TASK:} Submit a photograph (of yourself or some
     other picture or image that you want to represent you) and brief
     2-3 sentence biography to \coordinator~so that you can be added to
@@ -867,6 +879,8 @@ administrative office) by
 \href{mailto:Michelle.A.Powers@dartmouth.edu}{emailing her} and cc'ing
 \director.  You will need to pay a \$5 deposit, which will be returned
 to you when you return your key at the end of your tenure in the lab.
+If you are the last one in the lab for the day, please be sure to lock the
+door when you leave.
 
 
 
@@ -878,14 +892,16 @@ promote continuity across projects and lab members.  First, make sure
 that your project doesn't already exist (generally this involves
 asking \director).
 
+~
+
 The general steps to starting a project are:
 \begin{enumerate}
+
   \item Create a Slack channel or decide on existing channel
-    appropriate for project use
-  \item Create a GitHub repository for your project and link it to the
-    project's Slack channel (through a
-    \href{https://get.slack.help/hc/en-us/articles/232289568-GitHub-for-Slack}{GitHub
-      for Slack} integration).
+    appropriate for project use. 
+\marginnote{\texttt{NOTE:} If you create a new Slack channel for your project, invite \director, \coordinator, and other team members to join.}
+  \item Coordinate with \director~to set up a \href{https://get.slack.help/hc/en-us/articles/232289568-GitHub-for-Slack}{GitHub
+      for Slack} integration between your project and channel by sending a link to the GitHub repo in the project's Slack channel with a note asking to set up a Slack integration.
    \item If your project involves testing human participants, verify
      with \director~that your project is covered under an existing
      active IRB protocol, and that you are listed on the protocol. (A list of
@@ -893,7 +909,7 @@ active IRB protocols appears at the end of this lab manual.)
 Depending on the protocol, you may need to complete one or more online
 training courses to become certified to run your experiment.  If no
 existing protocol is appropriate for your study, discuss with
-\director~whether it would be appropriate to create a new protocol or
+\director~whether it would be more appropriate to create a new protocol or
 submit an amendment for an existing protocol.
     \item Create an initial set of short-term action items for kicking
       off your project and post them to your project's Slack channel.
@@ -927,8 +943,9 @@ coordinate this with \director, \coordinator, and your team members.
 
 
 \newthought{Scheduling}
+\label{sec: scheduling}
 
-\noindent \marginnote{\texttt{TASK:} email \coordinator~to request invites to each of the calendars below.}
+\noindent \marginnote{\texttt{TASK:} email \coordinator~to request invites to each of the calendars below---the download links in the lab manual are read-only!}
 Our lab's scheduling practices and policies are intended to facilitate
 lab member interactions between ourselves, our collaborators, and our
 experimental participants.  There are three basic tools the lab uses
@@ -940,23 +957,22 @@ to organize and schedule events:
     \href{https://calendar.google.com/calendar/ical/5ta50cfv4uih0a0k8m2di9dhjo\%40group.calendar.google.com/private-ff1338ddce84ac37d5ab682cd94e7f69/basic.ics}{main
       lab calendar} to keep track of lab-wide events including lab
     meetings, conferences, and activities.
-  \item We use the \href{https://calendar.google.com/calendar/ical/j6noo2tqahpsoq9na1h16paf3s\%40group.calendar.google.com/private-c3d75bea1ab4605947353d159d3dcd05/basic.ics}{DHMC events
-  calendar} to keep track of important events and meetings at the
-DHMC.
-\marginnote{\texttt{TASK:} If you are an undergraduate, please add your
-  schedule to the CDL class schedule calendar at the beginning of each term.}
-\item We use the
-  \href{https://calendar.google.com/calendar?cid=djJzZWxvbWc0bzZhb2J1YTdnOTIyYWFtcWNAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ}{CDL
-  class schedule calendar} to keep track of course
-schedules of undergraduates.
-\item We use the \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{out-of-lab calendar} to keep track of known
-  absences (e.g. illness, travel, holidays,
-  etc.).
-  \item We use the
+      \item We use the
   \href{https://calendar.google.com/calendar/ical/dgcv8l8a8s10hfg2s5h0qec0q0\%40group.calendar.google.com/private-4810aed94f818d5748045447ab46c62d/basic.ics}{CDL
     resources calendar} to coordinate the use of shared rooms and
   equipment, such as testing rooms, our EEG systems, eye-tracker, hospital
   equipment, software licenses, etc.
+  \item We use the \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{out-of-lab calendar} to keep track of known
+  absences (e.g. illness, travel, holidays, etc.).
+ \marginnote{\texttt{TASK:} If you are a graduate or undergraduate student, please add your
+  schedule to the CDL class schedule calendar at the beginning of each term.}
+\item We use the
+  \href{https://calendar.google.com/calendar/ical/v2selomg4o6aobua7g922aamqc\%40group.calendar.google.com/private-4377dd542d0d1f6226c9657955b778c5/basic.ics}{CDL
+  class schedule calendar} to keep track of course
+schedules of grad students and undergraduates.
+  \item We use the \href{https://calendar.google.com/calendar/ical/j6noo2tqahpsoq9na1h16paf3s\%40group.calendar.google.com/private-c3d75bea1ab4605947353d159d3dcd05/basic.ics}{DHMC meetings
+  calendar} to keep track of important events and meetings at DHMC.
+  \item We use the \href{https://calendar.google.com/calendar/ical/mp1bujb39ud5bgmmnq9r8dbiuk\%40group.calendar.google.com/private-8a3c6919c30e7b118ab3a4fd23aad6cf/basic.ics}{PBS department events calendar} to keep track of talks and events happening in the department.
   \item You may also choose to create project-specific
   Google Calendars, inviting project team members.  When you add an
   event (in any lab calendar), it is important to include
@@ -983,7 +999,7 @@ schedules of undergraduates.
 
  \subsection{Attendance policy}
  In general, we expect full time employees to be in the lab during
- ``standard'' working hours-- roughly between 9 AM and 5 PM.  The
+ ``standard'' working hours---roughly between 9 AM and 5 PM.  The
  precise range of hours you work is less important to us than putting
  in an effort to help form a cohesive lab culture where lab members
  can interact in person to share ideas, leverage expertise, solve
@@ -991,10 +1007,10 @@ schedules of undergraduates.
  hours, we'd like you to make a strong effort to be physically present
  in the lab between 1 and 4 pm (prior arrangements notwithstanding;
  e.g. if you have a long commute and we've agreed that you won't come
- in every day, and if you need to occasionally schedule an
- appointment during the 1--4 pm window you can do so).  Similarly, if
+ in every day, or if you need to occasionally schedule an
+ appointment during the 1--4 pm window).  Similarly, if
  you are a part time employee, we'd like you to try to put in your
- in-the-lab hours during the 1 to 4 pm time window as often as
+ in-the-lab hours during the 1--4 pm time window as often as
  possible.
 
 The lab also abides by Dartmouth's standard paid time off policies for
@@ -1015,24 +1031,23 @@ appropriate arrangements.  \textbf{With the above in mind, we abide by
   \coordinator~can help get you set up with that system.}  If you
 cannot attend a lab event or meeting, your privacy will be respected:
 you do not (generally speaking) need to provide a reason for your
-absence (although you are honor bound not to abuse this system!)-- but
+absence (although you are honor bound not to abuse this system!) but
 you are expected to responsibly manage your schedule so that you get
 your work done and minimize inconvenience to others to the extent
 possible.  The one exception is that if you seem to be abusing this
 system (e.g.\ as determined by your project owner, project
 coordinator, or fellow team members), you may be asked to provide
-additional information (in a way that does not invade your privacy--
-and if you are worried that this policy is overly intrusive, please
+additional information (in a way that does not invade your privacy---and
+ if you are worried that this policy is overly intrusive, please
 bring your concerns to \director~or \coordinator).  Here's the
 official lab attendance policy:
 \begin{itemize}
 \item It is your responsibility to provide notice, well in advance, to anyone your absence will
   affect (e.g. \director, \coordinator, people you're scheduled to
-  meet with, etc.).  The best way to do this is via email or Slack.
-  We also use an
-  \href{https://calendar.google.com/calendar/ical/h1j06dohcg7v1g2o5tkb7ijhvs\%40group.calendar.google.com/private-239aaf8b4dc60480c90e8d7fc353e229/basic.ics}{``out-of-lab''
-    calendar} to keep track of things like vacations or longer planned
-  absences.
+  meet with, etc.).  The best way to do this is via email or Slack, along with adding your
+  absence to the 
+  \hyperref[sec: scheduling]{out-of-lab
+    calendar}.
 \begin{itemize}
 \item You are responsible for accounting for your planned absences
   when we discuss project schedules and goals.  If you agree to take on work
@@ -1044,7 +1059,7 @@ official lab attendance policy:
   2 weeks in advance.
 \item Brief (one day) absences (excluding weekends, and lab-related
   absences) should be scheduled as far in advance as possible, but at
-  least at the beginning of the week.
+  least at the beginning of the week, emergencies notwithstanding.
 \end{itemize}
 
 \item If you are feeling sick, \textit{do not come into the lab}.  We can
@@ -1064,8 +1079,8 @@ official lab attendance policy:
   poster), you are expected to attend the conference to present your
   work.  In the extremely rate event that an emergency situation
   arises that would prevent you from presenting as scheduled, you are
-  expected to make alternative arrangements, e.g.\ by arranging for a
-  co-author to present in your place.
+  expected to make alternative arrangements (e.g.\ by arranging for a
+  co-author to present in your place).
 
 \item You are strongly encouraged (but never required) to attend
   relevant journal clubs, PBS talks, DHMC
@@ -1101,7 +1116,7 @@ your compensation, please discuss them with \director.
 
 \subsection{Interpersonal issues}
 If you are experiencing an interpersonal issue with another lab member
-or community and are having trouble resolving it on your own (or feel
+or community member and are having trouble resolving it on your own (or feel
 unsafe resolving it on your own), please seek out assistance from
 \director, \coordinator, your Project Owner, your Project Coordinator,
 or one of the Dartmouth community resources described below as early
@@ -1123,7 +1138,8 @@ prospective employees. The
 provides a similar suite of services to student employees.  The
 \href{http://www.dartmouth.edu/~ombuds/}{Dartmouth Ombuds Office} also
 provides confidential and informal assistance in resolving concerns
-related to interpersonal issues.
+related to interpersonal issues.  Please also see the 
+\hyperref[sec:interpersonal]{\textit{Ask a question, answer a question} section on resources for resolving interpersonal issues}.
 
 
  \newthought{Lab resources}
@@ -1171,7 +1187,7 @@ When you link your Discovery account with the lab, you will
 automatically have access to those additional computing resources.  We
 use Discovery for our most computationally intensive work.
 \href{https://trello-attachments.s3.amazonaws.com/56f548a3cb4847c27668e504/56f7ff07085632013a40545a/44c1921381d6193eca67e9c875a32960/discovery_cluster_tutorial.pdf}{This
-  link} contains instructions for creating an account and accessing
+  link} contains instructions for creating an account and accessing 	% potentially add link to cluster tutorial when completed
 the Discovery cluster.  Our suggested workflow is to do non-intensive
 computations and analyses on your personal desktop or laptop computer,
 and to offload more intensive analyses to Discovery.  The lab's code
@@ -1196,7 +1212,7 @@ repository includes
    approximate travel budget, including all registration fees,
    tickets, meals, etc.  Your budget should not include lab events
    (e.g.\ lab dinners), which are covered by a separate mechanism.
-   Your budget must be approved by \director prior to submitting an
+   Your budget must be approved by \director~prior to submitting an
    abstract in order for the lab to cover your expenses.  (Your
    expenses will be covered up the agreed-upon amount, at which point
    you are responsible for making your travel plans accordingly,
@@ -1209,8 +1225,8 @@ repository includes
    conference registration fees will be guaranteed by the lab,
    \textit{under the assumption that you will also make reasonable
      efforts to seek out alternative sources of travel funding} (e.g.\
-   through PBS, other internal Dartmouth sources, apply for travel
-   awards, use personal grants like NRSAs or NSF fellowships, etc.).
+   through PBS, other internal Dartmouth sources, applying for travel
+   awards, using personal grants like NRSAs or NSF fellowships, etc.).
    You are also expected to keep costs low (e.g.\ fly economy class,
    seek out cheaper tickets, stay in reasonably priced hotels, share a
    room with other lab members, etc.).  By the same token, we also
@@ -1250,6 +1266,7 @@ options with \director.
 
 
  \subsection{Poster printing}
+ \marginnote{\texttt{NOTE:} Be sure to coordinate with \director~regarding the funding source covering your poster printing cost prior to going to print your poster.}
  There are two on-campus poster printers.  One is in the Map Room of
  Baker Library.  More information may be found
  \href{http://www.dartmouth.edu/~library/maproom/printingfaq.html}{here}.
@@ -1267,22 +1284,119 @@ options with \director.
 All costs related to lab publications will be fully covered by the
 lab.  \coordinator~can help facilitate these payments.
 
- \subsection{Subject payments}
- Most in-lab experimental subjects will be paid via t-points.
+ \subsection{Subject compensation}
+ Most in-lab experimental subjects will be compensated via t-points.
  Coordinate with \coordinator~in order to receive a t-point allocation
  well in advance of the start of the term you wish to run
  participants.
 
- Cash subject payments for lab research projects will be fully covered by
- the lab.  Subject payment guidelines are generally found in the IRB
+\marginnote{\texttt{NOTE:}In some cases, external funding sources may be available to cover cash subject payments (e.g. \href{https://students.dartmouth.edu/ugar/research/programs/honors-thesis-grant}{undergraduate Honors Thesis Grants} or \href{http://neukom.dartmouth.edu/programs/neukom-scholars.html}{Neukom Scholars grants}). Coordinate with \director~or \coordinator~to determine whether alternative funding sources are available for your project.}
+ Cash subject payments for lab research projects will in most cases be fully covered by
+ the lab (see the \texttt{NOTE}).  Subject payment guidelines are generally found in the IRB
  approval documentation relevant to your project.  For Mechanical Turk
  experiments, a subject payments budget should be approved prior to
  beginning the experiment.  Cash payments may be made via petty cash,
  which is managed by \coordinator.
 
 
+\chapter{Ask a question, answer a question}\label{ch:faq}
+This section contains a log of common issues and errors encountered by lab members, as well as some guidelines on where to seek help with issues that may arise in the lab.  If you encounter an issue you don't know how to resolve right away, this is a good place to begin your efforts. 
+\\~\\
+\noindent If you run into a tricky technical issue you think is likely to come up again, consider adding it to the log, and then adding the solution when you resolve it.  Additionally, if you find yourself helping another lab member with a problem you encountered in the past, document the problem and its solution here for future lab members.
+
+\newthought{Who to go to with questions}
+
+\noindent This section contains guidelines of where to direct questions related to technical and interpersonal issues that may arise, or any issues you encounter not already listed in the sections below. In general, resolving \textit{technical} issues within the lab saves time, but there will inevitably be some we cannot resolve on our own. In general, interpersonal issues should be resolved in accordance with your comfort, but it is important to be aware of the below resources should you encounter a situation in which you want to use them.
+
+\subsection{Tech issues}
+\begin{itemize}
+\item For issues related to our lab's fileserver, seek assistance from \director.
+
+\item For issues with other lab-owned equipment (e.g.~computers, research equipment, etc.) \coordinator~ or the senior lab member actively using the equipment should be your first-sought resource.
+
+\item For issues withDartmouth IT, \href{help@dartmouth.edu}{open a ticket} with the Information, Technology, and Consulting office, or contact \href{mailto:Andrew.C.Knutsen@Dartmouth.edu}{Andrew Knutsen}.
+
+\item For issues related to the the Discovery computing cluster, contact \href{mailto:John.P.Hudson@Dartmouth.edu}{John Hudson}.
+\end{itemize}
+
+\subsection{Lab documents}
+\begin{itemize}
+\item For questions about non-paper documents (e.g. receipts, consent forms, IRB protocols, the lab website, etc.), talk to \coordinator.
+
+\item For questions on papers or posters, talk to \director.
+\end{itemize}
+
+\subsection{Lab policy}
+\begin{itemize}
+\item If you have a question about the lab's policies, first try to find the answer in the \href{https://github.com/ContextLab/lab-manual/tree/master/lab_manual.pdf}{Lab Manual}.
+
+\item If you feel your question is not adequately answered in the Lab Manual, post your question on Slack (or, if it's a private issue, talk to \director).
+
+\item If you think your question is likely to be of general interest, update the lab manual to reflect the answer.
+\end{itemize}
+
+\subsection{Specific methods}
+\begin{itemize}
+\item If you have questions about specific methods related to a project, ask a senior lab member working on the project.
+
+\item It may also be helpful to check the \href{https://github.com/contextLab/cdl-tutorials}{CDL tutorials} repo, and contact the author(s) or contributors of a related tutorial. 
+
+\item You can also post your question in the \href{https://context-lab.slack.com/messages/computrons/}{\#computrons channel} on Slack.
+ 
+\item Remember, \href{https://www.google.com/}{Google} and \href{https://stackoverflow.com/}{Stack Overflow} are your best friends! You'll rarely ever encounter a problem someone else hasn't faced before.
+
+\item For more general methods questions, talk to \coordinator.
+
+\item If you still cannot find an answer to your question, talk to \director.
+\end{itemize}
+
+\subsection{Interpersonal issues}\label{sec:interpersonal}
+\begin{itemize}
+\item Clear, direct communication is often the best way to address interpersonal issues. However, if you are having trouble resolving something (or feel uncomfortable doing so on your own) you should reach out to one of the following resources:
+
+\item Senior lab members (e.g. your immediate supervisor)
+
+\item \director
+
+\item The \href{https://pbs.dartmouth.edu/people}{PBS department chair}
+
+\item The \href{https://students.dartmouth.edu/undergraduate-deans/}{Undergraduate Deans Office} or the \href{mailto:Graduate.and.Advanced.Studies@Dartmouth.edu}{Graduate and Professional Schools Deans Office}
+
+\item Dartmouth's \href{https://www.dartmouth.edu/~hrs/}{Office of Human Resources}
+
+\item Dartmouth's \href{https://www.dartmouth.edu/~eap/}{Faculty/Employee Assistance Program}
+
+\item Dartmouth's \href{https://sexual-respect.dartmouth.edu/}{Title IX office} (for concerns about sexual misconduct, harassment, or assault)
+
+\item \href{https://www.hanovernh.org/hanover-police-department}{Hanover Police} (if criminal activity is involved)
+\end{itemize}
+
+\clearpage
+
+\newthought{Compiled problems and solutions}
+
+\subsection{Testing rooms}
+This section contains common issues and errors encountered when running subjects in our testing rooms. 
+
+
+\subsection{Git \& GitHub}
+This section contains common errors encountered using Git locally or syncing with the lab's GitHub repositories.
+
+
+\subsection{Data analysis}
+This section contains common errors encountered with many of the analysis-related software packages frequently used by the lab
+
+
+\subsection{Computing cluster}
+This section contains common errors encountered submitting and running jobs on Dartmouth's computing cluster.
+
+\subsection{Other assorted issues}
+This section contains commonly encountered issues that don't fit well in any of the above sections. Over time, if multiple issues begin to accumulate here that seem related to a broad topic, feel free to create a new section and move the related issues there.
+
+
+
 \chapter{Internal Review Board (IRB) approvals}
-Experimental \marginnote{\texttt{TASK:} prior to running any out-of-lab
+Experimental \marginnote{\texttt{TASK:} prior to running any non-lab-member
   participants in your study, you must coordinate with \coordinator~to
   verify that (a) your experiment has
   been approved by the IRB and (b) your name is
@@ -1357,11 +1471,11 @@ need access to RAPPORT then let \director~know.
     Contextual Dynamics Lab, Out of lab, CDL Resources, CDL class
     schedule (if applicable), DHMC Meetings (if
     applicable), and PBS department events.
-  \item I have created a GitHub account and have been added to the lab
-    GitHub group.  If I am unfamiliar with Git, I have gone through
+  \item I have created a GitHub account and have been added to the appropriate lab
+    GitHub group(s).  If I am unfamiliar with Git, I have gone through
     the GitHub tutorials.
-  \item I have created a Trello account and have been added to the lab
-    Trello group.
+  \item I have created a Trello account and have been added to the appropriate lab
+    Trello group(s).
        \item I have joined the lab's Slack account and agree to check it
   regularly (at least once per normal business day, excluding days I
   mark on the out-of-lab calendar).
@@ -1369,7 +1483,7 @@ need access to RAPPORT then let \director~know.
     senior lab member, or I have not been added because I am a junior
     lab member.
     \item I have submitted a photograph (of myself, or a
-    representative scene or object) along with a brief (2-3 sentence)
+    representative scene or object) along with a brief (2-3 sentence),
     professionally worded biography, to be included on the lab
     website.  Alternatively, I have coordinated with \coordinator~to indicate my
     preference to not be included on the lab website.
@@ -1384,6 +1498,8 @@ need access to RAPPORT then let \director~know.
   \item I have carefully read through the entire lab manual, and I have
     checked off all of the above items to indicate that I have carried
     out the indicated tasks.
+ % \item I have talked to \director~or \coordinator~about any supplemental modules,
+  and plan to complete those assigned.
   \item I will send a digital copy (PDF) of the final two pages of
     this manual, including checked-off list items, my digital
     signature, and today's date, to \href{mailto:contextualdynamics@gmail.com}{contextualdynamics@gmail.com}.
