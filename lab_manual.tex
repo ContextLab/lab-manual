@@ -1311,8 +1311,21 @@ lab.  \coordinator~can help facilitate these payments.
 
 \chapter{Ask a question, answer a question}\label{ch:faq}
 This section contains a log of common issues and errors encountered by lab members, as well as some guidelines on where to seek help with issues that may arise in the lab.  If you encounter an issue you don't know how to resolve right away, this is a good place to begin your efforts.
-\\~\\
+
+\newthought{Common problems and solutions}
+
 \noindent If you run into a tricky technical issue you think is likely to come up again, consider adding it to the log, and then adding the solution when you resolve it.  Additionally, if you find yourself helping another lab member with a problem you encountered in the past, document the problem and its solution here for future lab members.
+
+\subsection{Testing room computers \& running experiments}
+
+\begin{itemize}
+\item \textit{Trying to run an experiment in a docker results in the following error:} \linebreak
+{\tt Error response from daemon: driver failed programming external connectivity on endpoint <container name>: Bind for 0.0.0.0:<port number> failed: port is already allocated \linebreak
+Error: failed to start containers: <container name>} 
+\\~\\
+The {\tt port} is the line of communication between the computer's local environment and the environment in the docker container. This error means the port used by the container you're trying to start is already being used by another active container for a different experiment. You'll need to stop the other container in order to free up the port and run yours. Type {\tt docker ps} to see a list of active containers. Find the container whose port (in the {\tt PORTS} column) matches the port number in the error, and look at that container's name (in the {\tt NAMES} column). Type {\tt docker stop \textless that\_container\_name\textgreater} to stop the active container, and you will be able to start the container for the experiment you are trying to run.
+
+\end{itemize}
 
 \newthought{Who to go to with questions}
 
