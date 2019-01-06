@@ -15,10 +15,10 @@ The way we  develop collaborative documents and code in the CDL is to have a cen
 In order to modify the central code repository, you need to fork this repository, add your content to your fork, and then submit a pull request to incorporate your changes (from your fork) into the central repository.  This allows us to maintain a stable working version in the central repository that everyone can access and rely on, while also allowing individual contributors to maintain (unstable) working versions.  If these terms (forking, pulling, pushing, etc.) are unfamiliar or confusing, you should read through [these Git Tutorials](https://try.github.io/) before proceeding.
 
 To set up your fork:
-1. Press the "fork" button in the upper right corner of the repository's website (link above)
-2. Clone your fork to your local machine (`git clone https://github.com/<GitHub Username>/lab-manual.git`)
-3. Set the central repository as an upstream remote: `git remote add upstream https://github.com/ContextLab/lab-manual.git`
-4. Each time you want to make changes to your local copy, sync it with the central repository by running `git pull upstream master`
-5. When you're done making changes, type `git commit -a -m "<MESSAGE DESCRIBING WHAT YOU CHANGED>` and then `git push`
-6. Repeat steps 4 and 5 until you have something to share with the group (you can push broken code to your local fork without damaging anything in the central repository)
-7. When you're ready to share your code, go back to your fork's web page (https://github.com/<GitHub Username>/lab-manual), navigate to the "pull requests" tab (upper left), and press the "New pull request" button in the upper right.  Describe what you did and submit your pull request by filling out the prompts.  Then someone from the CDL will review the changes and merge them in, and everyone will have access to your changes.
+1. Press the "fork" button in the upper right corner of the repository's website (link above).
+2. Clone your fork to your local machine (`git clone https://github.com/<GitHub Username>/lab-manual.git`).
+3. Set the central repository as an upstream remote: `git remote add upstream https://github.com/ContextLab/lab-manual.git`.
+4. Each time you want to make changes to your local copy, sync it with the central repository by running `git pull upstream master`.
+5. When you're done making changes, type `git commit -a -m "<MESSAGE DESCRIBING WHAT YOU CHANGED>` and then `git push`.
+6. Repeat steps 4 and 5 until you have something to share with the world.  Note: you can push broken code to your local fork without damaging anything in the central repository, so we encourage frequent committing and pushing (even of broken code) to your local fork.  This will ensure that (a) you always have a recent online backup of your work and (b) there is a clear record of what you did and the path you took to accomplish it.
+7. When you're ready to share your code with the world, go back to your fork's web page (https://github.com/<GitHub Username>/lab-manual), navigate to the "pull requests" tab (upper left), and press the "New pull request" button in the upper right.  Describe what you did and submit your pull request by filling out the prompts.  Then someone from the CDL will review the changes and merge them in, and everyone will have access to your changes.
