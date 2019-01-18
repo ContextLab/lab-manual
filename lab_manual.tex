@@ -1317,6 +1317,18 @@ This section contains a log of common issues and errors encountered by lab membe
 
 \noindent If you run into a tricky technical issue you think is likely to come up again, consider adding it to the log, and then adding the solution when you resolve it.  Additionally, if you find yourself helping another lab member with a problem you encountered in the past, document the problem and its solution here for future lab members.
 
+\subsection{Git \& GitHub}
+
+\begin{itemize}
+\item \textit{Trying to clone a GitHub repository results in the following error (often after updating Mac OS): } \linebreak
+{\tt xcrun: error: invalid active developer path \linebreak
+(/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun}
+\\~\\
+Xcode Command-Line Tools need to be updated.  Run \linebreak 
+{\tt xcode-select ---install} and follow the prompts.
+
+\end{itemize}
+
 \subsection{Testing room computers \& running experiments}
 
 \begin{itemize}
