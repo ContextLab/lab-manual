@@ -4,7 +4,7 @@ This repository contains the lab manual (and associated source code) for the [Co
 
 All new lab members are required to read (and modify!) this repository *prior* to joining the lab.  New lab members are also required to complete a list of basic tasks (and signify that they have done so via a checklist at the end of the manual).  The tasks are intended to ensure that every lab member is on the same page with respect to expectations and that every lab member has acquired a minimum viable set of skills needed to do research in the lab.
 
-A PDF of the latest version of the lab manaul may always be found [here](https://github.com/ContextLab/lab-manual/blob/master/lab_manual.pdf).
+A PDF of the latest version of the lab manual may always be found [here](https://github.com/ContextLab/lab-manual/blob/master/lab_manual.pdf).
 
 # Why are we sharing this repository with the public?
 Our lab manual is, in one sense, intended to provide information that is specific to the CDL.  So it's possible it'll be useful only to CDL lab members.  However, we hope that others might find some aspects of the manual useful.  For example, perhaps you like the look of the [LaTeX template](https://ctan.org/pkg/tufte-latex?lang=en) we used.  Or perhaps you like some of the contents and want to incorporate something like it into your own operating manual.  Or maybe you *don't* like something, and you want to use our manual as a counterexample!  Whatever you'd like to do with the contents, we offer this repository freely and in the spirit of openness and collaboration.  By the same token, we make no claims as to the accuracy of the documentation or code herein, so we invite you to proceed at your own risk.
