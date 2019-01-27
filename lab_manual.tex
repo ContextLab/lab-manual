@@ -1332,11 +1332,19 @@ Xcode Command-Line Tools need to be updated.  Run \linebreak
 \subsection{Testing room computers \& running experiments}
 
 \begin{itemize}
-\item \textit{Trying to run an experiment in a docker results in the following error:} \linebreak
+\item \textit{Trying to run an experiment in a Docker container results in the following error:} \linebreak
 {\tt Error response from daemon: driver failed programming external connectivity on endpoint <container name>: Bind for 0.0.0.0:<port number> failed: port is already allocated \linebreak
 Error: failed to start containers: <container name>} 
 \\~\\
-The {\tt port} is the line of communication between the computer's local environment and the environment in the docker container. This error means the port used by the container you're trying to start is already being used by another active container for a different experiment. You'll need to stop the other container in order to free up the port and run yours. Type {\tt docker ps} to see a list of active containers. Find the container whose port (in the {\tt PORTS} column) matches the port number in the error, and look at that container's name (in the {\tt NAMES} column). Type {\tt docker stop \textless that\_container\_name\textgreater} to stop the active container, and you will be able to start the container for the experiment you are trying to run.
+The {\tt port} is the line of communication between the computer's local environment and the environment in the Docker container. This error means the port used by the container you're trying to start is already being used by another active container for a different experiment. You'll need to stop the other container in order to free up the port and run yours. Type {\tt docker ps} to see a list of active containers. Find the container whose port (in the {\tt PORTS} column) matches the port number in the error, and look at that container's name (in the {\tt NAMES} column). Type {\tt docker stop \textless that\_container\_name\textgreater} to stop the active container, and you will be able to start the container for the experiment you are trying to run.
+
+\end{itemize}
+
+\begin{itemize}
+\item \textit{Trying to connect to a Jupyter notebook running in a Docker container results in the following error in the web browser, despite setting up ports correctly: } \linebreak
+{\tt ERR\char`_CONNECTION\char`_REFUSED}
+\\~\\
+If your machine is running Docker Toolbox, a legacy version of Docker, then accessing the container requires navigating to {\tt http://192.168.99.100:<port-number>} rather than {\tt localhost:<port-number>}. If you are not running Docker Toolbox, check that the Dockerfile contains an {\tt EXPOSE <port-number>} command, and upon executing {\tt docker run} you include the tag {\tt -p <port-number>:<port-number>}.
 
 \end{itemize}
 
