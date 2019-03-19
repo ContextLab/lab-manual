@@ -22,7 +22,11 @@ To set up your fork:
 5. When you're done making changes, type `git commit -a -m "<MESSAGE DESCRIBING WHAT YOU CHANGED>` and then `git push`.
 6. Repeat steps 4 and 5 until you have something to share with the world.  Note: you can push broken code to your local fork without damaging anything in the central repository, so we encourage frequent committing and pushing (even of broken code) to your local fork.  This will ensure that (a) you always have a recent online backup of your work and (b) there is a clear record of what you did and the path you took to accomplish it.
 <<<<<<< HEAD
+<<<<<<< HEAD
 7. When you're ready to share your code with the world, go back to your fork's web page (https://github.com<GitHub Username>/lab-manual), navigate to the "pull requests" tab (upper left), and press the "New pull request" button in the upper right.  Describe what you did and submit your pull request by filling out the prompts.  Then someone from the CDL will review the changes and merge them in, and everyone will have access to your changes.
 =======
 7. When you're ready to share your code with the world, go back to your fork's web page (`https://github.com/<GitHub Username>/lab-manual`), navigate to the "pull requests" tab (upper left), and press the "New pull request" button in the upper right.  Describe what you did and submit your pull request by filling out the prompts.  Then someone from the CDL will review the changes and merge them in, and everyone will have access to your changes.
 >>>>>>> d0e629545a42de453e755d61d9bfaa870d7b888a
+=======
+7. When you're ready to share your code with the world, go back to your fork's web page (https://github.com/<GitHub Username>/lab-manual), navigate to the "pull requests" tab (upper left), and press the "New pull request" button in the upper right.  Describe what you did and submit your pull request by filling out the prompts.  Then someone from the CDL will review the changes and merge them in, and everyone will have access to your changes.
+>>>>>>> e92ff92cc3959fcd00135271e28c32cea46923b4
