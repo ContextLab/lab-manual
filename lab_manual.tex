@@ -1104,7 +1104,8 @@ official lab attendance policy:
   or are otherwise playing a key role).
 \end{itemize}
 
-\subsection{Compensation and benefits}
+\newthought{Compensation and benefits}
+
 If you are a non-student full-time on-campus employee, it's likely that
 you're eligible for Dartmouth benefits, such as medical insurance,
 dental insurance, life insurance, etc.  You can read more about the
@@ -1126,7 +1127,8 @@ position, how your work in the lab is funded, your prior research
 experience, etc.  If you have comments, questions, or concerns about
 your compensation, please discuss them with \director.
 
-\subsection{Interpersonal issues}
+\newthought{Interpersonal issues}
+
 If you are experiencing an interpersonal issue with another lab member
 or community member and are having trouble resolving it on your own (or feel
 unsafe resolving it on your own), please seek out assistance from
@@ -1327,7 +1329,7 @@ This section contains a log of common issues and errors encountered by lab membe
 {\tt xcrun: error: invalid active developer path \linebreak
 (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun}
 \\~\\
-Xcode Command-Line Tools need to be updated.  Run \linebreak 
+Xcode Command-Line Tools need to be updated.  Run \linebreak
 {\tt xcode-select ---install} and follow the prompts.
 
 \end{itemize}
@@ -1337,7 +1339,7 @@ Xcode Command-Line Tools need to be updated.  Run \linebreak
 \begin{itemize}
 \item \textit{Trying to run an experiment in a Docker container results in the following error:} \linebreak
 {\tt Error response from daemon: driver failed programming external connectivity on endpoint <container name>: Bind for 0.0.0.0:<port number> failed: port is already allocated \linebreak
-Error: failed to start containers: <container name>} 
+Error: failed to start containers: <container name>}
 \\~\\
 The {\tt port} is the line of communication between the computer's local environment and the environment in the Docker container. This error means the port used by the container you're trying to start is already being used by another active container for a different experiment. You'll need to stop the other container in order to free up the port and run yours. Type {\tt docker ps} to see a list of active containers. Find the container whose port (in the {\tt PORTS} column) matches the port number in the error, and look at that container's name (in the {\tt NAMES} column). Type {\tt docker stop \textless that\_container\_name\textgreater} to stop the active container, and you will be able to start the container for the experiment you are trying to run.
 
