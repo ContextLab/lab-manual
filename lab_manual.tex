@@ -20,6 +20,7 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
+\PassOptionsToPackage{nobottomtitles}{titlesec}
 \documentclass{tufte-book} % Use the tufte-book class which in turn
                            % uses the tufte-common class
 
@@ -39,7 +40,6 @@
 % Improves figure scaling
 
 \usepackage[export]{adjustbox}
-%\usepackage{multicol}
 
 \usepackage{fancyvrb} % Allows customization of verbatim environments
 \fvset{fontsize=\normalsize} % The font size of all verbatim text can be changed here
@@ -1606,8 +1606,6 @@ need access to RAPPORT then let \director~know.
 \end{list}
 \end{multicols}
 
-\pagebreak
-
 \subsection{Lab alumni}
 \newthought{Postdoctoral Researchers}
 \begin{multicols}{2}\raggedcolumns
@@ -1623,6 +1621,14 @@ need access to RAPPORT then let \director~know.
 \begin{list}{\quad}{}
 \item Emily Whitaker (2017 - 2018)
 \item Kirsten Ziman (2016 - 2017)
+\end{list}
+\end{multicols}
+
+
+\newthought{Research Assistants}
+\begin{multicols}{2}\raggedcolumns
+\begin{list}{\quad}{}
+\item Max Bluestone (2018 - 2019)
 \end{list}
 \end{multicols}
 
