@@ -24,7 +24,7 @@
 \documentclass{tufte-book} % Use the tufte-book class which in turn
                            % uses the tufte-common class
 
-\definecolor{dartmouthgreen}{RGB}{0, 112, 60}
+\definecolor{dartmouthgreen}{RGB}{0, 105, 62}
 
 \hypersetup{colorlinks=true,linkcolor=dartmouthgreen} % Comment this line if you don't wish to have colored links
 
@@ -236,13 +236,6 @@ provide guidance on specific tasks.  If you are looking for help on a
 particular task (or understanding a particular concept) that isn't
 covered by the existing set of tutorials, please consider contributing
 a tutorial of your own once you've figured things out!
-
-If you encounter an error or problem you don't know how to fix, try
-checking the \hyperref[ch:faq]{ask a question, answer a question}
-section, where we maintain a log of common problems and quick
-solutions. If you don't see a solution to your question there,
-consider adding the question so that you or someone else can add
-the answer for future lab members!
 
 
 \chapter{Bill of rights and responsibilities}\label{ch:billofrights}
@@ -968,9 +961,9 @@ members.
 \newthought{Scheduling}
 \label{sec: scheduling}
 
-\noindent \marginnote{\texttt{TASK:} Email \coordinator~to request
+\noindent\marginnote{\texttt{TASK:} Email \coordinator~to request
   invites to each of the calendars below---the download links in the
-  lab manual are read-only!}  Our lab's scheduling practices and
+  lab manual are read-only!}Our lab's scheduling practices and
 policies are intended to facilitate lab member interactions between
 ourselves, our collaborators, and our experimental participants.
 There are three basic tools the lab uses to organize and schedule
@@ -1023,8 +1016,9 @@ schedules of grad students and undergraduates.
   with \director.  Most meetings with \director~happen on Wednesdays.
 \end{itemize}
 
- \subsection{Attendance policy}
- In general, we expect full time employees to be in the lab during
+ \newthought{Attendance policy}
+ 
+\noindent In general, we expect full time employees to be in the lab during
  ``standard'' working hours---roughly between 9 AM and 5 PM.  The
  precise range of hours you work is less important to us than putting
  in an effort to help form a cohesive lab culture where lab members
@@ -1166,8 +1160,8 @@ prospective employees. The
 provides a similar suite of services to student employees.  The
 \href{http://www.dartmouth.edu/~ombuds/}{Dartmouth Ombuds Office} also
 provides confidential and informal assistance in resolving concerns
-related to interpersonal issues.  Please also see the
-\hyperref[sec:interpersonal]{\textit{Ask a question, answer a question} section on resources for resolving interpersonal issues}.
+related to interpersonal issues.  Please also see the section on 
+\hyperref[sec:interpersonal]{resources for resolving interpersonal issues}.
 
 
  \newthought{Lab resources}
@@ -1328,44 +1322,6 @@ lab.  \coordinator~can help facilitate these payments.
  beginning the experiment.  Cash payments may be made via petty cash,
  which is managed by \coordinator.
 
-
-\chapter{Ask a question, answer a question}\label{ch:faq}
-This section contains a log of common issues and errors encountered by lab members, as well as some guidelines on where to seek help with issues that may arise in the lab.  If you encounter an issue you don't know how to resolve right away, this is a good place to begin your efforts.
-
-\newthought{Common problems and solutions}
-
-\noindent If you run into a tricky technical issue you think is likely to come up again, consider adding it to the log, and then adding the solution when you resolve it.  Additionally, if you find yourself helping another lab member with a problem you encountered in the past, document the problem and its solution here for future lab members.
-
-\subsection{Git \& GitHub}
-
-\begin{itemize}
-\item \textit{Trying to clone a GitHub repository results in the following error (often after updating Mac OS): } \linebreak
-{\tt xcrun: error: invalid active developer path \linebreak
-(/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun}
-\\~\\
-Xcode Command-Line Tools need to be updated.  Run \linebreak
-{\tt xcode-select ---install} and follow the prompts.
-
-\end{itemize}
-
-\subsection{Testing room computers \& running experiments}
-
-\begin{itemize}
-\item \textit{Trying to run an experiment in a Docker container results in the following error:} \linebreak
-{\tt Error response from daemon: driver failed programming external connectivity on endpoint <container name>: Bind for 0.0.0.0:<port number> failed: port is already allocated \linebreak
-Error: failed to start containers: <container name>}
-\\~\\
-The {\tt port} is the line of communication between the computer's local environment and the environment in the Docker container. This error means the port used by the container you're trying to start is already being used by another active container for a different experiment. You'll need to stop the other container in order to free up the port and run yours. Type {\tt docker ps} to see a list of active containers. Find the container whose port (in the {\tt PORTS} column) matches the port number in the error, and look at that container's name (in the {\tt NAMES} column). Type {\tt docker stop \textless that\_container\_name\textgreater} to stop the active container, and you will be able to start the container for the experiment you are trying to run.
-
-\end{itemize}
-
-\begin{itemize}
-\item \textit{Trying to connect to a Jupyter notebook running in a Docker container results in the following error in the web browser, despite setting up ports correctly: } \linebreak
-{\tt ERR\char`_CONNECTION\char`_REFUSED}
-\\~\\
-If your machine is running Docker Toolbox, a legacy version of Docker, then accessing the container requires navigating to {\tt http://192.168.99.100:<port-number>} rather than {\tt localhost:<port-number>}. If you are not running Docker Toolbox, check that the Dockerfile contains an {\tt EXPOSE <port-number>} command, and upon executing {\tt docker run} you include the tag {\tt -p <port-number>:<port-number>}.
-
-\end{itemize}
 
 \newthought{Who to go to with questions}
 
