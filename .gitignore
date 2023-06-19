@@ -5,3 +5,8 @@
 *.synctex.gz
 *.toc
 .DS_Store
+lab_manual.tex
+lab_manual.fls
+lab_manual.ilg
+lab_manual.fdb_latexmk
+lab_manual.ind
