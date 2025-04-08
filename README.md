@@ -6,6 +6,27 @@ All new lab members are required to read (and modify!) this repository *prior* t
 
 A PDF of the latest version of the lab manual may always be found [here](https://github.com/ContextLab/lab-manual/blob/master/lab_manual.pdf).
 
+## Building the PDF
+To compile a PDF of the lab manual, you need to first install a working distribution of [LaTeX](https://www.latex-project.org/get/).  If you're on a mac with [homebrew](https://brew.sh/), you can run `brew install --cask mactex`.
+
+Once you've made (and saved) your changes to `lab_manual.tex`, run the `compile.sh` script in your Terminal:
+```bash
+./compile.sh
+```
+
+If everything works correctly, you should see a bunch of text, along with the last two lines that look something like
+```bash
+Output written on lab_manual.pdf (42 pages, 232572 bytes).
+Transcript written on lab_manual.log.
+```
+
+Before committing your changes to the lab manual (see below), double check that the PDF looks correct:
+  - Make sure you haven't introduced new typos or formatting issues
+  - Make sure the table of contents (page 3) looks correct, and that the links in the table of contents still point to the correct sections
+  - Check that the margin notes haven't been moved to strange locations (e.g., spanning multiple pages)
+
+
+
 # Why are we sharing this repository with the public?
 Our lab manual is, in one sense, intended to provide information that is specific to the CDL.  So it's possible it'll be useful only to CDL lab members.  However, we hope that others might find some aspects of the manual useful.  For example, perhaps you like the look of the [LaTeX template](https://ctan.org/pkg/tufte-latex?lang=en) we used.  Or perhaps you like some of the contents and want to incorporate something like it into your own operating manual.  Or maybe you *don't* like something, and you want to use our manual as a counterexample!  Whatever you'd like to do with the contents, we offer this repository freely and in the spirit of openness and collaboration.  By the same token, we make no claims as to the accuracy of the documentation or code herein, so we invite you to proceed at your own risk.
 
