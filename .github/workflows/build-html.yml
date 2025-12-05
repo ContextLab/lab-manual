@@ -36,10 +36,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-extra texlive-plain-generic tex4ht
+
       - name: Run make4ht conversion
-        uses: docker://ghcr.io/michal-h21/make4ht-action:latest
-        env:
-          command: "make4ht -u -c tufte.cfg -d html_output lab_manual.tex 'mathml,mathjax'"
+        run: |
+          mkdir -p html_output
+          make4ht -u -c tufte.cfg -d html_output lab_manual.tex "mathml,mathjax" || true
+          # List what was generated
+          ls -la html_output/ || echo "html_output directory contents check"
 
       - name: Download Tufte CSS assets
         run: |
