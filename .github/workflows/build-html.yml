@@ -39,12 +39,19 @@ jobs:
       - name: Install TeX Live
         run: |
           sudo apt-get update
-          sudo apt-get install -y texlive-latex-extra texlive-fonts-extra texlive-plain-generic tex4ht
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-extra texlive-plain-generic tex4ht texlive-luatex
 
-      - name: Run make4ht conversion
+      - name: Run htlatex conversion
         run: |
           mkdir -p html_output
-          make4ht -u -c tufte.cfg -d html_output lab_manual.tex "mathml,mathjax" || true
+          # Use htlatex (included in tex4ht) - make4ht is not in Ubuntu's tex4ht package
+          # htlatex syntax: htlatex file "options" "tex4ht options" "t4ht options" "latex"
+          htlatex lab_manual.tex "tufte,mathml,mathjax" " -cunihtf -utf8" || true
+          # Move generated files to html_output
+          mv lab_manual.html html_output/ 2>/dev/null || true
+          mv lab_manual.css html_output/ 2>/dev/null || true
+          mv lab_manual*.png html_output/ 2>/dev/null || true
+          mv lab-manual.css html_output/ 2>/dev/null || true
           # List what was generated
           ls -la html_output/ || echo "html_output directory contents check"
 
