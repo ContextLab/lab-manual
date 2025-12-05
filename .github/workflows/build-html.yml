@@ -46,7 +46,10 @@ jobs:
           mkdir -p html_output
           # Use htlatex (included in tex4ht) - make4ht is not in Ubuntu's tex4ht package
           # htlatex syntax: htlatex file "options" "tex4ht options" "t4ht options" "latex"
-          htlatex lab_manual.tex "tufte,mathml,mathjax" " -cunihtf -utf8" || true
+          # Pass -interaction=nonstopmode to continue past errors
+          htlatex lab_manual.tex "tufte,mathml,mathjax" " -cunihtf -utf8" "" "-interaction=nonstopmode" || true
+          # Show what files were created
+          ls -la *.html *.css 2>/dev/null || echo "No HTML/CSS files in root"
           # Move generated files to html_output
           mv lab_manual.html html_output/ 2>/dev/null || true
           mv lab_manual.css html_output/ 2>/dev/null || true
