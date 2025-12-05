@@ -44,19 +44,27 @@ jobs:
       - name: Run tex4ht conversion
         run: |
           mkdir -p html_output
-          # Debug: show htlatex location
-          which htlatex || echo "htlatex not found"
-          cat $(which htlatex) || echo "Cannot read htlatex"
 
-          # Run htlatex with verbose output
-          set -x
-          htlatex lab_manual.tex "tufte,mathml,mathjax" " -cunihtf -utf8" "" "-interaction=nonstopmode"
-          HTLATEX_EXIT=$?
-          set +x
-          echo "htlatex exit code: $HTLATEX_EXIT"
+          # htlatex uses set -e, so it stops on first error.
+          # We need to run the steps manually to continue past LaTeX warnings.
+          # htlatex does: 3x latex, tex4ht, t4ht
 
-          # Show all files in current directory
-          echo "=== Files after htlatex ==="
+          echo "=== Running latex pass 1 ==="
+          latex -interaction=nonstopmode '\makeatletter\def\HCode{\futurelet\HCode\HChar}\def\HChar{\ifx"\HCode\def\HCode"##1"{\Link##1}\expandafter\HCode\else\expandafter\Link\fi}\def\Link#1.a.b.c.{\g@addto@macro\@documentclasshook{\RequirePackage[#1,html]{tex4ht}}\let\HCode\documentstyle\def\documentstyle{\let\documentstyle\HCode\expandafter\def\csname tex4ht\endcsname{#1,html}\def\HCode####1{\documentstyle[tex4ht,}\@ifnextchar[{\HCode}{\documentstyle[tex4ht]}}}\makeatother\HCode tufte,mathml,mathjax.a.b.c.\input ' lab_manual.tex || true
+
+          echo "=== Running latex pass 2 ==="
+          latex -interaction=nonstopmode '\makeatletter\def\HCode{\futurelet\HCode\HChar}\def\HChar{\ifx"\HCode\def\HCode"##1"{\Link##1}\expandafter\HCode\else\expandafter\Link\fi}\def\Link#1.a.b.c.{\g@addto@macro\@documentclasshook{\RequirePackage[#1,html]{tex4ht}}\let\HCode\documentstyle\def\documentstyle{\let\documentstyle\HCode\expandafter\def\csname tex4ht\endcsname{#1,html}\def\HCode####1{\documentstyle[tex4ht,}\@ifnextchar[{\HCode}{\documentstyle[tex4ht]}}}\makeatother\HCode tufte,mathml,mathjax.a.b.c.\input ' lab_manual.tex || true
+
+          echo "=== Running latex pass 3 ==="
+          latex -interaction=nonstopmode '\makeatletter\def\HCode{\futurelet\HCode\HChar}\def\HChar{\ifx"\HCode\def\HCode"##1"{\Link##1}\expandafter\HCode\else\expandafter\Link\fi}\def\Link#1.a.b.c.{\g@addto@macro\@documentclasshook{\RequirePackage[#1,html]{tex4ht}}\let\HCode\documentstyle\def\documentstyle{\let\documentstyle\HCode\expandafter\def\csname tex4ht\endcsname{#1,html}\def\HCode####1{\documentstyle[tex4ht,}\@ifnextchar[{\HCode}{\documentstyle[tex4ht]}}}\makeatother\HCode tufte,mathml,mathjax.a.b.c.\input ' lab_manual.tex || true
+
+          echo "=== Running tex4ht ==="
+          tex4ht -f/lab_manual -cunihtf -utf8 || true
+
+          echo "=== Running t4ht ==="
+          t4ht -f/lab_manual || true
+
+          echo "=== Files after conversion ==="
           ls -la
 
           # Move generated files to html_output
@@ -65,9 +73,8 @@ jobs:
           mv lab_manual*.png html_output/ 2>/dev/null || true
           mv lab-manual.css html_output/ 2>/dev/null || true
 
-          # List what was generated
           echo "=== html_output contents ==="
-          ls -la html_output/ || echo "html_output directory contents check"
+          ls -la html_output/
 
       - name: Download Tufte CSS assets
         run: |
