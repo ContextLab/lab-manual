@@ -6,6 +6,8 @@ All new lab members are required to read (and modify!) this repository *prior* t
 
 A PDF of the latest version of the lab manual may always be found [here](https://github.com/ContextLab/lab-manual/blob/master/lab_manual.pdf).
 
+An HTML version is also available at [contextlab.github.io/lab-manual](https://contextlab.github.io/lab-manual/). The HTML version is automatically generated from the LaTeX source whenever changes are pushed to the master branch.
+
 ## Building the PDF
 To compile a PDF of the lab manual, you need to first install a working distribution of [LaTeX](https://www.latex-project.org/get/).  If you're on a mac with [homebrew](https://brew.sh/), you can run `brew install --cask mactex`.
 
