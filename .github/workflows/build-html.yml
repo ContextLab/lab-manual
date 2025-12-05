@@ -1,0 +1,97 @@
+name: Build HTML Lab Manual
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'lab_manual.tex'
+      - 'tufte.cfg'
+      - '.github/workflows/build-html.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'lab_manual.tex'
+      - 'tufte.cfg'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only allow one deployment at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-html:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run make4ht conversion
+        uses: docker://ghcr.io/michal-h21/make4ht-action:latest
+        env:
+          command: "make4ht -u -c tufte.cfg -d html_output lab_manual.tex 'mathml,mathjax'"
+
+      - name: Download Tufte CSS assets
+        run: |
+          # Download tufte.css
+          curl -sL -o html_output/tufte.css https://raw.githubusercontent.com/edwardtufte/tufte-css/gh-pages/tufte.css
+
+          # Download ET Book fonts
+          mkdir -p html_output/et-book
+          for font in et-book-roman-line-figures et-book-roman-old-style-figures et-book-semi-bold-old-style-figures et-book-bold-line-figures; do
+            curl -sL -o "html_output/et-book/${font}.ttf" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}.ttf" 2>/dev/null || true
+            curl -sL -o "html_output/et-book/${font}.woff" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}.woff" 2>/dev/null || true
+          done
+
+          # Copy lab logo
+          cp -r lab_logo html_output/
+
+          # Rename main HTML file to index.html if needed
+          if [ -f html_output/lab_manual.html ] && [ ! -f html_output/index.html ]; then
+            cp html_output/lab_manual.html html_output/index.html
+          fi
+
+      - name: List output files
+        run: ls -la html_output/
+
+      - name: Upload HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-lab-manual
+          path: html_output/
+          retention-days: 30
+
+  # Deploy to GitHub Pages only on push to master
+  deploy:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    needs: build-html
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: html-lab-manual
+          path: html_output
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: html_output
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

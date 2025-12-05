@@ -11,3 +11,16 @@ lab_manual.ilg
 lab_manual.fdb_latexmk
 lab_manual.ind
 lab_manual.blg
+
+# TeX4ht build artifacts
+*.4ct
+*.4tc
+*.css
+*.dvi
+*.idv
+*.lg
+*.tmp
+*.xref
+lab_manual.html
+html_output/
+html_test/
