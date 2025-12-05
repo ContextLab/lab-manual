@@ -1,0 +1,66 @@
+name: Compile LaTeX
+
+on:
+  pull_request:
+    paths:
+      - '**.tex'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra
+
+      - name: Compile LaTeX document
+        id: compile
+        run: |
+          set +e
+          # Run compilation and capture output
+          output=$(bash compile.sh 2>&1)
+          exit_code=$?
+          echo "$output"
+          
+          # Store output for later use (handle multiline)
+          {
+            echo "output<<EOF"
+            echo "$output"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+          
+          exit $exit_code
+
+      - name: Post error comment and close PR on failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          COMPILE_OUTPUT: ${{ steps.compile.outputs.output }}
+        with:
+          script: |
+            const output = process.env.COMPILE_OUTPUT || 'No output captured';
+            const prAuthor = context.payload.pull_request.user.login;
+            
+            // Post comment with compilation errors
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `@${prAuthor} The LaTeX compilation failed with the following errors:\n\n\`\`\`\n${output}\n\`\`\``
+            });
+            
+            // Close the pull request
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              state: 'closed'
+            });
