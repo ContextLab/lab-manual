@@ -6,12 +6,16 @@ on:
     paths:
       - 'lab_manual.tex'
       - 'tufte.cfg'
+      - 'toc.js'
+      - 'lab-manual.css'
       - '.github/workflows/build-html.yml'
   pull_request:
     branches: [master]
     paths:
       - 'lab_manual.tex'
       - 'tufte.cfg'
+      - 'toc.js'
+      - 'lab-manual.css'
   workflow_dispatch:  # Allow manual triggering
 
 permissions:
@@ -51,6 +55,9 @@ jobs:
 
           # Copy lab logo
           cp -r lab_logo html_output/
+
+          # Copy custom files (toc.js for table of contents)
+          cp toc.js html_output/
 
           # Rename main HTML file to index.html if needed
           if [ -f html_output/lab_manual.html ] && [ ! -f html_output/index.html ]; then
