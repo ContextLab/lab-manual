@@ -581,9 +581,9 @@ function createPDF(dateValue) {
   doc.text(introText, leftMargin, yPos);
   yPos += 10;
 
-  // Checklist items with checkbox symbols
-  var checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
-  var labels = document.querySelectorAll('.interactive-checklist label');
+  // Checklist items with checkbox symbols (only from .checklist-item, not signature section)
+  var checkboxes = document.querySelectorAll('.interactive-checklist .checklist-item input[type="checkbox"]');
+  var labels = document.querySelectorAll('.interactive-checklist .checklist-item label');
 
   doc.setFontSize(10);
   labels.forEach(function(label, index) {
