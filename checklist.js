@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Wrap orphaned text nodes after h2 headings in containers for proper styling
   wrapOrphanedTextNodes();
 
+  // Format personnel lists into two-column grid layout
+  formatPersonnelLists();
+
   // Convert the checklist section to interactive form
   // Need to wait a bit for MathJax to potentially process, but also handle native MathML
   setTimeout(convertChecklistToInteractive, 100);
@@ -82,6 +85,90 @@ function fixEnumerationNumbering() {
       dt.textContent = lastNum + '.';
     }
   });
+}
+
+// Format personnel lists (lab members) into two-column grid layout
+// tex4ht generates text nodes directly in divs, but CSS grid needs child elements
+function formatPersonnelLists() {
+  // Find the lab members heading
+  var labMembersHeading = null;
+  var h2s = document.querySelectorAll('h2');
+  h2s.forEach(function(h2) {
+    if (h2.textContent.toLowerCase().includes('lab members')) {
+      labMembersHeading = h2;
+    }
+  });
+
+  if (!labMembersHeading) return;
+
+  // Find all h3 elements after the lab members heading (subsections like "Graduate students")
+  var sibling = labMembersHeading.nextElementSibling;
+  while (sibling) {
+    // Stop if we hit another h2 (new major section)
+    if (sibling.tagName === 'H2') break;
+
+    if (sibling.tagName === 'H3') {
+      // Find the content after this h3 that contains personnel names
+      var contentSibling = sibling.nextSibling;
+      var names = [];
+
+      // Collect text nodes until we hit another heading or structural element
+      while (contentSibling) {
+        if (contentSibling.nodeType === Node.ELEMENT_NODE) {
+          var tag = contentSibling.tagName;
+          if (tag === 'H2' || tag === 'H3' || tag === 'P' || tag === 'DL') break;
+        }
+
+        if (contentSibling.nodeType === Node.TEXT_NODE) {
+          var text = contentSibling.textContent.trim();
+          if (text) {
+            // Split by newlines or common separators
+            var parts = text.split(/[\n\r]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+            names = names.concat(parts);
+          }
+        }
+
+        contentSibling = contentSibling.nextSibling;
+      }
+
+      // If we found names, create a grid container
+      if (names.length > 1) {
+        // Create the personnel list container
+        var container = document.createElement('div');
+        container.className = 'personnel-list';
+
+        // Add each name as a span
+        names.forEach(function(name) {
+          var span = document.createElement('span');
+          span.className = 'personnel-item';
+          span.textContent = name;
+          container.appendChild(span);
+        });
+
+        // Remove the old text nodes and insert the new container
+        var toRemove = [];
+        contentSibling = sibling.nextSibling;
+        while (contentSibling) {
+          if (contentSibling.nodeType === Node.ELEMENT_NODE) {
+            var tag = contentSibling.tagName;
+            if (tag === 'H2' || tag === 'H3' || tag === 'P' || tag === 'DL') break;
+          }
+          toRemove.push(contentSibling);
+          contentSibling = contentSibling.nextSibling;
+        }
+
+        // Insert container after h3
+        sibling.parentNode.insertBefore(container, sibling.nextSibling);
+
+        // Remove old nodes
+        toRemove.forEach(function(node) {
+          if (node.parentNode) node.parentNode.removeChild(node);
+        });
+      }
+    }
+
+    sibling = sibling.nextElementSibling;
+  }
 }
 
 // Convert the static checklist to an interactive form
