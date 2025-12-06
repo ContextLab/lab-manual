@@ -536,66 +536,119 @@ function generateChecklistPDF(dateValue) {
 
 function createPDF(dateValue) {
   var jsPDFLib = window.jspdf || { jsPDF: jsPDF };
-  var doc = new jsPDFLib.jsPDF();
+  var doc = new jsPDFLib.jsPDF({
+    unit: 'mm',
+    format: 'letter'  // US Letter size like the original PDF
+  });
 
-  // Title
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Lab Manual Checklist - Completed', 20, 20);
+  // Tufte-style layout constants
+  // Page is 215.9mm x 279.4mm (letter)
+  // Content area is ~55% of page width, leaving wide right margin
+  var pageWidth = 215.9;
+  var pageHeight = 279.4;
+  var leftMargin = 25;  // Left margin
+  var contentWidth = 100;  // ~55% of usable width for main content
+  var topMargin = 25;
+  var bottomMargin = 25;
 
-  // Contextual Dynamics Lab header
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Contextual Dynamics Lab, Dartmouth College', 20, 30);
-  doc.text('Date: ' + dateValue, 20, 38);
+  // Use Times/Palatino-like font (closest to ET Book in jsPDF)
+  var mainFont = 'times';
 
-  // Checklist items
+  // Page 1: Checklist title and intro
+  var yPos = topMargin;
+
+  // Section heading - Tufte style (italic, larger)
+  doc.setFont(mainFont, 'italic');
+  doc.setFontSize(14);
+  doc.text('Checklist and signature page', leftMargin, yPos);
+  yPos += 12;
+
+  // Intro paragraph
+  doc.setFont(mainFont, 'normal');
   doc.setFontSize(11);
-  var yPos = 50;
+  var introText = 'By signing below, I certify that I have completed the following tasks:';
+  doc.text(introText, leftMargin, yPos);
+  yPos += 10;
+
+  // Checklist items with checkbox symbols
   var checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
   var labels = document.querySelectorAll('.interactive-checklist label');
 
-  doc.setFont('helvetica', 'bold');
-  doc.text('Completed Tasks:', 20, yPos);
-  yPos += 8;
-
-  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
   labels.forEach(function(label, index) {
+    var isChecked = checkboxes[index] && checkboxes[index].checked;
+    var checkSymbol = isChecked ? '\u2611' : '\u2610';  // ☑ or ☐
     var text = label.textContent.trim();
-    // Wrap long text
-    var lines = doc.splitTextToSize(String.fromCharCode(0x2713) + ' ' + text, 170);
+
+    // Wrap text to content width
+    var wrappedLines = doc.splitTextToSize(text, contentWidth - 8);
 
     // Check if we need a new page
-    if (yPos + (lines.length * 6) > 270) {
+    var itemHeight = wrappedLines.length * 4.5 + 3;
+    if (yPos + itemHeight > pageHeight - bottomMargin) {
       doc.addPage();
-      yPos = 20;
+      yPos = topMargin;
     }
 
-    doc.text(lines, 20, yPos);
-    yPos += lines.length * 6 + 2;
+    // Draw checkbox symbol
+    doc.setFont(mainFont, 'normal');
+    doc.text(checkSymbol, leftMargin, yPos);
+
+    // Draw wrapped text with proper indentation
+    wrappedLines.forEach(function(line, lineIndex) {
+      doc.text(line, leftMargin + 6, yPos + (lineIndex * 4.5));
+    });
+
+    yPos += itemHeight;
   });
 
   // Signature section
-  if (yPos > 200) {
+  // Check if we need a new page for signature
+  if (yPos + 60 > pageHeight - bottomMargin) {
     doc.addPage();
-    yPos = 20;
+    yPos = topMargin;
   }
 
-  yPos += 10;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Signature:', 20, yPos);
-  yPos += 5;
+  yPos += 8;
 
-  // Add signature image
+  // Signature line with label (Tufte style - simple, elegant)
+  doc.setFont(mainFont, 'normal');
+  doc.setFontSize(10);
+
+  // Add signature image if exists
   if (signatureCanvas) {
     var signatureData = signatureCanvas.toDataURL('image/png');
-    doc.addImage(signatureData, 'PNG', 20, yPos, 80, 30);
-    yPos += 35;
+    // Position signature above the line
+    doc.addImage(signatureData, 'PNG', leftMargin, yPos, 60, 22);
+    yPos += 24;
   }
 
-  // Date line
-  doc.setFont('helvetica', 'normal');
-  doc.text('Date: ' + dateValue, 20, yPos);
+  // Signature line
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.line(leftMargin, yPos, leftMargin + 70, yPos);
+  yPos += 4;
+  doc.setFontSize(9);
+  doc.text('Signature', leftMargin, yPos);
+
+  // Date section
+  yPos += 12;
+  doc.setFontSize(10);
+  doc.text(dateValue, leftMargin, yPos);
+  yPos += 2;
+  doc.line(leftMargin, yPos, leftMargin + 40, yPos);
+  yPos += 4;
+  doc.setFontSize(9);
+  doc.text('Date', leftMargin, yPos);
+
+  // Add page numbers in footer (Tufte style - centered at bottom)
+  var pageCount = doc.internal.getNumberOfPages();
+  for (var i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont(mainFont, 'normal');
+    doc.setFontSize(9);
+    doc.text(String(i), pageWidth / 2, pageHeight - 15, { align: 'center' });
+  }
 
   // Save the PDF
   var filename = 'lab-manual-checklist-' + dateValue + '.pdf';
