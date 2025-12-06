@@ -16,6 +16,7 @@ lab_manual.blg
 *.4ct
 *.4tc
 *.css
+!lab-manual.css
 *.dvi
 *.idv
 *.lg

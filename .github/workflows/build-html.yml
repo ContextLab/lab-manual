@@ -71,7 +71,6 @@ jobs:
           mv lab_manual.html html_output/ 2>/dev/null || true
           mv lab_manual.css html_output/ 2>/dev/null || true
           mv lab_manual*.png html_output/ 2>/dev/null || true
-          mv lab-manual.css html_output/ 2>/dev/null || true
 
           echo "=== html_output contents ==="
           ls -la html_output/
@@ -91,8 +90,9 @@ jobs:
           # Copy lab logo
           cp -r lab_logo html_output/
 
-          # Copy custom files (toc.js for table of contents)
+          # Copy custom files (toc.js for table of contents, lab-manual.css for custom styling)
           cp toc.js html_output/
+          cp lab-manual.css html_output/
 
           # Rename main HTML file to index.html if needed
           if [ -f html_output/lab_manual.html ] && [ ! -f html_output/index.html ]; then

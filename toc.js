@@ -4,7 +4,17 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!toc) return;
 
   var headings = document.querySelectorAll('h2.chapterHead');
-  headings.forEach(function(h) {
+  headings.forEach(function(h, index) {
+    // Generate an ID if heading doesn't have one
+    if (!h.id) {
+      // Create slug from heading text
+      var slug = h.textContent
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      h.id = slug || 'section-' + index;
+    }
+
     var li = document.createElement('li');
     var a = document.createElement('a');
     a.href = '#' + h.id;

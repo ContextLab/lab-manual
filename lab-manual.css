@@ -1,0 +1,207 @@
+/* lab-manual.css - Custom styles for lab manual HTML version */
+
+/* Dartmouth green links */
+a { color: #00693E; }
+a:hover { color: #004d2e; }
+
+/* Headings */
+h1, h2, h3 { color: #333; }
+
+/* Typography - use viewport-relative widths matching Tufte-CSS */
+body {
+  font-family: et-book, Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+  background-color: #fffff8;
+  color: #111;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2em;
+  width: 87.5%;
+  padding-left: 12.5%;
+  box-sizing: border-box;
+}
+
+/* Main article layout for Tufte-style margins */
+article {
+  position: relative;
+}
+
+/* Main content width - 55% for Tufte style, leaving room for sidenotes */
+article > p,
+article > section > p,
+article > h2,
+article > section > h2,
+article > ul,
+article > ol,
+article > dl,
+section > p,
+section > ul,
+section > ol,
+section > dl {
+  width: 55%;
+}
+
+/* Table of contents styling */
+nav.toc {
+  margin: 2em 0;
+  width: 55%;
+}
+
+nav.toc ul {
+  list-style: none;
+  padding-left: 1em;
+}
+
+nav.toc li {
+  margin: 0.5em 0;
+}
+
+nav.toc a {
+  text-decoration: none;
+}
+
+nav.toc a:hover {
+  text-decoration: underline;
+}
+
+/* Fix logo size - match LaTeX document (~50px) */
+img[alt="PIC"],
+img[src*="CDL_Avatar"],
+p.noindent img {
+  max-width: 50px !important;
+  width: 50px !important;
+  height: auto !important;
+  display: block;
+  margin-bottom: 1em;
+}
+
+/* Lab member lists - each name on its own line */
+/* The div.columns-2 contains names separated by newlines - preserve them */
+div.columns-2,
+.columns-2 {
+  white-space: pre-line;
+  line-height: 1.8;
+  width: 55%;
+}
+
+/* Margin notes styling - positioned in right margin */
+.marginnote, .sidenote, span.marginnote, span.sidenote {
+  float: right;
+  clear: right;
+  margin-right: -60%;
+  width: 50%;
+  margin-top: 0.3rem;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  vertical-align: baseline;
+  position: relative;
+}
+
+/* Make margin toggles hidden on desktop */
+label.margin-toggle:not(.sidenote-number) {
+  display: none;
+}
+
+input.margin-toggle {
+  display: none;
+}
+
+label.sidenote-number {
+  display: inline-block;
+}
+
+/* Definition lists (used for numbered items) */
+dl {
+  width: 55%;
+}
+
+dt {
+  float: left;
+  clear: left;
+  width: 2em;
+  font-weight: bold;
+}
+
+dd {
+  margin-left: 2.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Checklist styling - make checkboxes visible */
+/* The checklist uses Unicode checkbox characters */
+
+/* Fullwidth sections */
+.fullwidth, div.fullwidth {
+  max-width: 90%;
+  clear: both;
+}
+
+/* Mobile responsive - show margin notes inline on smaller screens */
+@media (max-width: 760px) {
+  body {
+    width: 84%;
+    padding-left: 8%;
+    padding-right: 8%;
+  }
+
+  article > p,
+  article > section > p,
+  article > h2,
+  article > section > h2,
+  article > ul,
+  article > ol,
+  article > dl,
+  section > p,
+  section > ul,
+  section > ol,
+  section > dl,
+  nav.toc,
+  div.columns-2,
+  dl {
+    width: 100%;
+  }
+
+  /* Show the toggle label on mobile */
+  label.margin-toggle:not(.sidenote-number) {
+    display: inline;
+    cursor: pointer;
+  }
+
+  /* Hide margin notes by default on mobile */
+  .sidenote,
+  .marginnote {
+    display: none;
+  }
+
+  /* Show margin notes when toggle is checked */
+  .margin-toggle:checked + .sidenote,
+  .margin-toggle:checked + .marginnote {
+    display: block;
+    float: left;
+    left: 1rem;
+    clear: both;
+    width: 95%;
+    margin: 1rem 2.5%;
+    vertical-align: baseline;
+    position: relative;
+  }
+}
+
+/* Ensure text doesn't overflow on any screen */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* But don't constrain body itself */
+body, html {
+  max-width: none;
+}
+
+/* Generic elements in lab members section - preserve line breaks */
+section > .columns-2 ~ div,
+h3 + p + div.columns-2,
+.columns-2 + p + div.columns-2 {
+  white-space: pre-line;
+  line-height: 1.8;
+}
