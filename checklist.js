@@ -471,7 +471,7 @@ function loadChecklistState() {
   }
 }
 
-// Email functionality
+// Email functionality - generates PDF with jsPDF and opens email client
 function emailChecklist() {
   // Check if all items are checked
   var checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
@@ -509,11 +509,117 @@ function emailChecklist() {
     return;
   }
 
-  // Generate email with PDF attachment instruction
+  // Generate and download PDF, then open email
+  generateChecklistPDF(dateInput.value);
+}
+
+// Generate PDF using jsPDF library
+function generateChecklistPDF(dateValue) {
+  // Check if jsPDF is available
+  if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+    // Load jsPDF dynamically
+    var script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload = function() {
+      createPDF(dateValue);
+    };
+    script.onerror = function() {
+      // Fallback to print dialog
+      alert('Could not load PDF library. Using print dialog instead.');
+      fallbackToPrint(dateValue);
+    };
+    document.head.appendChild(script);
+  } else {
+    createPDF(dateValue);
+  }
+}
+
+function createPDF(dateValue) {
+  var jsPDFLib = window.jspdf || { jsPDF: jsPDF };
+  var doc = new jsPDFLib.jsPDF();
+
+  // Title
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Lab Manual Checklist - Completed', 20, 20);
+
+  // Contextual Dynamics Lab header
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Contextual Dynamics Lab, Dartmouth College', 20, 30);
+  doc.text('Date: ' + dateValue, 20, 38);
+
+  // Checklist items
+  doc.setFontSize(11);
+  var yPos = 50;
+  var checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
+  var labels = document.querySelectorAll('.interactive-checklist label');
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Completed Tasks:', 20, yPos);
+  yPos += 8;
+
+  doc.setFont('helvetica', 'normal');
+  labels.forEach(function(label, index) {
+    var text = label.textContent.trim();
+    // Wrap long text
+    var lines = doc.splitTextToSize(String.fromCharCode(0x2713) + ' ' + text, 170);
+
+    // Check if we need a new page
+    if (yPos + (lines.length * 6) > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.text(lines, 20, yPos);
+    yPos += lines.length * 6 + 2;
+  });
+
+  // Signature section
+  if (yPos > 200) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  yPos += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Signature:', 20, yPos);
+  yPos += 5;
+
+  // Add signature image
+  if (signatureCanvas) {
+    var signatureData = signatureCanvas.toDataURL('image/png');
+    doc.addImage(signatureData, 'PNG', 20, yPos, 80, 30);
+    yPos += 35;
+  }
+
+  // Date line
+  doc.setFont('helvetica', 'normal');
+  doc.text('Date: ' + dateValue, 20, yPos);
+
+  // Save the PDF
+  var filename = 'lab-manual-checklist-' + dateValue + '.pdf';
+  doc.save(filename);
+
+  // Open email client after a short delay
+  setTimeout(function() {
+    var subject = encodeURIComponent('Lab Manual Checklist - Completed');
+    var body = encodeURIComponent(
+      'I have completed the Lab Manual checklist.\n\n' +
+      'Date: ' + dateValue + '\n\n' +
+      'Please find the signed checklist PDF attached to this email.\n' +
+      '(The PDF was just downloaded to your computer - please attach it to this email.)\n\n' +
+      'Thank you!'
+    );
+    window.location.href = 'mailto:contextualdynamics@gmail.com?subject=' + subject + '&body=' + body;
+  }, 500);
+}
+
+function fallbackToPrint(dateValue) {
   var subject = encodeURIComponent('Lab Manual Checklist - Completed');
   var body = encodeURIComponent(
     'I have completed the Lab Manual checklist and attached a PDF of the signed checklist page.\n\n' +
-    'Date: ' + dateInput.value + '\n\n' +
+    'Date: ' + dateValue + '\n\n' +
     'To generate a PDF:\n' +
     '1. Print this page (Ctrl/Cmd + P)\n' +
     '2. Select "Save as PDF" as the destination\n' +
@@ -521,10 +627,8 @@ function emailChecklist() {
     'Alternatively, you can take a screenshot of the completed checklist.'
   );
 
-  // Open email client
   window.location.href = 'mailto:contextualdynamics@gmail.com?subject=' + subject + '&body=' + body;
 
-  // Also show print dialog for PDF generation
   setTimeout(function() {
     if (confirm('Would you like to print/save this page as PDF to attach to the email?')) {
       window.print();
