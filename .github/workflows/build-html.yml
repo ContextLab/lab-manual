@@ -82,11 +82,12 @@ jobs:
           # Download tufte.css
           curl -sL -o html_output/tufte.css https://raw.githubusercontent.com/edwardtufte/tufte-css/gh-pages/tufte.css
 
-          # Download ET Book fonts
-          mkdir -p html_output/et-book
-          for font in et-book-roman-line-figures et-book-roman-old-style-figures et-book-semi-bold-old-style-figures et-book-bold-line-figures; do
-            curl -sL -o "html_output/et-book/${font}.ttf" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}.ttf" 2>/dev/null || true
-            curl -sL -o "html_output/et-book/${font}.woff" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}.woff" 2>/dev/null || true
+          # Download ET Book fonts - tufte.css expects fonts in subdirectories
+          # The @font-face rules expect paths like: et-book/et-book-roman-line-figures/et-book-roman-line-figures.woff
+          for font in et-book-roman-line-figures et-book-roman-old-style-figures et-book-semi-bold-old-style-figures et-book-bold-line-figures et-book-display-italic-old-style-figures; do
+            mkdir -p "html_output/et-book/${font}"
+            curl -sL -o "html_output/et-book/${font}/${font}.ttf" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}/${font}.ttf" 2>/dev/null || true
+            curl -sL -o "html_output/et-book/${font}/${font}.woff" "https://github.com/edwardtufte/tufte-css/raw/gh-pages/et-book/${font}/${font}.woff" 2>/dev/null || true
           done
 
           # Copy lab logo

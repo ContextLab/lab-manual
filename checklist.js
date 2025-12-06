@@ -3,9 +3,63 @@ document.addEventListener('DOMContentLoaded', function() {
   // Fix enumeration numbering issues (tex4ht generates "1.2.3.1." instead of "1.")
   fixEnumerationNumbering();
 
+  // Wrap orphaned text nodes after h2 headings in containers for proper styling
+  wrapOrphanedTextNodes();
+
   // Convert the checklist section to interactive form
-  convertChecklistToInteractive();
+  // Need to wait a bit for MathJax to potentially process, but also handle native MathML
+  setTimeout(convertChecklistToInteractive, 100);
 });
+
+// Wrap orphaned text nodes after h2 headings in containers
+// tex4ht sometimes generates text directly after h2 without wrapping in <p>
+function wrapOrphanedTextNodes() {
+  var h2s = document.querySelectorAll('h2');
+  h2s.forEach(function(h2) {
+    var sibling = h2.nextSibling;
+    var nodesToWrap = [];
+
+    // Collect consecutive non-section, non-h2 nodes after the h2
+    while (sibling) {
+      if (sibling.nodeType === Node.ELEMENT_NODE) {
+        var tagName = sibling.tagName.toUpperCase();
+        // Stop at next major section
+        if (tagName === 'H2' || tagName === 'SECTION' || tagName === 'NAV') {
+          break;
+        }
+        // Stop if we hit a paragraph or list - those are already structured
+        if (tagName === 'P' || tagName === 'UL' || tagName === 'OL' || tagName === 'DL') {
+          break;
+        }
+      }
+
+      // Only collect text nodes and inline elements that appear before the first block element
+      if (sibling.nodeType === Node.TEXT_NODE && sibling.textContent.trim()) {
+        nodesToWrap.push(sibling);
+      } else if (sibling.nodeType === Node.ELEMENT_NODE) {
+        var tagName = sibling.tagName.toUpperCase();
+        // Inline elements that are part of the intro text
+        if (tagName === 'A' || tagName === 'SPAN' || tagName === 'LABEL' ||
+            tagName === 'INPUT' || tagName === 'MATH' || tagName === 'MJX-CONTAINER') {
+          nodesToWrap.push(sibling);
+        } else {
+          break;
+        }
+      }
+      sibling = sibling.nextSibling;
+    }
+
+    // If we found orphaned nodes, wrap them in a paragraph
+    if (nodesToWrap.length > 0) {
+      var wrapper = document.createElement('p');
+      wrapper.className = 'section-intro';
+      h2.parentNode.insertBefore(wrapper, nodesToWrap[0]);
+      nodesToWrap.forEach(function(node) {
+        wrapper.appendChild(node);
+      });
+    }
+  });
+}
 
 // Fix the enumeration numbering issues caused by tex4ht
 function fixEnumerationNumbering() {
@@ -73,9 +127,13 @@ function convertChecklistToInteractive() {
 
   nodesToHide.forEach(function(node) {
     // Check if this node contains a checkbox character
+    // Handle both native MathML (<math>) and MathJax-rendered (MJX-CONTAINER) elements
     var isCheckbox = false;
-    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'MJX-CONTAINER') {
-      isCheckbox = true;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      var tagName = node.tagName.toUpperCase();
+      if (tagName === 'MJX-CONTAINER' || tagName === 'MATH') {
+        isCheckbox = true;
+      }
     }
 
     if (isCheckbox) {
