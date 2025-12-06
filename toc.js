@@ -3,10 +3,13 @@ document.addEventListener('DOMContentLoaded', function() {
   var toc = document.getElementById('toc-list');
   if (!toc) return;
 
+  // Clear existing TOC items (tex4ht generates broken links)
+  toc.innerHTML = '';
+
   var headings = document.querySelectorAll('h2.chapterHead');
   headings.forEach(function(h, index) {
-    // Generate an ID if heading doesn't have one
-    if (!h.id) {
+    // Generate an ID if heading doesn't have one or it's empty
+    if (!h.id || h.id === '') {
       // Create slug from heading text
       var slug = h.textContent
         .toLowerCase()
