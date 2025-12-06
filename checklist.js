@@ -37,35 +37,55 @@ function convertChecklistToInteractive() {
 
   if (!checklistHeading) return;
 
-  // Find the paragraph with checklist items (contains checkbox characters)
-  // tex4ht may render checkboxes as different Unicode characters:
-  // \u2610 = ☐ (ballot box), \u25A1 = □ (white square)
-  var checklistParagraph = null;
+  // tex4ht generates a complex structure where checklist items are spread across
+  // many elements: MJX-CONTAINER (for checkbox chars), SPAN, A, and text nodes
+  // We need to gather all content from heading to the signature table
+
+  // Collect all elements between heading and signature table
+  var elementsToHide = [];
   var sibling = checklistHeading.nextElementSibling;
+  var signatureTable = null;
+
   while (sibling) {
-    if (sibling.textContent &&
-        (sibling.textContent.includes('\u2610') || sibling.textContent.includes('\u25A1'))) {
-      checklistParagraph = sibling;
+    // Check if this is the signature table (contains "Signature" and "Date" labels)
+    if (sibling.tagName === 'TABLE' ||
+        (sibling.textContent &&
+         sibling.textContent.includes('Signature') &&
+         sibling.textContent.includes('Date') &&
+         !sibling.textContent.includes('tasks'))) {
+      signatureTable = sibling;
       break;
     }
+    elementsToHide.push(sibling);
     sibling = sibling.nextElementSibling;
   }
 
-  if (!checklistParagraph) return;
+  // Get the parent element to extract text from
+  var parent = checklistHeading.parentElement;
+  if (!parent) return;
 
-  // Extract checklist items by splitting on checkbox character
-  var text = checklistParagraph.innerHTML;
+  // Get all text content between heading and signature table
+  // by walking through nodes and splitting on checkbox characters
+  var fullText = '';
+  elementsToHide.forEach(function(el) {
+    fullText += el.textContent || '';
+  });
+
+  // Check if we have checkbox characters
+  if (!fullText.includes('\u25A1') && !fullText.includes('\u2610')) {
+    return;
+  }
+
+  // Split by checkbox character (□ or ☐) and extract items
   var items = [];
+  var parts = fullText.split(/[\u25A1\u2610]/);
 
-  // Split by checkbox character and clean up
-  // Include both ballot box (\u2610-\u2612) and white square (\u25A1) variants
-  var parts = text.split(/\u2610|\u2611|\u2612|\u25A1/); // ☐ ☑ ☒ □
   parts.forEach(function(part, index) {
     if (index === 0) return; // Skip text before first checkbox
     var cleanText = part.trim();
     // Remove leading/trailing punctuation artifacts
     cleanText = cleanText.replace(/^[\s,]+/, '').replace(/[\s,]+$/, '');
-    if (cleanText.length > 10) { // Only include substantial items
+    if (cleanText.length > 15) { // Only include substantial items
       items.push(cleanText);
     }
   });
@@ -164,24 +184,18 @@ function convertChecklistToInteractive() {
 
   container.appendChild(signatureSection);
 
-  // Find and hide the original signature table
-  var signatureTable = null;
-  sibling = checklistParagraph.nextElementSibling;
-  while (sibling) {
-    if (sibling.tagName === 'TABLE' ||
-        (sibling.textContent && sibling.textContent.includes('Signature') && sibling.textContent.includes('Date'))) {
-      signatureTable = sibling;
-      break;
-    }
-    sibling = sibling.nextElementSibling;
-  }
+  // Hide all the original checklist elements
+  elementsToHide.forEach(function(el) {
+    el.style.display = 'none';
+  });
 
-  // Replace the original content with interactive version
-  checklistParagraph.style.display = 'none';
+  // Hide signature table if found
   if (signatureTable) {
     signatureTable.style.display = 'none';
   }
-  checklistParagraph.parentNode.insertBefore(container, checklistParagraph);
+
+  // Insert the interactive checklist after the heading
+  checklistHeading.parentNode.insertBefore(container, checklistHeading.nextSibling);
 
   // Initialize signature canvas
   initSignatureCanvas();
