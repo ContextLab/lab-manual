@@ -38,38 +38,53 @@ function convertChecklistToInteractive() {
   if (!checklistHeading) return;
 
   // tex4ht generates a complex structure where checklist items are spread across
-  // many elements: MJX-CONTAINER (for checkbox chars), SPAN, A, and text nodes
-  // We need to gather all content from heading to the signature table
+  // many nodes: MJX-CONTAINER (for checkbox chars), TEXT nodes, SPAN, A elements
+  // The actual item text is in TEXT NODES between elements, not inside elements
+  // We need to iterate over ALL child nodes, not just element siblings
 
-  // Collect all elements between heading and signature table
-  var elementsToHide = [];
-  var sibling = checklistHeading.nextElementSibling;
-  var signatureTable = null;
-
-  while (sibling) {
-    // Check if this is the signature table (contains "Signature" and "Date" labels)
-    if (sibling.tagName === 'TABLE' ||
-        (sibling.textContent &&
-         sibling.textContent.includes('Signature') &&
-         sibling.textContent.includes('Date') &&
-         !sibling.textContent.includes('tasks'))) {
-      signatureTable = sibling;
-      break;
-    }
-    elementsToHide.push(sibling);
-    sibling = sibling.nextElementSibling;
-  }
-
-  // Get the parent element to extract text from
   var parent = checklistHeading.parentElement;
   if (!parent) return;
 
-  // Get all text content between heading and signature table
-  // by walking through nodes and splitting on checkbox characters
+  // Find the index of the heading in parent's childNodes
+  var startIndex = -1;
+  var childNodes = parent.childNodes;
+  for (var i = 0; i < childNodes.length; i++) {
+    if (childNodes[i] === checklistHeading) {
+      startIndex = i;
+      break;
+    }
+  }
+  if (startIndex === -1) return;
+
+  // Collect all nodes (elements AND text nodes) after the heading until signature table
+  var nodesToHide = [];
+  var signatureTable = null;
   var fullText = '';
-  elementsToHide.forEach(function(el) {
-    fullText += el.textContent || '';
-  });
+
+  for (var i = startIndex + 1; i < childNodes.length; i++) {
+    var node = childNodes[i];
+
+    // Check if this is the signature table (TABLE element or contains Signature/Date labels)
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.tagName === 'TABLE' ||
+          (node.textContent &&
+           node.textContent.includes('Signature') &&
+           node.textContent.includes('Date') &&
+           !node.textContent.includes('tasks'))) {
+        signatureTable = node;
+        break;
+      }
+    }
+
+    nodesToHide.push(node);
+
+    // Extract text from both text nodes and elements
+    if (node.nodeType === Node.TEXT_NODE) {
+      fullText += node.textContent || '';
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      fullText += node.textContent || '';
+    }
+  }
 
   // Check if we have checkbox characters
   if (!fullText.includes('\u25A1') && !fullText.includes('\u2610')) {
@@ -184,9 +199,20 @@ function convertChecklistToInteractive() {
 
   container.appendChild(signatureSection);
 
-  // Hide all the original checklist elements
-  elementsToHide.forEach(function(el) {
-    el.style.display = 'none';
+  // Hide all the original checklist nodes (elements and text nodes)
+  nodesToHide.forEach(function(node) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      node.style.display = 'none';
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      // For text nodes, we need to remove them or replace with empty
+      // We'll wrap them in a span and hide it
+      if (node.textContent.trim()) {
+        var wrapper = document.createElement('span');
+        wrapper.style.display = 'none';
+        node.parentNode.insertBefore(wrapper, node);
+        wrapper.appendChild(node);
+      }
+    }
   });
 
   // Hide signature table if found
