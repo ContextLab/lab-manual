@@ -513,6 +513,19 @@ function emailChecklist() {
   generateChecklistPDF(dateInput.value);
 }
 
+// Replace Unicode ligatures with their component letters
+// jsPDF's standard fonts don't support ligature characters
+function replaceLigatures(text) {
+  return text
+    .replace(/\uFB00/g, 'ff')   // ﬀ
+    .replace(/\uFB01/g, 'fi')   // ﬁ
+    .replace(/\uFB02/g, 'fl')   // ﬂ
+    .replace(/\uFB03/g, 'ffi')  // ﬃ
+    .replace(/\uFB04/g, 'ffl')  // ﬄ
+    .replace(/\uFB05/g, 'st')   // ﬅ (long s + t)
+    .replace(/\uFB06/g, 'st');  // ﬆ (s + t)
+}
+
 // Generate PDF using jsPDF library
 function generateChecklistPDF(dateValue) {
   // Check if jsPDF is available
@@ -578,6 +591,9 @@ function createPDF(dateValue) {
   labels.forEach(function(label, index) {
     var isChecked = checkboxes[index] && checkboxes[index].checked;
     var text = label.textContent.trim();
+
+    // Replace ligatures that jsPDF can't render properly
+    text = replaceLigatures(text);
 
     // Wrap text to content width (leave room for checkbox)
     var wrappedLines = doc.splitTextToSize(text, contentWidth - 10);
