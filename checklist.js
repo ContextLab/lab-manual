@@ -203,9 +203,19 @@ function convertChecklistToInteractive() {
     items.push(currentItem.trim());
   }
 
-  // Clean up items - remove extra whitespace
+  // Clean up items - remove extra whitespace and filter out signature/date labels
   items = items.map(function(item) {
     return item.replace(/\s+/g, ' ').trim();
+  }).filter(function(item) {
+    // Filter out signature section labels that aren't actual checklist items
+    var lowerItem = item.toLowerCase();
+    if (lowerItem.startsWith('sign below') ||
+        lowerItem.startsWith('date:') ||
+        lowerItem === 'date' ||
+        lowerItem.startsWith('signature')) {
+      return false;
+    }
+    return true;
   });
 
   if (items.length === 0) return;
@@ -473,18 +483,6 @@ function loadChecklistState() {
 
 // Email functionality - generates PDF with jsPDF and opens email client
 function emailChecklist() {
-  // Check if all items are checked
-  var checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
-  var allChecked = true;
-  checkboxes.forEach(function(cb) {
-    if (!cb.checked) allChecked = false;
-  });
-
-  if (!allChecked) {
-    alert('Please check all items before submitting.');
-    return;
-  }
-
   // Check if signature exists
   if (signatureCanvas) {
     var ctx = signatureCanvas.getContext('2d');
