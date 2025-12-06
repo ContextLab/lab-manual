@@ -577,11 +577,10 @@ function createPDF(dateValue) {
   doc.setFontSize(10);
   labels.forEach(function(label, index) {
     var isChecked = checkboxes[index] && checkboxes[index].checked;
-    var checkSymbol = isChecked ? '\u2611' : '\u2610';  // ☑ or ☐
     var text = label.textContent.trim();
 
-    // Wrap text to content width
-    var wrappedLines = doc.splitTextToSize(text, contentWidth - 8);
+    // Wrap text to content width (leave room for checkbox)
+    var wrappedLines = doc.splitTextToSize(text, contentWidth - 10);
 
     // Check if we need a new page
     var itemHeight = wrappedLines.length * 4.5 + 3;
@@ -590,11 +589,22 @@ function createPDF(dateValue) {
       yPos = topMargin;
     }
 
-    // Draw checkbox symbol
-    doc.setFont(mainFont, 'normal');
-    doc.text(checkSymbol, leftMargin, yPos);
+    // Draw checkbox as a rectangle (3mm x 3mm)
+    var boxSize = 3;
+    var boxY = yPos - 2.5;  // Align with text baseline
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.rect(leftMargin, boxY, boxSize, boxSize);
+
+    // If checked, draw an X inside
+    if (isChecked) {
+      doc.setLineWidth(0.4);
+      doc.line(leftMargin + 0.5, boxY + 0.5, leftMargin + boxSize - 0.5, boxY + boxSize - 0.5);
+      doc.line(leftMargin + boxSize - 0.5, boxY + 0.5, leftMargin + 0.5, boxY + boxSize - 0.5);
+    }
 
     // Draw wrapped text with proper indentation
+    doc.setFont(mainFont, 'normal');
     wrappedLines.forEach(function(line, lineIndex) {
       doc.text(line, leftMargin + 6, yPos + (lineIndex * 4.5));
     });
