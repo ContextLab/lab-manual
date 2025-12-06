@@ -13,9 +13,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Wrap orphaned text nodes after h2 headings in containers
 // tex4ht sometimes generates text directly after h2 without wrapping in <p>
+// IMPORTANT: Skip the checklist section - it needs special handling
 function wrapOrphanedTextNodes() {
   var h2s = document.querySelectorAll('h2');
   h2s.forEach(function(h2) {
+    // Skip the checklist section - it will be handled by convertChecklistToInteractive
+    if (h2.textContent.toLowerCase().includes('checklist') &&
+        h2.textContent.toLowerCase().includes('signature')) {
+      return;
+    }
+
     var sibling = h2.nextSibling;
     var nodesToWrap = [];
 
