@@ -38,10 +38,13 @@ function convertChecklistToInteractive() {
   if (!checklistHeading) return;
 
   // Find the paragraph with checklist items (contains checkbox characters)
+  // tex4ht may render checkboxes as different Unicode characters:
+  // \u2610 = ☐ (ballot box), \u25A1 = □ (white square)
   var checklistParagraph = null;
   var sibling = checklistHeading.nextElementSibling;
   while (sibling) {
-    if (sibling.textContent && sibling.textContent.includes('\u2610')) { // ☐ character
+    if (sibling.textContent &&
+        (sibling.textContent.includes('\u2610') || sibling.textContent.includes('\u25A1'))) {
       checklistParagraph = sibling;
       break;
     }
@@ -55,7 +58,8 @@ function convertChecklistToInteractive() {
   var items = [];
 
   // Split by checkbox character and clean up
-  var parts = text.split(/\u2610|\u2611|\u2612/); // ☐ ☑ ☒
+  // Include both ballot box (\u2610-\u2612) and white square (\u25A1) variants
+  var parts = text.split(/\u2610|\u2611|\u2612|\u25A1/); // ☐ ☑ ☒ □
   parts.forEach(function(part, index) {
     if (index === 0) return; // Skip text before first checkbox
     var cleanText = part.trim();
