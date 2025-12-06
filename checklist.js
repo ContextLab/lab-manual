@@ -38,71 +38,75 @@ function convertChecklistToInteractive() {
   if (!checklistHeading) return;
 
   // tex4ht generates a complex structure where checklist items are spread across
-  // many nodes: MJX-CONTAINER (for checkbox chars), TEXT nodes, SPAN, A elements
-  // The actual item text is in TEXT NODES between elements, not inside elements
-  // We need to iterate over ALL child nodes, not just element siblings
+  // sibling nodes after the h2 heading:
+  // - MJX-CONTAINER elements contain the checkbox character (□)
+  // - TEXT nodes contain the actual item text
+  // - SPAN and A elements contain inline formatting
+  // We use nextSibling to iterate through ALL siblings (including text nodes)
 
-  var parent = checklistHeading.parentElement;
-  if (!parent) return;
-
-  // Find the index of the heading in parent's childNodes
-  var startIndex = -1;
-  var childNodes = parent.childNodes;
-  for (var i = 0; i < childNodes.length; i++) {
-    if (childNodes[i] === checklistHeading) {
-      startIndex = i;
-      break;
-    }
-  }
-  if (startIndex === -1) return;
-
-  // Collect all nodes (elements AND text nodes) after the heading until signature table
+  // Collect all sibling nodes after the heading until we hit a TABLE or end
   var nodesToHide = [];
   var signatureTable = null;
-  var fullText = '';
+  var sibling = checklistHeading.nextSibling;
 
-  for (var i = startIndex + 1; i < childNodes.length; i++) {
-    var node = childNodes[i];
-
-    // Check if this is the signature table (TABLE element or contains Signature/Date labels)
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      if (node.tagName === 'TABLE' ||
-          (node.textContent &&
-           node.textContent.includes('Signature') &&
-           node.textContent.includes('Date') &&
-           !node.textContent.includes('tasks'))) {
-        signatureTable = node;
+  while (sibling) {
+    // Check if this is the signature table
+    if (sibling.nodeType === Node.ELEMENT_NODE) {
+      if (sibling.tagName === 'TABLE') {
+        signatureTable = sibling;
+        break;
+      }
+      // Also check for next section (another h2)
+      if (sibling.tagName === 'H2') {
         break;
       }
     }
-
-    nodesToHide.push(node);
-
-    // Extract text from both text nodes and elements
-    if (node.nodeType === Node.TEXT_NODE) {
-      fullText += node.textContent || '';
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      fullText += node.textContent || '';
-    }
+    nodesToHide.push(sibling);
+    sibling = sibling.nextSibling;
   }
 
-  // Check if we have checkbox characters
-  if (!fullText.includes('\u25A1') && !fullText.includes('\u2610')) {
-    return;
-  }
-
-  // Split by checkbox character (□ or ☐) and extract items
+  // Now extract checklist items by walking through nodes and building items
+  // Each item starts after a MJX-CONTAINER (checkbox) and continues until the next one
   var items = [];
-  var parts = fullText.split(/[\u25A1\u2610]/);
+  var currentItem = '';
+  var foundFirstCheckbox = false;
 
-  parts.forEach(function(part, index) {
-    if (index === 0) return; // Skip text before first checkbox
-    var cleanText = part.trim();
-    // Remove leading/trailing punctuation artifacts
-    cleanText = cleanText.replace(/^[\s,]+/, '').replace(/[\s,]+$/, '');
-    if (cleanText.length > 15) { // Only include substantial items
-      items.push(cleanText);
+  nodesToHide.forEach(function(node) {
+    // Check if this node contains a checkbox character
+    var isCheckbox = false;
+    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'MJX-CONTAINER') {
+      isCheckbox = true;
     }
+
+    if (isCheckbox) {
+      // Save the previous item if we have one
+      if (foundFirstCheckbox && currentItem.trim().length > 15) {
+        items.push(currentItem.trim());
+      }
+      currentItem = '';
+      foundFirstCheckbox = true;
+    } else if (foundFirstCheckbox) {
+      // Add text content to current item
+      if (node.nodeType === Node.TEXT_NODE) {
+        currentItem += node.textContent || '';
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        // For elements like SPAN and A, get their text content
+        // But skip the first DIV which has duplicate content
+        if (node.tagName !== 'DIV') {
+          currentItem += node.textContent || '';
+        }
+      }
+    }
+  });
+
+  // Don't forget the last item
+  if (currentItem.trim().length > 15) {
+    items.push(currentItem.trim());
+  }
+
+  // Clean up items - remove extra whitespace
+  items = items.map(function(item) {
+    return item.replace(/\s+/g, ' ').trim();
   });
 
   if (items.length === 0) return;
