@@ -127,6 +127,17 @@ dd {
   margin-bottom: 0.5em;
 }
 
+/* Nested definition lists inside dd should take full width of parent */
+dd dl {
+  width: 100%;
+}
+
+/* Margin notes inside nested lists need adjusted positioning */
+dd .marginnote, dd .sidenote {
+  margin-right: -110%;
+  width: 45%;
+}
+
 /* Checklist styling - make checkboxes visible */
 /* The checklist uses Unicode checkbox characters */
 
@@ -204,4 +215,151 @@ h3 + p + div.columns-2,
 .columns-2 + p + div.columns-2 {
   white-space: pre-line;
   line-height: 1.8;
+}
+
+/* Interactive checklist styles */
+.interactive-checklist {
+  width: 55%;
+  margin: 1.5em 0;
+}
+
+.interactive-checklist .checklist-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.75em;
+  padding: 0.5em;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.interactive-checklist .checklist-item:hover {
+  background-color: rgba(0, 105, 62, 0.05);
+}
+
+.interactive-checklist .checklist-item input[type="checkbox"] {
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.75em;
+  margin-top: 0.2em;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #00693E;
+}
+
+.interactive-checklist .checklist-item label {
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.interactive-checklist .checklist-item.completed label {
+  color: #666;
+}
+
+/* Signature section styles */
+.signature-section {
+  width: 55%;
+  margin: 2em 0;
+  padding: 1.5em;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fafaf8;
+}
+
+.signature-section h3 {
+  margin-top: 0;
+  color: #00693E;
+}
+
+.signature-field {
+  margin: 1em 0;
+}
+
+.signature-field label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+.signature-field input[type="text"],
+.signature-field input[type="date"] {
+  width: 100%;
+  max-width: 300px;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1em;
+}
+
+.signature-field input[type="text"]:focus,
+.signature-field input[type="date"]:focus {
+  outline: none;
+  border-color: #00693E;
+  box-shadow: 0 0 0 2px rgba(0, 105, 62, 0.2);
+}
+
+/* Canvas for signature drawing */
+.signature-canvas-container {
+  margin: 1em 0;
+}
+
+.signature-canvas {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: crosshair;
+  touch-action: none;
+  background-color: white;
+}
+
+.signature-buttons {
+  margin-top: 0.5em;
+}
+
+.signature-buttons button {
+  margin-right: 0.5em;
+}
+
+/* Email button */
+.email-checklist-btn {
+  background-color: #00693E;
+  color: white;
+  border: none;
+  padding: 0.75em 1.5em;
+  font-size: 1em;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1em;
+  transition: background-color 0.2s;
+}
+
+.email-checklist-btn:hover {
+  background-color: #004d2e;
+}
+
+.email-checklist-btn:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+/* Clear signature button */
+.clear-signature-btn {
+  background-color: #666;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  font-size: 0.9em;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.clear-signature-btn:hover {
+  background-color: #444;
+}
+
+/* Mobile responsive for checklist */
+@media (max-width: 760px) {
+  .interactive-checklist,
+  .signature-section {
+    width: 100%;
+  }
 }

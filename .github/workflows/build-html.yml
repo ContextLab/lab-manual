@@ -7,6 +7,7 @@ on:
       - 'lab_manual.tex'
       - 'tufte.cfg'
       - 'toc.js'
+      - 'checklist.js'
       - 'lab-manual.css'
       - '.github/workflows/build-html.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'lab_manual.tex'
       - 'tufte.cfg'
       - 'toc.js'
+      - 'checklist.js'
       - 'lab-manual.css'
   workflow_dispatch:  # Allow manual triggering
 
@@ -90,8 +92,9 @@ jobs:
           # Copy lab logo
           cp -r lab_logo html_output/
 
-          # Copy custom files (toc.js for table of contents, lab-manual.css for custom styling)
+          # Copy custom files (toc.js for table of contents, checklist.js for interactive checklist, lab-manual.css for custom styling)
           cp toc.js html_output/
+          cp checklist.js html_output/
           cp lab-manual.css html_output/
 
           # Rename main HTML file to index.html if needed

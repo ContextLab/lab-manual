@@ -25,3 +25,6 @@ lab_manual.blg
 lab_manual.html
 html_output/
 html_test/
+
+# Playwright MCP screenshots
+.playwright-mcp/
