@@ -40,6 +40,8 @@ from .config import get_config, Config
 from .handlers.onboard import register_onboard_handlers
 from .handlers.approval import register_approval_handlers
 from .handlers.offboard import register_offboard_handlers
+from .handlers.workflow_step import register_workflow_step_handlers
+from .handlers.workflow_listener import register_workflow_listener_handlers
 
 # Configure logging
 logging.basicConfig(
@@ -68,6 +70,8 @@ def create_app(config: Config) -> App:
     register_onboard_handlers(app, config)
     register_approval_handlers(app, config)
     register_offboard_handlers(app, config)
+    register_workflow_step_handlers(app, config)
+    register_workflow_listener_handlers(app, config)
 
     # Add a health check command
     @app.command("/cdl-ping")

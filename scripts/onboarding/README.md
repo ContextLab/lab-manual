@@ -4,7 +4,20 @@ A Slack bot for automating the onboarding and offboarding process for CDL lab me
 
 ## Features
 
-### Onboarding (`/cdl-onboard @user`)
+### Onboarding (Two Methods)
+
+**Method 1: Workflow Builder Integration (Recommended)**
+
+Integrates with existing "Join the lab!" and "Leave the lab" Slack Workflow Builder workflows. New members initiate their own onboarding by clicking a workflow link.
+
+- New member runs the "Join the lab!" workflow
+- Bot receives form data and validates GitHub username
+- Admin gets an interactive approval message
+- On approval: GitHub invite sent, calendars shared, photo processed
+
+**Method 2: Admin-Initiated (`/cdl-onboard @user`)**
+
+Admin can also start onboarding manually:
 - Sends welcome message to new member
 - Collects: GitHub username, bio, photo, website URL
 - Validates GitHub username via API
@@ -14,8 +27,9 @@ A Slack bot for automating the onboarding and offboarding process for CDL lab me
 - Shares Google Calendar access
 - All actions require admin approval
 
-### Offboarding (`/cdl-offboard`)
+### Offboarding (`/cdl-offboard` or Workflow)
 - Can be initiated by member or admin
+- Works with "Leave the lab" Workflow Builder workflow
 - Admin selects what access to revoke (GitHub, calendars)
 - Does NOT automatically remove anyone
 - Generates checklist for manual steps
@@ -25,7 +39,8 @@ A Slack bot for automating the onboarding and offboarding process for CDL lab me
 ### 1. Create Slack App
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps)
-2. Create new app from scratch
+2. Create new app from manifest (use `manifest.json` in this directory)
+   - Or create from scratch and configure manually:
 3. Enable Socket Mode in "Socket Mode" settings
 4. Create an app-level token with `connections:write` scope
 5. Add Bot Token Scopes in "OAuth & Permissions":
@@ -36,13 +51,19 @@ A Slack bot for automating the onboarding and offboarding process for CDL lab me
    - `im:write`
    - `im:history`
    - `files:read`
-6. Create slash commands in "Slash Commands":
+   - `files:write`
+   - `workflow.steps:execute`
+6. Add Event Subscriptions:
+   - `file_shared`
+   - `function_executed`
+7. Create slash commands in "Slash Commands":
    - `/cdl-onboard` - Start onboarding a new member
    - `/cdl-offboard` - Start offboarding process
    - `/cdl-ping` - Health check
    - `/cdl-help` - Show help
-7. Enable "Interactivity & Shortcuts"
-8. Install app to workspace
+8. Enable "Interactivity & Shortcuts"
+9. Enable "Org Level Apps" (for Workflow Builder custom steps)
+10. Install app to workspace
 
 ### 2. Create GitHub Token
 
@@ -146,16 +167,48 @@ pytest tests/test_onboarding/test_bio_service.py -v
 pytest tests/test_onboarding/ -v
 ```
 
+## Workflow Builder Integration
+
+The bot provides custom steps that can be added to Slack Workflow Builder workflows.
+
+### Adding Custom Steps to Workflows
+
+1. Ensure the Slack app has `workflow.steps:execute` scope and `function_executed` event
+2. In Workflow Builder, create or edit a workflow
+3. Add a step and search for "CDL Onboarding" to find the custom steps:
+   - **Process CDL Onboarding**: Receives form data, validates GitHub, sends approval to admin
+   - **Process CDL Offboarding**: Notifies admin and generates checklist
+
+### Connecting to Existing "Join the Lab!" Workflow
+
+1. Edit your existing "Join the lab!" workflow in Workflow Builder
+2. After the form collection step, add the "Process CDL Onboarding" step
+3. Map the form fields to the step inputs:
+   - `submitter_id` -> Person who started the workflow
+   - `github_username` -> GitHub username field from form
+   - `bio` -> Bio field from form
+   - `website_url` -> Website field from form
+   - `photo_url` -> Photo URL if collected
+
+### Connecting to "Leave the Lab" Workflow
+
+1. Create a new "Leave the lab" workflow or add to existing
+2. Add the "Process CDL Offboarding" step
+3. Map:
+   - `submitter_id` -> Person leaving the lab
+
 ## Architecture
 
 ```
 scripts/onboarding/
 ├── bot.py              # Main entry point
 ├── config.py           # Configuration management
+├── manifest.json       # Slack app manifest (with functions)
 ├── handlers/
 │   ├── onboard.py      # /cdl-onboard command handling
 │   ├── approval.py     # Admin approval workflow
-│   └── offboard.py     # /cdl-offboard command handling
+│   ├── offboard.py     # /cdl-offboard command handling
+│   └── workflow_step.py # Workflow Builder custom steps
 ├── models/
 │   └── onboarding_request.py  # Data models
 └── services/

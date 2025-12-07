@@ -205,6 +205,271 @@ def register_approval_handlers(app: App, config: Config):
         """Handle GitHub team selection (just acknowledge, we'll read the value on approval)."""
         ack()
 
+    # ========== Workflow-initiated onboarding approval handlers ==========
+    # These handlers are for approving onboarding requests that came through
+    # Workflow Builder workflows (member-initiated) rather than slash commands.
+
+    @app.action("approve_workflow_onboarding")
+    def handle_workflow_approve(ack, body, client: WebClient, action, complete, fail):
+        """Handle approval of a workflow-initiated onboarding request."""
+        ack()
+
+        user_id = action["value"]
+        admin_id = body["user"]["id"]
+
+        # Verify admin
+        if admin_id != config.slack.admin_user_id:
+            return
+
+        request = get_request(user_id)
+        if not request:
+            logger.error(f"No request found for user {user_id}")
+            return
+
+        # Get selected teams from the message
+        selected_team_ids = _get_selected_teams(body)
+
+        request.github_teams = selected_team_ids
+        request.approved_by = admin_id
+        request.update_status(OnboardingStatus.GITHUB_PENDING)
+        save_request(request)
+
+        # Update the approval message
+        _update_approval_message(client, body, "Approved", request)
+
+        # Process the approval
+        _process_approval(client, config, request, github_service, calendar_service)
+
+        # Complete the workflow step (if it came from a workflow)
+        try:
+            from .workflow_step import get_workflow_execution, delete_workflow_execution
+            execution = get_workflow_execution(user_id)
+            if execution and complete:
+                complete({
+                    "status": "approved",
+                    "github_username": request.github_username,
+                    "name": request.name,
+                })
+                delete_workflow_execution(user_id)
+        except Exception as e:
+            logger.warning(f"Could not complete workflow step: {e}")
+
+    @app.action("reject_workflow_onboarding")
+    def handle_workflow_reject(ack, body, client: WebClient, action, complete, fail):
+        """Handle rejection of a workflow-initiated onboarding request."""
+        ack()
+
+        user_id = action["value"]
+        admin_id = body["user"]["id"]
+
+        # Verify admin
+        if admin_id != config.slack.admin_user_id:
+            return
+
+        request = get_request(user_id)
+        if not request:
+            return
+
+        request.update_status(OnboardingStatus.REJECTED)
+        save_request(request)
+
+        # Update the approval message
+        _update_approval_message(client, body, "Rejected", request)
+
+        # Notify the user
+        try:
+            client.chat_postMessage(
+                channel=request.slack_channel_id,
+                text="Your onboarding request was not approved. Please contact the lab admin for more information.",
+            )
+        except SlackApiError as e:
+            logger.error(f"Error notifying user of rejection: {e}")
+
+        # Fail the workflow step (if it came from a workflow)
+        try:
+            from .workflow_step import get_workflow_execution, delete_workflow_execution
+            execution = get_workflow_execution(user_id)
+            if execution and fail:
+                fail("Onboarding request was rejected by admin")
+                delete_workflow_execution(user_id)
+        except Exception as e:
+            logger.warning(f"Could not fail workflow step: {e}")
+
+        # Clean up
+        delete_request(user_id)
+
+    @app.action("request_changes_workflow_onboarding")
+    def handle_workflow_request_changes(ack, body, client: WebClient, action):
+        """Handle request for changes to a workflow-initiated onboarding request."""
+        ack()
+
+        user_id = action["value"]
+        admin_id = body["user"]["id"]
+
+        # Verify admin
+        if admin_id != config.slack.admin_user_id:
+            return
+
+        request = get_request(user_id)
+        if not request:
+            return
+
+        # Open a modal for the admin to specify what changes are needed
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view={
+                    "type": "modal",
+                    "callback_id": f"workflow_changes_modal_{user_id}",
+                    "private_metadata": user_id,
+                    "title": {"type": "plain_text", "text": "Request Changes"},
+                    "submit": {"type": "plain_text", "text": "Send"},
+                    "close": {"type": "plain_text", "text": "Cancel"},
+                    "blocks": [
+                        {
+                            "type": "input",
+                            "block_id": "changes_block",
+                            "element": {
+                                "type": "plain_text_input",
+                                "action_id": "changes_input",
+                                "multiline": True,
+                                "placeholder": {
+                                    "type": "plain_text",
+                                    "text": "Describe the changes needed...",
+                                },
+                            },
+                            "label": {
+                                "type": "plain_text",
+                                "text": "What changes are needed?",
+                            },
+                        },
+                    ],
+                },
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening changes modal: {e}")
+
+    @app.view(re.compile(r"workflow_changes_modal_.*"))
+    def handle_workflow_changes_modal(ack, body, client: WebClient, view):
+        """Handle submission of the workflow changes request modal."""
+        ack()
+
+        user_id = view["private_metadata"]
+        request = get_request(user_id)
+        if not request:
+            return
+
+        changes_text = view["state"]["values"]["changes_block"]["changes_input"]["value"]
+
+        request.update_status(OnboardingStatus.PENDING_INFO)
+        save_request(request)
+
+        # Notify the user
+        try:
+            client.chat_postMessage(
+                channel=request.slack_channel_id,
+                text="The admin has requested some changes to your onboarding information.",
+                blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": ":memo: *Changes Requested*\n\nThe lab admin has requested the following changes:",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f">{changes_text}",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Please reply to this message with the updated information, or re-run the \"Join the lab\" workflow.",
+                        },
+                    },
+                ],
+            )
+        except SlackApiError as e:
+            logger.error(f"Error notifying user of changes: {e}")
+
+    @app.action("start_offboarding_workflow")
+    def handle_start_offboarding(ack, body, client: WebClient, action):
+        """Handle the start offboarding button from workflow notification."""
+        ack()
+
+        user_id = action["value"]
+        admin_id = body["user"]["id"]
+
+        # Verify admin
+        if admin_id != config.slack.admin_user_id:
+            return
+
+        # Open modal to select what to revoke
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view={
+                    "type": "modal",
+                    "callback_id": f"offboarding_modal_{user_id}",
+                    "private_metadata": user_id,
+                    "title": {"type": "plain_text", "text": "Offboarding"},
+                    "submit": {"type": "plain_text", "text": "Process"},
+                    "close": {"type": "plain_text", "text": "Cancel"},
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"Select what access to revoke for <@{user_id}>:",
+                            },
+                        },
+                        {
+                            "type": "input",
+                            "block_id": "revoke_options",
+                            "element": {
+                                "type": "checkboxes",
+                                "action_id": "revoke_checkboxes",
+                                "options": [
+                                    {
+                                        "text": {"type": "plain_text", "text": "Remove from GitHub org"},
+                                        "value": "github",
+                                    },
+                                    {
+                                        "text": {"type": "plain_text", "text": "Remove calendar access"},
+                                        "value": "calendar",
+                                    },
+                                    {
+                                        "text": {"type": "plain_text", "text": "Move to alumni on website"},
+                                        "value": "website_alumni",
+                                    },
+                                ],
+                                "initial_options": [
+                                    {
+                                        "text": {"type": "plain_text", "text": "Remove from GitHub org"},
+                                        "value": "github",
+                                    },
+                                    {
+                                        "text": {"type": "plain_text", "text": "Remove calendar access"},
+                                        "value": "calendar",
+                                    },
+                                    {
+                                        "text": {"type": "plain_text", "text": "Move to alumni on website"},
+                                        "value": "website_alumni",
+                                    },
+                                ],
+                            },
+                            "label": {"type": "plain_text", "text": "Access to revoke"},
+                        },
+                    ],
+                },
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening offboarding modal: {e}")
+
 
 def _get_selected_teams(body: dict) -> list[int]:
     """Extract selected team IDs from the message state."""
