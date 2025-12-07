@@ -1,0 +1,91 @@
+# CDL Conda Environment
+# Contextual Dynamics Laboratory, Dartmouth College
+#
+# This environment includes all packages needed for CDL research.
+#
+# To create this environment:
+#   conda env create -f cdl-environment.yml
+#
+# To update an existing environment:
+#   conda env update -n cdl -f cdl-environment.yml --prune
+#
+# To activate:
+#   conda activate cdl
+#
+
+name: cdl
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+
+dependencies:
+  # Python version
+  - python=3.11
+
+  # Core scientific computing
+  - numpy>=1.24
+  - scipy>=1.11
+  - pandas>=2.0
+  - polars>=0.19
+
+  # Visualization
+  - matplotlib>=3.7
+  - seaborn>=0.12
+
+  # Machine learning
+  - scikit-learn>=1.3
+
+  # PyTorch - will install appropriate version for platform (CPU/CUDA/MPS)
+  - pytorch>=2.0
+  - torchvision>=0.15
+  - torchaudio>=2.0
+
+  # Jupyter
+  - jupyter
+  - jupyterlab
+  - ipykernel
+  - ipywidgets
+
+  # Interactive plotting
+  - ipympl
+
+  # Utilities
+  - requests>=2.28
+  - tqdm
+  - joblib
+  - h5py
+  - pyyaml
+
+  # Development tools
+  - pytest
+  - pytest-cov
+
+  # Neuroimaging (lightweight dependencies)
+  - nibabel
+  - nilearn
+
+  # pip-installed packages
+  - pip
+  - pip:
+    # Dimensionality reduction
+    - umap-learn>=0.5
+
+    # Transformers and HuggingFace
+    - transformers>=4.30
+    - diffusers>=0.21
+    - datasets>=2.14
+    - huggingface-hub>=0.17
+    - accelerate>=0.24
+
+    # CDL packages
+    - hypertools>=0.8
+    - quail>=0.2
+    - timecorr>=0.1
+    - supereeg>=0.2
+
+    # Data storage
+    - deepdish>=0.3
+
+    # PPCA for hypertools
+    - ppca>=0.0.4
