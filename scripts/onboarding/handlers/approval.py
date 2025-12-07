@@ -5,6 +5,7 @@ Handles admin approval/rejection of onboarding requests.
 """
 
 import logging
+import re
 from typing import Optional
 
 from slack_bolt import App
@@ -149,7 +150,7 @@ def register_approval_handlers(app: App, config: Config):
         except SlackApiError as e:
             logger.error(f"Error opening changes modal: {e}")
 
-    @app.view_regex(r"request_changes_modal_.*")
+    @app.view(re.compile(r"request_changes_modal_.*"))
     def handle_changes_modal(ack, body, client: WebClient, view):
         """Handle submission of the request changes modal."""
         ack()
