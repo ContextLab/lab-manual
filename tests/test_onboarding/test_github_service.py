@@ -33,9 +33,11 @@ class TestGitHubServiceInit:
 
     def test_init_with_invalid_org(self, github_token):
         """Test initialization with invalid organization name."""
-        # This should raise an error or handle gracefully
+        # The org is lazy loaded, so we need to access it to trigger the error
+        service = GitHubService(github_token, "nonexistent-org-that-does-not-exist-12345")
         with pytest.raises(Exception):
-            GitHubService(github_token, "nonexistent-org-that-does-not-exist-12345")
+            # Accessing the org property should raise an exception
+            _ = service.org
 
 
 class TestUsernameValidation:

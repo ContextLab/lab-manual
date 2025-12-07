@@ -259,9 +259,9 @@ class TestEdgeCases:
 
     def test_edit_bio_special_characters(self, bio_service):
         """Test handling bio with special characters."""
-        raw_bio = "I study café culture & its effects on productivity! My research uses ü and é."
+        raw_bio = "I study cafÃ© culture & its effects on productivity! My research uses Î± and Î²."
 
-        edited_bio, error = bio_service.edit_bio(raw_bio, "Marie Müller")
+        edited_bio, error = bio_service.edit_bio(raw_bio, "Marie MÃ¼ller")
 
         assert error is None
         assert edited_bio != ""
