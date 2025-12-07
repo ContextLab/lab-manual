@@ -6,6 +6,8 @@
 % This template has been downloaded from:
 % http://www.LaTeXTemplates.com
 %
+% Updated 2024-12-07: Added development environment setup section
+%
 % License:
 % CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
 %
@@ -863,6 +865,52 @@ channels).  This generally depends on how long you've been in the lab
 and/or how many projects you are expecting to interface with.  If you
 feel you don't have the appropriate account type, please communicate
 your concerns to \director.
+
+\newthought{Setting up your development environment}
+\label{sec:dev-environment}
+
+\noindent To ensure all lab members have consistent development environments,
+we provide an automated setup script. The script installs standard applications
+and creates a Python environment with all necessary packages for lab research.
+
+\marginnote{\texttt{TASK:} Run the CDL setup script on your computer
+  by following the instructions below. Verify that all installations
+  complete successfully.}
+
+\textbf{To run the setup script:}
+
+\textit{On macOS or Linux:}
+\begin{verbatim}
+curl -fsSL https://raw.githubusercontent.com/
+  ContextLab/lab-manual/master/scripts/setup.sh | bash
+\end{verbatim}
+
+\textit{On Windows (PowerShell as Administrator):}
+\begin{verbatim}
+irm https://raw.githubusercontent.com/ContextLab/
+  lab-manual/master/scripts/setup.ps1 | iex
+\end{verbatim}
+
+\textbf{What the script installs:}
+\begin{itemize}
+\item \textbf{Applications:} Slack, VS Code, \LaTeX~distribution, Git, Dropbox
+\item \textbf{Python environment:} Miniconda with the \texttt{cdl} conda environment
+\item \textbf{Python packages:} NumPy, Pandas, PyTorch, Transformers, HyperTools,
+  Quail, timecorr, supereeg, and other lab-standard packages
+\end{itemize}
+
+\noindent After installation, activate the CDL environment with:
+\begin{verbatim}
+conda activate cdl
+\end{verbatim}
+
+\textbf{Getting help with setup issues:}
+\begin{itemize}
+\item For software or hardware issues: email \href{mailto:help@dartmouth.edu}{help@dartmouth.edu}
+\item For lab-specific issues: reach out to \director~via Slack or email
+\item For non-urgent questions or general interest problems:
+  file an issue at \url{https://github.com/ContextLab/lab-manual/issues}
+\end{itemize}
 
 \newthought{CITI training}
 
@@ -1966,6 +2014,10 @@ feel you need access to RAPPORT then let \director~know.
   have also recompiled the PDF of the lab manual by running
   \texttt{pdflatex} \textbf{twice}, and have ensured that (a) the PDF compiled
   without errors, and (b) the table of contents was generated correctly.
+  \item I have run the CDL setup script (described in the
+  \hyperref[sec:dev-environment]{Setting up your development environment}
+  section) and verified that my development environment is correctly
+  configured.
   \item I have access to the following lab calendars:
     Contextual Dynamics Lab, Out of lab, CDL Resources, DHMC Meetings (if
     applicable), and PBS department events.
