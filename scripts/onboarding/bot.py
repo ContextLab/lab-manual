@@ -42,6 +42,8 @@ from .handlers.approval import register_approval_handlers
 from .handlers.offboard import register_offboard_handlers
 from .handlers.workflow_step import register_workflow_step_handlers
 from .handlers.workflow_listener import register_workflow_listener_handlers
+from .handlers.website_approval import register_website_approval_handlers
+from .startup_queue import process_startup_queue, StartupQueueProcessor, register_startup_queue_handlers
 
 # Configure logging
 logging.basicConfig(
@@ -72,6 +74,8 @@ def create_app(config: Config) -> App:
     register_offboard_handlers(app, config)
     register_workflow_step_handlers(app, config)
     register_workflow_listener_handlers(app, config)
+    register_website_approval_handlers(app, config)
+    register_startup_queue_handlers(app, config)
 
     # Add a health check command
     @app.command("/cdl-ping")
@@ -151,6 +155,13 @@ def main():
 
         # Create the app
         app = create_app(config)
+
+        # Process any missed workflow submissions from when bot was offline
+        from slack_sdk import WebClient
+        client = WebClient(token=config.slack.bot_token)
+        missed_count = process_startup_queue(client, config)
+        if missed_count > 0:
+            logger.info(f"Queued {missed_count} missed workflow submissions for processing")
 
         # Start the bot in Socket Mode
         handler = SocketModeHandler(app, config.slack.app_token)

@@ -24,9 +24,21 @@ from ..config import Config
 from ..models.onboarding_request import OnboardingRequest, OnboardingStatus
 from ..services.github_service import GitHubService
 from ..services.bio_service import BioService
-from .onboard import get_request, save_request, delete_request
+from ..storage import get_request, save_request, delete_request
+from ..startup_queue import StartupQueueProcessor
 
 logger = logging.getLogger(__name__)
+
+# Global processor instance for marking messages as processed
+_startup_processor: Optional[StartupQueueProcessor] = None
+
+
+def _get_startup_processor(client, config) -> StartupQueueProcessor:
+    """Get or create the startup processor for tracking processed messages."""
+    global _startup_processor
+    if _startup_processor is None:
+        _startup_processor = StartupQueueProcessor(client, config)
+    return _startup_processor
 
 # Temporary storage for partial onboarding data (keyed by Slack user ID)
 # This holds the first form submission until we receive the second
@@ -116,6 +128,10 @@ def register_workflow_listener_handlers(app: App, config: Config):
         has_github = "github_username" in parsed_data
         has_bio = "bio" in parsed_data or "name" in parsed_data
 
+        # Get the startup processor to mark messages as processed
+        processor = _get_startup_processor(client, config)
+        msg_ts = event.get("ts", "")
+
         if has_github and not has_bio:
             # This is the first form (Step 4) - GitHub and email
             logger.info(f"Received first workflow form for {submitter_id}")
@@ -125,6 +141,9 @@ def register_workflow_listener_handlers(app: App, config: Config):
             partial.update(parsed_data)
             partial["submitter_id"] = submitter_id
             save_partial_request(submitter_id, partial)
+
+            # Mark as processed
+            processor.mark_processed(msg_ts)
 
             # Acknowledge receipt but wait for second form
             try:
@@ -151,7 +170,8 @@ def register_workflow_listener_handlers(app: App, config: Config):
                 github_service, bio_service, channel
             )
 
-            # Clean up partial data
+            # Mark as processed and clean up partial data
+            processor.mark_processed(msg_ts)
             delete_partial_request(submitter_id)
 
         else:
@@ -161,6 +181,7 @@ def register_workflow_listener_handlers(app: App, config: Config):
             partial.update(parsed_data)
             partial["submitter_id"] = submitter_id
             save_partial_request(submitter_id, partial)
+            processor.mark_processed(msg_ts)
 
 
 def _parse_workflow_message(text: str) -> dict:

@@ -31,6 +31,7 @@ class OffboardingRequest:
     email: str = ""
     remove_github: bool = False
     remove_calendars: bool = False
+    move_to_alumni: bool = False
     created_at: datetime = field(default_factory=datetime.now)
 
 
@@ -100,6 +101,7 @@ def register_offboard_handlers(app: App, config: Config):
 
         remove_github = False
         remove_calendars = False
+        move_to_alumni = False
 
         for block_id, block_data in state.items():
             if "offboard_options" in block_data:
@@ -109,9 +111,12 @@ def register_offboard_handlers(app: App, config: Config):
                         remove_github = True
                     elif opt["value"] == "calendars":
                         remove_calendars = True
+                    elif opt["value"] == "website_alumni":
+                        move_to_alumni = True
 
         request.remove_github = remove_github
         request.remove_calendars = remove_calendars
+        request.move_to_alumni = move_to_alumni
 
         # Process the offboarding
         _process_offboarding(client, config, request)
@@ -216,6 +221,11 @@ def _send_offboarding_request_to_admin(
                         "value": "calendars",
                         "description": {"type": "plain_text", "text": "Revoke access to lab calendars"},
                     },
+                    {
+                        "text": {"type": "plain_text", "text": "Move to alumni on website"},
+                        "value": "website_alumni",
+                        "description": {"type": "plain_text", "text": "Update website and CV to show as alumni"},
+                    },
                 ],
             },
         },
@@ -305,12 +315,13 @@ def _process_offboarding(client: WebClient, config: Config, request: Offboarding
             f"• CDL Resources"
         )
 
-    # Always include website instructions
-    results.append(
-        f":globe_with_meridians: *Website:* Please remove {request.name}'s profile from:\n"
-        f"https://www.context-lab.com/people\n"
-        f"(Or from the GitHub Pages people-site repo once migrated)"
-    )
+    # Website instructions (only if not using automated alumni flow)
+    if not request.move_to_alumni:
+        results.append(
+            f":globe_with_meridians: *Website:* Please remove {request.name}'s profile from:\n"
+            f"https://www.context-lab.com/people\n"
+            f"(Or use the alumni workflow to move them to the alumni section)"
+        )
 
     # Send summary to admin
     summary_blocks = [
@@ -337,6 +348,28 @@ def _process_offboarding(client: WebClient, config: Config, request: Offboarding
                 "type": "mrkdwn",
                 "text": item,
             },
+        })
+
+    # Add alumni collection button if requested
+    if request.move_to_alumni:
+        summary_blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":mortar_board: *Website Alumni Update:* Click the button below to collect alumni info and create a PR.",
+            },
+        })
+        summary_blocks.append({
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Collect Alumni Info"},
+                    "style": "primary",
+                    "action_id": "collect_alumni_info",
+                    "value": request.slack_user_id,
+                },
+            ],
         })
 
     try:

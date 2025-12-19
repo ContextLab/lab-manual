@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -24,27 +25,9 @@ from ..models.onboarding_request import OnboardingRequest, OnboardingStatus
 from ..services.github_service import GitHubService
 from ..services.image_service import ImageService
 from ..services.bio_service import BioService
+from ..storage import get_request, save_request, delete_request
 
 logger = logging.getLogger(__name__)
-
-# In-memory storage for active onboarding requests
-# In production, this should be persisted to a database
-_active_requests: dict[str, OnboardingRequest] = {}
-
-
-def get_request(user_id: str) -> Optional[OnboardingRequest]:
-    """Get an active onboarding request for a user."""
-    return _active_requests.get(user_id)
-
-
-def save_request(request: OnboardingRequest):
-    """Save an onboarding request."""
-    _active_requests[request.slack_user_id] = request
-
-
-def delete_request(user_id: str):
-    """Delete an onboarding request."""
-    _active_requests.pop(user_id, None)
 
 
 def register_onboard_handlers(app: App, config: Config):
@@ -147,6 +130,12 @@ def register_onboard_handlers(app: App, config: Config):
         # Extract form values
         values = view["state"]["values"]
 
+        # Get role info
+        role = values.get("role_block", {}).get("role_select", {}).get("selected_option", {}).get("value", "")
+        grad_type = values.get("grad_type_block", {}).get("grad_type_select", {}).get("selected_option", {})
+        grad_type = grad_type.get("value", "") if grad_type else ""
+        grad_field = values.get("grad_field_block", {}).get("grad_field_input", {}).get("value", "")
+
         # Get GitHub username
         github_username = values.get("github_block", {}).get("github_input", {}).get("value", "")
 
@@ -155,6 +144,65 @@ def register_onboard_handlers(app: App, config: Config):
 
         # Get website URL (optional)
         website_url = values.get("website_block", {}).get("website_input", {}).get("value", "")
+
+        # Validate role-specific fields
+        if role == "Graduate Student" and not grad_type:
+            try:
+                client.chat_postMessage(
+                    channel=request.slack_channel_id,
+                    text="Please select your graduate program type (Doctoral or Masters).",
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": ":warning: *Missing Information*\n\nAs a Graduate Student, please select whether you're in a Doctoral or Masters program.",
+                            },
+                        },
+                        {
+                            "type": "actions",
+                            "elements": [
+                                {
+                                    "type": "button",
+                                    "text": {"type": "plain_text", "text": "Update Form"},
+                                    "action_id": "retry_github_username",
+                                }
+                            ],
+                        },
+                    ],
+                )
+            except SlackApiError as e:
+                logger.error(f"Error sending validation error: {e}")
+            return
+
+        if grad_type == "Masters" and not grad_field:
+            try:
+                client.chat_postMessage(
+                    channel=request.slack_channel_id,
+                    text="Please provide your Masters program field.",
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": ":warning: *Missing Information*\n\nAs a Masters student, please provide your program/field (e.g., Quantitative Biomedical Sciences).",
+                            },
+                        },
+                        {
+                            "type": "actions",
+                            "elements": [
+                                {
+                                    "type": "button",
+                                    "text": {"type": "plain_text", "text": "Update Form"},
+                                    "action_id": "retry_github_username",
+                                }
+                            ],
+                        },
+                    ],
+                )
+            except SlackApiError as e:
+                logger.error(f"Error sending validation error: {e}")
+            return
 
         # Validate GitHub username
         is_valid, error_msg = github_service.validate_username(github_username)
@@ -193,6 +241,10 @@ def register_onboard_handlers(app: App, config: Config):
         request.github_username = github_username
         request.bio_raw = bio_raw
         request.website_url = website_url
+        request.role = role
+        request.grad_type = grad_type
+        request.grad_field = grad_field
+        request.start_year = datetime.now().year
         request.update_status(OnboardingStatus.PENDING_APPROVAL)
         save_request(request)
 
@@ -405,6 +457,51 @@ def _open_onboarding_form(client: WebClient, trigger_id: str, request: Onboardin
                     },
                     {
                         "type": "input",
+                        "block_id": "role_block",
+                        "element": {
+                            "type": "static_select",
+                            "action_id": "role_select",
+                            "placeholder": {"type": "plain_text", "text": "Select your role"},
+                            "options": [
+                                {"text": {"type": "plain_text", "text": "Graduate Student"}, "value": "Graduate Student"},
+                                {"text": {"type": "plain_text", "text": "Undergraduate"}, "value": "Undergraduate"},
+                                {"text": {"type": "plain_text", "text": "Postdoctoral Researcher"}, "value": "Postdoctoral Researcher"},
+                                {"text": {"type": "plain_text", "text": "Lab Manager"}, "value": "Lab Manager"},
+                                {"text": {"type": "plain_text", "text": "Research Scientist"}, "value": "Research Scientist"},
+                            ],
+                        },
+                        "label": {"type": "plain_text", "text": "Your Role in the Lab"},
+                    },
+                    {
+                        "type": "input",
+                        "block_id": "grad_type_block",
+                        "optional": True,
+                        "element": {
+                            "type": "static_select",
+                            "action_id": "grad_type_select",
+                            "placeholder": {"type": "plain_text", "text": "Select program type"},
+                            "options": [
+                                {"text": {"type": "plain_text", "text": "Doctoral"}, "value": "Doctoral"},
+                                {"text": {"type": "plain_text", "text": "Masters"}, "value": "Masters"},
+                            ],
+                        },
+                        "label": {"type": "plain_text", "text": "Graduate Program Type"},
+                        "hint": {"type": "plain_text", "text": "Required for Graduate Students only"},
+                    },
+                    {
+                        "type": "input",
+                        "block_id": "grad_field_block",
+                        "optional": True,
+                        "element": {
+                            "type": "plain_text_input",
+                            "action_id": "grad_field_input",
+                            "placeholder": {"type": "plain_text", "text": "e.g., Quantitative Biomedical Sciences"},
+                        },
+                        "label": {"type": "plain_text", "text": "Masters Program/Field"},
+                        "hint": {"type": "plain_text", "text": "Required for Masters students only"},
+                    },
+                    {
+                        "type": "input",
                         "block_id": "github_block",
                         "element": {
                             "type": "plain_text_input",
@@ -479,6 +576,20 @@ def _open_onboarding_form(client: WebClient, trigger_id: str, request: Onboardin
         logger.error(f"Error opening modal: {e}")
 
 
+def _format_role_display(request: OnboardingRequest) -> str:
+    """Format role for display, including grad type/field if applicable."""
+    if not request.role:
+        return "Not provided"
+
+    role_str = request.role
+    if request.role == "Graduate Student" and request.grad_type:
+        role_str = f"Graduate Student ({request.grad_type})"
+        if request.grad_type == "Masters" and request.grad_field:
+            role_str += f" - {request.grad_field}"
+
+    return role_str
+
+
 def _send_approval_request(
     client: WebClient,
     config: Config,
@@ -524,7 +635,8 @@ def _send_approval_request(
                 "type": "mrkdwn",
                 "text": f"*GitHub Username:* `{request.github_username}`\n"
                 f"*Email:* {request.email or 'Not provided'}\n"
-                f"*Website:* {request.website_url or 'None'}",
+                f"*Website:* {request.website_url or 'None'}\n"
+                f"*Role:* {_format_role_display(request)}",
             },
         },
     ]

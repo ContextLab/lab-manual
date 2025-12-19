@@ -33,8 +33,11 @@ html_test/
 scripts/onboarding/.env
 scripts/onboarding/output/
 scripts/onboarding/*.json
+scripts/onboarding/secrets/
+scripts/onboarding/data/
 *.credentials.json
 service-account*.json
+google-credentials.json
 
 # Python
 __pycache__/
@@ -66,3 +69,6 @@ venv/
 ENV/
 env/
 .venv/
+
+# Claude session notes
+notes/

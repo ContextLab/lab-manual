@@ -18,6 +18,8 @@ class OnboardingStatus(Enum):
     PHOTO_PENDING = "photo_pending"  # Waiting for photo upload
     PROCESSING = "processing"  # Processing bio/photo
     READY_FOR_WEBSITE = "ready_for_website"  # Ready for website update
+    WEBSITE_PENDING = "website_pending"  # Waiting for website PR approval
+    WEBSITE_PR_CREATED = "website_pr_created"  # Website PR has been created
     COMPLETED = "completed"
     REJECTED = "rejected"
     ERROR = "error"
@@ -47,10 +49,20 @@ class OnboardingRequest:
     calendar_permissions: dict = field(default_factory=dict)
     calendar_invites_sent: bool = False
 
+    # Role and position info
+    role: str = ""  # Graduate Student, Undergraduate, etc.
+    grad_type: str = ""  # "Doctoral" or "Masters" (for grad students)
+    grad_field: str = ""  # Field for Masters students (e.g., "Quantitative Biomedical Sciences")
+    start_year: int = 0  # Year joined the lab (for CV entry)
+
     # Website info
     bio_raw: str = ""
     bio_edited: str = ""
     website_url: str = ""
+
+    # Website PR tracking
+    website_pr_url: str = ""
+    website_branch: str = ""
 
     # Photo
     photo_original_path: Optional[Path] = None
@@ -85,9 +97,15 @@ class OnboardingRequest:
             "github_invitation_sent": self.github_invitation_sent,
             "calendar_permissions": self.calendar_permissions,
             "calendar_invites_sent": self.calendar_invites_sent,
+            "role": self.role,
+            "grad_type": self.grad_type,
+            "grad_field": self.grad_field,
+            "start_year": self.start_year,
             "bio_raw": self.bio_raw,
             "bio_edited": self.bio_edited,
             "website_url": self.website_url,
+            "website_pr_url": self.website_pr_url,
+            "website_branch": self.website_branch,
             "photo_original_path": str(self.photo_original_path) if self.photo_original_path else None,
             "photo_processed_path": str(self.photo_processed_path) if self.photo_processed_path else None,
             "status": self.status.value,
@@ -111,9 +129,15 @@ class OnboardingRequest:
             github_invitation_sent=data.get("github_invitation_sent", False),
             calendar_permissions=data.get("calendar_permissions", {}),
             calendar_invites_sent=data.get("calendar_invites_sent", False),
+            role=data.get("role", ""),
+            grad_type=data.get("grad_type", ""),
+            grad_field=data.get("grad_field", ""),
+            start_year=data.get("start_year", 0),
             bio_raw=data.get("bio_raw", ""),
             bio_edited=data.get("bio_edited", ""),
             website_url=data.get("website_url", ""),
+            website_pr_url=data.get("website_pr_url", ""),
+            website_branch=data.get("website_branch", ""),
             photo_original_path=Path(data["photo_original_path"]) if data.get("photo_original_path") else None,
             photo_processed_path=Path(data["photo_processed_path"]) if data.get("photo_processed_path") else None,
             status=OnboardingStatus(data.get("status", "pending_info")),
@@ -132,6 +156,14 @@ class OnboardingRequest:
             f"*GitHub:* {self.github_username or 'Not provided'}",
             f"*Status:* {self.status.value}",
         ]
+
+        if self.role:
+            role_str = self.role
+            if self.grad_type:
+                role_str += f" ({self.grad_type})"
+                if self.grad_field:
+                    role_str += f" - {self.grad_field}"
+            lines.append(f"*Role:* {role_str}")
 
         if self.github_teams:
             lines.append(f"*GitHub Teams:* {', '.join(self.github_teams)}")

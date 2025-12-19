@@ -16,7 +16,7 @@ from ..config import Config, GoogleCalendarConfig
 from ..models.onboarding_request import OnboardingRequest, OnboardingStatus
 from ..services.github_service import GitHubService
 from ..services.calendar_service import CalendarService
-from .onboard import get_request, save_request, delete_request
+from ..storage import get_request, save_request, delete_request
 
 logger = logging.getLogger(__name__)
 
@@ -615,17 +615,31 @@ def _process_approval(
             },
         })
 
-    # Add website update instructions if ready
+    # Add website preview button if ready
     if website_ready:
+        request.update_status(OnboardingStatus.WEBSITE_PENDING)
+        save_request(request)
+
         summary_blocks.append({"type": "divider"})
         summary_blocks.append({
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "*Website Update:*\n"
-                f"The processed photo has been saved to: `{request.photo_processed_path}`\n\n"
-                f"*Edited bio:*\n>{request.bio_edited}",
+                "text": ":globe_with_meridians: *Website Profile Ready*\n"
+                "Photo and bio are ready. Click below to preview and create a PR.",
             },
+        })
+        summary_blocks.append({
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Preview Website Changes"},
+                    "style": "primary",
+                    "action_id": "preview_website_changes",
+                    "value": request.slack_user_id,
+                },
+            ],
         })
 
     try:
@@ -685,7 +699,7 @@ def _process_approval(
     except SlackApiError as e:
         logger.error(f"Error notifying member: {e}")
 
-    # Mark as completed
-    if not errors:
+    # Mark as completed only if no errors and no pending website PR
+    if not errors and not website_ready:
         request.update_status(OnboardingStatus.COMPLETED)
-    save_request(request)
+        save_request(request)

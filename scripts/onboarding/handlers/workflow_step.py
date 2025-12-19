@@ -24,7 +24,7 @@ from ..models.onboarding_request import OnboardingRequest, OnboardingStatus
 from ..services.github_service import GitHubService
 from ..services.image_service import ImageService
 from ..services.bio_service import BioService
-from .onboard import get_request, save_request, delete_request
+from ..storage import get_request, save_request, delete_request
 
 logger = logging.getLogger(__name__)
 
