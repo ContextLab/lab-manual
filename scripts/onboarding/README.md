@@ -34,6 +34,17 @@ Admin can also start onboarding manually:
 - Does NOT automatically remove anyone
 - Generates checklist for manual steps
 
+### Term Scheduling (`/cdl-schedule`)
+- Director runs `/cdl-schedule` to start the scheduling flow
+- Configures projects, members, durations, emojis via modal
+- Auto-derives term from current month (Winter/Spring/Summer/Fall)
+- Creates When2Meet survey and posts to #general
+- Scrapes responses and fuzzy-matches names to expected members
+- Runs attendance-maximizing algorithm with PI-required, senior priority weighting
+- Director reviews proposed schedule and approves
+- Posts formatted announcement to #general
+- Persists project emoji mappings across terms
+
 ## Setup
 
 ### 1. Create Slack App
@@ -59,6 +70,7 @@ Admin can also start onboarding manually:
 7. Create slash commands in "Slash Commands":
    - `/cdl-onboard` - Start onboarding a new member
    - `/cdl-offboard` - Start offboarding process
+   - `/cdl-schedule` - Start term meeting scheduling
    - `/cdl-ping` - Health check
    - `/cdl-help` - Show help
 8. Enable "Interactivity & Shortcuts"
@@ -161,6 +173,30 @@ As admin for specific member:
 
 Admin selects what to revoke and receives checklist.
 
+### Term Scheduling
+
+As director:
+```
+/cdl-schedule
+```
+
+This will:
+1. Open a configuration modal for projects, members, durations, and emojis
+2. Create a When2Meet survey and post it to #general
+3. When ready, click "Collect Responses" to scrape and run the algorithm
+4. Review the proposed schedule (attendance-optimized)
+5. Approve to post the announcement to #general
+
+Project format in the modal (one per line):
+```
+Project Name: member1, member2 | duration_blocks | :emoji:
+Lab Meeting: everyone | 4 | :microscope:
+Kraken: Paxton, Jacob, MJ | 4 | :octopus:
+Office Hours: | 6 |
+```
+
+Duration is in 15-minute blocks (4 = 60min). Append `.5` for biweekly (2.5 = biweekly 30min).
+
 ## Testing
 
 Run tests (model and image tests don't require API keys):
@@ -173,6 +209,9 @@ pytest tests/test_onboarding/test_image_service.py -v
 
 # GitHub service (requires GITHUB_TOKEN)
 pytest tests/test_onboarding/test_github_service.py -v
+
+# Scheduling (scrapes live When2Meet, no API keys needed)
+pytest tests/test_onboarding/test_scheduling.py -v
 
 # Bio service (requires ANTHROPIC_API_KEY)
 pytest tests/test_onboarding/test_bio_service.py -v
@@ -222,14 +261,19 @@ scripts/onboarding/
 │   ├── onboard.py      # /cdl-onboard command handling
 │   ├── approval.py     # Admin approval workflow
 │   ├── offboard.py     # /cdl-offboard command handling
+│   ├── schedule.py     # /cdl-schedule term scheduling flow
 │   └── workflow_step.py # Workflow Builder custom steps
 ├── models/
-│   └── onboarding_request.py  # Data models
+│   ├── onboarding_request.py  # Onboarding data models
+│   └── scheduling_session.py  # Scheduling session state
+├── scheduling_storage.py  # Scheduling session persistence
 └── services/
-    ├── github_service.py    # GitHub API integration
-    ├── calendar_service.py  # Google Calendar API
-    ├── image_service.py     # Photo border processing
-    └── bio_service.py       # Claude API bio editing
+    ├── github_service.py      # GitHub API integration
+    ├── calendar_service.py    # Google Calendar API
+    ├── image_service.py       # Photo border processing
+    ├── bio_service.py         # Claude API bio editing
+    ├── when2meet_service.py   # When2Meet create + scrape
+    └── scheduling_service.py  # Meeting scheduling algorithm
 ```
 
 ## Security Notes
