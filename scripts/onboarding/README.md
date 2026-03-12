@@ -114,9 +114,23 @@ pip install -r requirements.txt
 
 ### 7. Run the Bot
 
+The bot runs locally on your machine using Slack's Socket Mode (no public URL needed).
+Run it from the **repository root** directory:
+
 ```bash
+# Create and activate a virtual environment (first time only)
+python -m venv venv
+source venv/bin/activate  # macOS/Linux
+pip install -r scripts/onboarding/requirements.txt
+
+# Load environment variables and start the bot
+set -a && source scripts/onboarding/.env && set +a
 python -m scripts.onboarding.bot
 ```
+
+The bot will connect to Slack and log `⚡️ Bolt app is running!` when ready.
+Press `Ctrl+C` to stop. The bot must be running for slash commands and
+Workflow Builder integrations to respond.
 
 ## Usage
 

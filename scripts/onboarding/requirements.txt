@@ -16,6 +16,9 @@ google-auth-httplib2>=0.1.1
 # Image processing
 Pillow>=10.0.0
 
+# Website integration (Excel file handling)
+openpyxl>=3.1.0
+
 # Bio editing (Claude API)
 anthropic>=0.7.0
 

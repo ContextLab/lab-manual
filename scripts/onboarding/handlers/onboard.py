@@ -47,17 +47,44 @@ def register_onboard_handlers(app: App, config: Config):
 
         user_id = command["user_id"]
         text = command.get("text", "").strip()
+        logger.info(f"Onboard command from {user_id}, text: '{text}'")
 
         # Check if user is admin
         if user_id != config.slack.admin_user_id:
             respond("Only the lab admin can initiate onboarding.")
             return
 
-        # Parse mentioned user if provided
+        # Parse mentioned user from text
+        # Slack may send mentions as <@U12345|username>, <@U12345>,
+        # or just @username (common in slash commands where Slack doesn't
+        # auto-convert mentions to the <@...> format)
+        import re
         target_user_id = None
-        if text.startswith("<@") and ">" in text:
-            # Extract user ID from mention like <@U12345|username>
-            target_user_id = text.split("<@")[1].split("|")[0].split(">")[0]
+        mention_match = re.search(r'<@([A-Z0-9]+)(?:\|[^>]*)?>', text)
+        if mention_match:
+            target_user_id = mention_match.group(1)
+        elif text.startswith("@") or text:
+            # Try to look up user by name/display name
+            search_name = text.lstrip("@").strip()
+            if search_name:
+                try:
+                    users_resp = client.users_list()
+                    for member in users_resp["members"]:
+                        if member.get("deleted") or member.get("is_bot"):
+                            continue
+                        name = member.get("name", "")
+                        display_name = member.get("profile", {}).get("display_name", "")
+                        real_name = member.get("real_name", "")
+                        if search_name.lower() in (
+                            name.lower(),
+                            display_name.lower(),
+                            real_name.lower(),
+                        ):
+                            target_user_id = member["id"]
+                            logger.info(f"Resolved '{search_name}' to user {target_user_id} ({real_name})")
+                            break
+                except SlackApiError as e:
+                    logger.error(f"Error looking up user: {e}")
 
         if not target_user_id:
             respond(
@@ -113,6 +140,43 @@ def register_onboard_handlers(app: App, config: Config):
             logger.error(f"Error sending welcome message: {e}")
 
         respond(f"Started onboarding for <@{target_user_id}>. They've been sent the welcome message.")
+
+    # Dynamic form updates — show/hide grad fields based on role selection
+    @app.action("role_select")
+    def handle_role_select(ack, body, client: WebClient):
+        """Update the form when role is selected to show/hide grad fields."""
+        ack()
+        selected_role = body["actions"][0]["selected_option"]["value"]
+        logger.info(f"Role selected: {selected_role}")
+        client.views_update(
+            view_id=body["view"]["id"],
+            view={
+                "type": "modal",
+                "callback_id": "onboarding_form",
+                "title": {"type": "plain_text", "text": "CDL Onboarding"},
+                "submit": {"type": "plain_text", "text": "Submit"},
+                "close": {"type": "plain_text", "text": "Cancel"},
+                "blocks": _build_form_blocks(role=selected_role),
+            },
+        )
+
+    @app.action("grad_type_select")
+    def handle_grad_type_select(ack, body, client: WebClient):
+        """Update the form when grad type is selected to show/hide masters field."""
+        ack()
+        selected_grad_type = body["actions"][0]["selected_option"]["value"]
+        logger.info(f"Grad type selected: {selected_grad_type}")
+        client.views_update(
+            view_id=body["view"]["id"],
+            view={
+                "type": "modal",
+                "callback_id": "onboarding_form",
+                "title": {"type": "plain_text", "text": "CDL Onboarding"},
+                "submit": {"type": "plain_text", "text": "Submit"},
+                "close": {"type": "plain_text", "text": "Cancel"},
+                "blocks": _build_form_blocks(role="Graduate Student", grad_type=selected_grad_type),
+            },
+        )
 
     # Handle the onboarding form submission
     @app.view("onboarding_form")
@@ -436,6 +500,130 @@ def _build_welcome_message(user_name: str) -> list:
     ]
 
 
+def _build_form_blocks(role=None, grad_type=None):
+    """Build the onboarding form blocks, conditionally showing grad fields."""
+    role_options = [
+        {"text": {"type": "plain_text", "text": "Graduate Student"}, "value": "Graduate Student"},
+        {"text": {"type": "plain_text", "text": "Undergraduate"}, "value": "Undergraduate"},
+        {"text": {"type": "plain_text", "text": "Postdoctoral Researcher"}, "value": "Postdoctoral Researcher"},
+        {"text": {"type": "plain_text", "text": "Lab Manager"}, "value": "Lab Manager"},
+        {"text": {"type": "plain_text", "text": "Research Scientist"}, "value": "Research Scientist"},
+    ]
+
+    role_element = {
+        "type": "static_select",
+        "action_id": "role_select",
+        "placeholder": {"type": "plain_text", "text": "Select your role"},
+        "options": role_options,
+    }
+    if role:
+        role_element["initial_option"] = next(
+            (o for o in role_options if o["value"] == role), None
+        )
+
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Please provide the following information for your CDL profile.",
+            },
+        },
+        {
+            "type": "input",
+            "block_id": "role_block",
+            "dispatch_action": True,
+            "element": role_element,
+            "label": {"type": "plain_text", "text": "Your Role in the Lab"},
+        },
+    ]
+
+    # Show grad type only for Graduate Students
+    if role == "Graduate Student":
+        grad_type_options = [
+            {"text": {"type": "plain_text", "text": "Doctoral"}, "value": "Doctoral"},
+            {"text": {"type": "plain_text", "text": "Masters"}, "value": "Masters"},
+        ]
+        grad_type_element = {
+            "type": "static_select",
+            "action_id": "grad_type_select",
+            "placeholder": {"type": "plain_text", "text": "Select program type"},
+            "options": grad_type_options,
+        }
+        if grad_type:
+            grad_type_element["initial_option"] = next(
+                (o for o in grad_type_options if o["value"] == grad_type), None
+            )
+        blocks.append({
+            "type": "input",
+            "block_id": "grad_type_block",
+            "dispatch_action": True,
+            "element": grad_type_element,
+            "label": {"type": "plain_text", "text": "Graduate Program Type"},
+        })
+
+        # Show masters field only for Masters students
+        if grad_type == "Masters":
+            blocks.append({
+                "type": "input",
+                "block_id": "grad_field_block",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "grad_field_input",
+                    "placeholder": {"type": "plain_text", "text": "e.g., Quantitative Biomedical Sciences"},
+                },
+                "label": {"type": "plain_text", "text": "Masters Program/Field"},
+            })
+
+    # Common fields (always shown)
+    blocks.extend([
+        {
+            "type": "input",
+            "block_id": "github_block",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github_input",
+                "placeholder": {"type": "plain_text", "text": "e.g., octocat"},
+            },
+            "label": {"type": "plain_text", "text": "GitHub Username"},
+            "hint": {"type": "plain_text", "text": "Your GitHub username (not email). We'll invite you to the ContextLab organization."},
+        },
+        {
+            "type": "input",
+            "block_id": "bio_block",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "bio_input",
+                "multiline": True,
+                "placeholder": {"type": "plain_text", "text": "Tell us about yourself and your research interests..."},
+            },
+            "label": {"type": "plain_text", "text": "Short Bio"},
+            "hint": {"type": "plain_text", "text": "3-4 sentences about you. We'll edit it for style consistency."},
+        },
+        {
+            "type": "input",
+            "block_id": "website_block",
+            "optional": True,
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "website_input",
+                "placeholder": {"type": "plain_text", "text": "https://your-website.com"},
+            },
+            "label": {"type": "plain_text", "text": "Personal Website (optional)"},
+            "hint": {"type": "plain_text", "text": "If you have a personal website, we'll link to it from your profile."},
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":camera: *Photo:* After submitting this form, please upload a profile photo by sending it as a message in this conversation.",
+            },
+        },
+    ])
+
+    return blocks
+
+
 def _open_onboarding_form(client: WebClient, trigger_id: str, request: OnboardingRequest):
     """Open the onboarding information form modal."""
     try:
@@ -447,129 +635,7 @@ def _open_onboarding_form(client: WebClient, trigger_id: str, request: Onboardin
                 "title": {"type": "plain_text", "text": "CDL Onboarding"},
                 "submit": {"type": "plain_text", "text": "Submit"},
                 "close": {"type": "plain_text", "text": "Cancel"},
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "Please provide the following information for your CDL profile.",
-                        },
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "role_block",
-                        "element": {
-                            "type": "static_select",
-                            "action_id": "role_select",
-                            "placeholder": {"type": "plain_text", "text": "Select your role"},
-                            "options": [
-                                {"text": {"type": "plain_text", "text": "Graduate Student"}, "value": "Graduate Student"},
-                                {"text": {"type": "plain_text", "text": "Undergraduate"}, "value": "Undergraduate"},
-                                {"text": {"type": "plain_text", "text": "Postdoctoral Researcher"}, "value": "Postdoctoral Researcher"},
-                                {"text": {"type": "plain_text", "text": "Lab Manager"}, "value": "Lab Manager"},
-                                {"text": {"type": "plain_text", "text": "Research Scientist"}, "value": "Research Scientist"},
-                            ],
-                        },
-                        "label": {"type": "plain_text", "text": "Your Role in the Lab"},
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "grad_type_block",
-                        "optional": True,
-                        "element": {
-                            "type": "static_select",
-                            "action_id": "grad_type_select",
-                            "placeholder": {"type": "plain_text", "text": "Select program type"},
-                            "options": [
-                                {"text": {"type": "plain_text", "text": "Doctoral"}, "value": "Doctoral"},
-                                {"text": {"type": "plain_text", "text": "Masters"}, "value": "Masters"},
-                            ],
-                        },
-                        "label": {"type": "plain_text", "text": "Graduate Program Type"},
-                        "hint": {"type": "plain_text", "text": "Required for Graduate Students only"},
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "grad_field_block",
-                        "optional": True,
-                        "element": {
-                            "type": "plain_text_input",
-                            "action_id": "grad_field_input",
-                            "placeholder": {"type": "plain_text", "text": "e.g., Quantitative Biomedical Sciences"},
-                        },
-                        "label": {"type": "plain_text", "text": "Masters Program/Field"},
-                        "hint": {"type": "plain_text", "text": "Required for Masters students only"},
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "github_block",
-                        "element": {
-                            "type": "plain_text_input",
-                            "action_id": "github_input",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "e.g., octocat",
-                            },
-                        },
-                        "label": {
-                            "type": "plain_text",
-                            "text": "GitHub Username",
-                        },
-                        "hint": {
-                            "type": "plain_text",
-                            "text": "Your GitHub username (not email). We'll invite you to the ContextLab organization.",
-                        },
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "bio_block",
-                        "element": {
-                            "type": "plain_text_input",
-                            "action_id": "bio_input",
-                            "multiline": True,
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "Tell us about yourself and your research interests...",
-                            },
-                        },
-                        "label": {
-                            "type": "plain_text",
-                            "text": "Short Bio",
-                        },
-                        "hint": {
-                            "type": "plain_text",
-                            "text": "3-4 sentences about you. We'll edit it for style consistency.",
-                        },
-                    },
-                    {
-                        "type": "input",
-                        "block_id": "website_block",
-                        "optional": True,
-                        "element": {
-                            "type": "plain_text_input",
-                            "action_id": "website_input",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "https://your-website.com",
-                            },
-                        },
-                        "label": {
-                            "type": "plain_text",
-                            "text": "Personal Website (optional)",
-                        },
-                        "hint": {
-                            "type": "plain_text",
-                            "text": "If you have a personal website, we'll link to it from your profile.",
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": ":camera: *Photo:* After submitting this form, please upload a profile photo by sending it as a message in this conversation.",
-                        },
-                    },
-                ],
+                "blocks": _build_form_blocks(),
             },
         )
     except SlackApiError as e:
