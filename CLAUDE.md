@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is the lab manual for the Contextual Dynamics Laboratory (CDL) at Dartmouth College. It's a LaTeX document using the Tufte-book class that describes lab policies, member responsibilities, and research approach.
+This is the lab manual for the Contextual Dynamics Laboratory (CDL) at Dartmouth College. It's a LaTeX document using the Tufte-book class that describes lab policies, member responsibilities, and research approach. The repo also contains a **Slack onboarding bot** (`scripts/onboarding/`) that automates member on/offboarding.
 
 ## Build Commands
 
@@ -12,28 +12,74 @@ This is the lab manual for the Contextual Dynamics Laboratory (CDL) at Dartmouth
 ```bash
 ./compile.sh
 ```
+Runs `latex` 5x (for cross-references/index), then `pdflatex`, and cleans up intermediate files. Requires a LaTeX distribution (`brew install --cask mactex` on macOS).
 
-This runs `latex` multiple times (for cross-references and index), then `pdflatex`, and cleans up intermediate files. Requires a LaTeX distribution (e.g., `brew install --cask mactex` on macOS).
+**Run onboarding bot tests:**
+```bash
+# No API keys needed
+pytest tests/test_onboarding/test_models.py -v
+pytest tests/test_onboarding/test_image_service.py -v
 
-**HTML version:** The HTML version is automatically generated via GitHub Actions when changes are pushed to master. No manual build is needed. The workflow uses make4ht (TeX4ht) with `tufte.cfg` configuration to convert to tufte-css styled HTML.
+# Requires GITHUB_TOKEN
+pytest tests/test_onboarding/test_github_service.py -v
+
+# Requires ANTHROPIC_API_KEY
+pytest tests/test_onboarding/test_bio_service.py -v
+
+# All tests
+pytest tests/test_onboarding/ -v
+```
+Tests use real API calls (no mocks). Tests skip automatically when credentials are missing.
+
+**Run the onboarding bot:**
+```bash
+python -m scripts.onboarding.bot
+```
+Requires `.env` in `scripts/onboarding/` with Slack tokens, GitHub PAT, and optionally Google/Anthropic credentials.
 
 ## Project Structure
 
-- `lab_manual.tex` - Main document source (single file containing all content)
-- `lab_manual.pdf` - Compiled output (committed to repo)
-- `tufte.cfg` - TeX4ht configuration for HTML generation
-- `tufte-book.cls`, `tufte-common.def`, `tufte-handout.cls` - Custom Tufte template files
-- `lab_logo/` - Lab logo images (PNG, PDF)
-- `resources/` - Additional resources (cheatsheets, cluster tutorials)
-- `.github/workflows/` - CI/CD workflows (LaTeX validation, HTML generation)
+- `lab_manual.tex` — Main document source (single file, all content)
+- `lab_manual.pdf` — Compiled output (committed to repo)
+- `compile.sh` — PDF build script
+- `tufte.cfg` — TeX4ht configuration for HTML generation
+- `tufte-book.cls`, `tufte-common.def` — Custom Tufte template files (do not modify casually)
+- `toc.js`, `checklist.js`, `lab-manual.css` — HTML version enhancements (TOC nav, interactive checklist, custom styling)
+- `scripts/onboarding/` — Slack onboarding bot (see architecture below)
+- `tests/test_onboarding/` — Bot tests (real API calls, no mocks)
+
+### Onboarding Bot Architecture
+
+```
+scripts/onboarding/
+├── bot.py              # Entry point, Slack app setup
+├── config.py           # Environment/config management
+├── handlers/
+│   ├── onboard.py      # /cdl-onboard slash command
+│   ├── approval.py     # Admin approval workflow (interactive messages)
+│   ├── offboard.py     # /cdl-offboard slash command
+│   └── workflow_step.py # Slack Workflow Builder custom steps
+├── models/
+│   └── onboarding_request.py  # Data models
+└── services/
+    ├── github_service.py    # GitHub org invitations
+    ├── calendar_service.py  # Google Calendar sharing
+    ├── image_service.py     # Photo border processing (Pillow)
+    └── bio_service.py       # Bio editing via Claude API
+```
+
+## CI/CD
+
+- **`compile-latex.yml`** — On PRs touching `.tex` files: compiles LaTeX, posts error comment and closes PR on failure
+- **`build-html.yml`** — On push to `master`: converts LaTeX to HTML via tex4ht, deploys to GitHub Pages at `contextlab.github.io/lab-manual`
 
 ## LaTeX Conventions
 
-The document uses several custom commands defined in `lab_manual.tex`:
-- `\marginnote{}` - For margin notes (TASK items and NOTEs)
-- `\newthought{}` - For section introductions
-- `\ourschool` - Expands to "Dartmouth College"
-- `\director`, `\coordinator` - Lab director references
+Custom commands in `lab_manual.tex`:
+- `\marginnote{}` — Margin notes (TASK items and NOTEs)
+- `\newthought{}` — Section introductions
+- `\ourschool` — Expands to "Dartmouth College"
+- `\director`, `\coordinator` — Lab director references
 - Links use `dartmouthgreen` color (RGB: 0, 105, 62)
 
 ## Workflow Notes
@@ -42,3 +88,12 @@ After editing `lab_manual.tex`:
 1. Run `./compile.sh` to regenerate the PDF
 2. Verify the PDF looks correct (check TOC links, margin notes positioning)
 3. Commit both the `.tex` source and updated `.pdf`
+
+The HTML version is auto-generated by CI — no manual build needed.
+
+## Key Gotchas
+
+- `lab_manual.tex` is gitignored (the `.tex` line in `.gitignore`) — this is intentional to avoid accidental commits of intermediate build state. The file IS tracked by git despite the gitignore entry.
+- The CI will **close PRs** that fail LaTeX compilation — always test locally with `./compile.sh` first.
+- Onboarding bot credentials go in `scripts/onboarding/.env` (gitignored). Never commit tokens or service account JSON files.
+- Bot tests require running from the repo root so `scripts.onboarding` is importable as a package.
