@@ -1,0 +1,461 @@
+"""
+Tests for the scheduling bot components.
+
+Tests the scheduling model, storage, name matching, project parsing,
+term derivation, scheduling algorithm, and When2Meet scraping.
+"""
+
+import json
+import tempfile
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from scripts.onboarding.models.scheduling_session import (
+    SchedulingSession, SchedulingStatus,
+)
+from scripts.onboarding.scheduling_storage import SchedulingStorage
+from scripts.onboarding.handlers.schedule import (
+    _derive_term, _parse_projects, _fuzzy_match_names, _format_config_summary,
+)
+from scripts.onboarding.services.scheduling_service import (
+    find_best_meeting_times, format_schedule_for_slack, format_announcement,
+)
+from scripts.onboarding.services.when2meet_service import When2MeetService
+
+
+# ── Model Tests ──────────────────────────────────────────────────────────────
+
+class TestSchedulingSession:
+    def test_create_session(self):
+        s = SchedulingSession(session_id="test1", initiated_by="U123")
+        assert s.session_id == "test1"
+        assert s.status == SchedulingStatus.CONFIGURING
+
+    def test_serialization_roundtrip(self):
+        s = SchedulingSession(
+            session_id="test2", initiated_by="U456", term="Spring 2026",
+        )
+        s.groups = {"Lab Meeting": ["Alice", "Bob"], "Project X": ["Alice"]}
+        s.preferred_durations = {"Lab Meeting": 4, "Project X": 2.5}
+        s.project_emojis = {"Lab Meeting": ":microscope:"}
+        s.pi = ["Jeremy"]
+        s.senior = ["Alice"]
+
+        d = s.to_dict()
+        assert isinstance(d, dict)
+        assert d["term"] == "Spring 2026"
+        assert d["preferred_durations"]["Project X"] == 2.5
+
+        s2 = SchedulingSession.from_dict(d)
+        assert s2.session_id == "test2"
+        assert s2.groups == s.groups
+        assert s2.preferred_durations == s.preferred_durations
+        assert s2.pi == ["Jeremy"]
+
+    def test_get_all_members(self):
+        s = SchedulingSession(session_id="t", initiated_by="U1")
+        s.groups = {"A": ["Alice", "Bob"], "B": ["Bob", "Charlie"]}
+        s.pi = ["Jeremy"]
+        members = s.get_all_members()
+        assert sorted(members) == ["Alice", "Bob", "Charlie", "Jeremy"]
+
+    def test_update_status(self):
+        s = SchedulingSession(session_id="t", initiated_by="U1")
+        s.update_status(SchedulingStatus.SURVEY_POSTED)
+        assert s.status == SchedulingStatus.SURVEY_POSTED
+        assert s.error_message == ""
+
+        s.update_status(SchedulingStatus.ERROR, "something broke")
+        assert s.status == SchedulingStatus.ERROR
+        assert s.error_message == "something broke"
+
+
+# ── Storage Tests ────────────────────────────────────────────────────────────
+
+class TestSchedulingStorage:
+    def test_save_and_load(self, tmp_path):
+        path = tmp_path / "sessions.json"
+        storage = SchedulingStorage(path)
+
+        session = SchedulingSession(session_id="s1", initiated_by="U1", term="Winter 2026")
+        session.groups = {"Lab Meeting": ["Alice"]}
+        storage.save(session)
+
+        # Reload from disk
+        storage2 = SchedulingStorage(path)
+        loaded = storage2.get("s1")
+        assert loaded is not None
+        assert loaded.term == "Winter 2026"
+        assert loaded.groups == {"Lab Meeting": ["Alice"]}
+
+    def test_get_active(self, tmp_path):
+        path = tmp_path / "sessions.json"
+        storage = SchedulingStorage(path)
+
+        s1 = SchedulingSession(session_id="s1", initiated_by="U1")
+        s1.update_status(SchedulingStatus.COMPLETED)
+        storage.save(s1)
+
+        s2 = SchedulingSession(session_id="s2", initiated_by="U1")
+        s2.update_status(SchedulingStatus.SURVEY_POSTED)
+        storage.save(s2)
+
+        active = storage.get_active()
+        assert active is not None
+        assert active.session_id == "s2"
+
+    def test_get_latest_completed(self, tmp_path):
+        path = tmp_path / "sessions.json"
+        storage = SchedulingStorage(path)
+
+        s1 = SchedulingSession(session_id="s1", initiated_by="U1")
+        s1.update_status(SchedulingStatus.COMPLETED)
+        s1.project_emojis = {"Lab Meeting": ":microscope:"}
+        storage.save(s1)
+
+        latest = storage.get_latest_completed()
+        assert latest is not None
+        assert latest.project_emojis == {"Lab Meeting": ":microscope:"}
+
+    def test_delete(self, tmp_path):
+        path = tmp_path / "sessions.json"
+        storage = SchedulingStorage(path)
+
+        session = SchedulingSession(session_id="s1", initiated_by="U1")
+        storage.save(session)
+        assert storage.get("s1") is not None
+
+        storage.delete("s1")
+        assert storage.get("s1") is None
+
+
+# ── Handler Utility Tests ────────────────────────────────────────────────────
+
+class TestTermDerivation:
+    def test_returns_tuple_of_three(self):
+        term, start, end = _derive_term()
+        assert isinstance(term, str)
+        assert isinstance(start, str)
+        assert isinstance(end, str)
+        # Term should contain a year
+        assert any(c.isdigit() for c in term)
+
+    def test_term_has_season(self):
+        term, _, _ = _derive_term()
+        seasons = ["Winter", "Spring", "Summer", "Fall"]
+        assert any(s in term for s in seasons)
+
+
+class TestParseProjects:
+    def test_basic_parsing(self):
+        text = "Lab Meeting: Alice, Bob | 4 | :microscope:"
+        groups, durs, emojis = _parse_projects(text)
+        assert groups == {"Lab Meeting": ["Alice", "Bob"]}
+        assert durs == {"Lab Meeting": 4}
+        assert emojis == {"Lab Meeting": ":microscope:"}
+
+    def test_everyone_keyword(self):
+        text = "Lab Meeting: everyone | 4 | :microscope:"
+        groups, _, _ = _parse_projects(text)
+        assert groups["Lab Meeting"] == ["everyone"]
+
+    def test_empty_members(self):
+        text = "Office Hours: | 6 |"
+        groups, durs, _ = _parse_projects(text)
+        assert groups["Office Hours"] == []
+        assert durs["Office Hours"] == 6
+
+    def test_biweekly_duration(self):
+        text = "Project X: Alice | 2.5 | :calendar:"
+        _, durs, _ = _parse_projects(text)
+        assert durs["Project X"] == 2.5
+
+    def test_multiline(self):
+        text = """
+Lab Meeting: everyone | 4 | :microscope:
+Kraken: Paxton, Jacob | 4 | :octopus:
+1:1 (Claudia): Claudia | 2 |
+"""
+        groups, durs, emojis = _parse_projects(text)
+        assert len(groups) == 3
+        assert groups["Kraken"] == ["Paxton", "Jacob"]
+        assert emojis.get("1:1 (Claudia)") is None  # No emoji for this one
+
+
+class TestFuzzyMatchNames:
+    def test_exact_match(self):
+        mapping, unmatched = _fuzzy_match_names(
+            ["Jeremy", "Paxton"], ["Jeremy", "Paxton"]
+        )
+        assert mapping == {"Jeremy": "Jeremy", "Paxton": "Paxton"}
+        assert unmatched == []
+
+    def test_case_insensitive(self):
+        mapping, _ = _fuzzy_match_names(["claudia"], ["Claudia"])
+        assert mapping == {"claudia": "Claudia"}
+
+    def test_first_name_extraction(self):
+        mapping, _ = _fuzzy_match_names(
+            ["Aaron Raycove", "Jacob Bacus"], ["Aaron", "Jacob"]
+        )
+        assert mapping == {"Aaron Raycove": "Aaron", "Jacob Bacus": "Jacob"}
+
+    def test_email_skipped(self):
+        _, unmatched = _fuzzy_match_names(
+            ["test@example.com"], ["Alice"]
+        )
+        assert "test@example.com" in unmatched
+
+    def test_unmatched_names(self):
+        mapping, unmatched = _fuzzy_match_names(
+            ["Jeremy", "UnknownPerson"], ["Jeremy", "Alice"]
+        )
+        assert mapping == {"Jeremy": "Jeremy"}
+        assert "UnknownPerson" in unmatched
+
+    def test_real_world_data(self):
+        """Test with actual When2Meet respondent names from CDL survey."""
+        respondents = [
+            "Aaron Raycove", "Alexandra Wingo", "Alishba Tahir", "Angelyn",
+            "claudia", "Colson Duncan", "Daniel", "Jacob Bacus", "Jay",
+            "Jennifer", "Jeremy", "Kevin", "MJ", "Om", "Paxton",
+            "Will lehman",
+        ]
+        expected = [
+            "Aaron", "Alex", "Alishba", "Angelyn", "Claudia", "Colson",
+            "Daniel", "Jacob", "Jay", "Jennifer", "Jeremy", "Kevin",
+            "MJ", "Om", "Paxton", "Will",
+        ]
+        mapping, unmatched = _fuzzy_match_names(respondents, expected)
+        # All should match
+        assert len(mapping) == 16
+        assert unmatched == []
+        assert mapping["Aaron Raycove"] == "Aaron"
+        assert mapping["claudia"] == "Claudia"
+        assert mapping["Will lehman"] == "Will"
+
+    def test_xin_jin_not_xinming(self):
+        """Xin Jin should match to Xin Jin, not Xinming."""
+        mapping, unmatched = _fuzzy_match_names(
+            ["Xin"], ["Xin Jin", "Xinming"]
+        )
+        # "Xin" as first name should match "Xin Jin" (first-name match)
+        # not "Xinming" (which just starts with "Xin")
+        assert mapping.get("Xin") == "Xin Jin"
+
+
+class TestFormatConfigSummary:
+    def test_basic_summary(self):
+        s = SchedulingSession(session_id="t", initiated_by="U1", term="Spring 2026",
+                              term_start="2026-03-25", term_end="2026-06-03")
+        s.pi = ["Jeremy"]
+        s.senior = ["Paxton"]
+        s.groups = {"Lab Meeting": ["Alice", "Bob"]}
+        s.preferred_durations = {"Lab Meeting": 4}
+        summary = _format_config_summary(s)
+        assert "Spring 2026" in summary
+        assert "Jeremy" in summary
+        assert "Lab Meeting" in summary
+
+
+# ── Scheduling Algorithm Tests ───────────────────────────────────────────────
+
+def _make_test_availability():
+    """Create a small test availability DataFrame."""
+    days = ["Monday"] * 8 + ["Tuesday"] * 8
+    times = [f"{h}:{m:02d}:00" for h in range(10, 12) for m in (0, 15, 30, 45)] * 2
+
+    data = {
+        "Day": days,
+        "Time": times,
+        "Jeremy": [1] * 16,
+        "Alice": [1] * 8 + [0] * 8,
+        "Bob": [1] * 16,
+        "Charlie": [0] * 4 + [1] * 4 + [1] * 8,
+    }
+    df = pd.DataFrame(data).set_index(["Day", "Time"])
+    return df
+
+
+class TestSchedulingAlgorithm:
+    def test_basic_scheduling(self):
+        availability = _make_test_availability()
+        PI = ["Jeremy"]
+        senior = ["Alice"]
+        external = []
+        groups = {
+            "Lab Meeting": ["Alice", "Bob", "Charlie"],
+            "Project A": ["Alice", "Bob"],
+        }
+        durations = {"Lab Meeting": 4, "Project A": 2}
+
+        scheduled, schedule_df = find_best_meeting_times(
+            availability, PI, senior, external, groups, durations,
+        )
+
+        assert "Lab Meeting" in scheduled
+        assert "Project A" in scheduled
+        assert not schedule_df.empty
+
+    def test_pi_required(self):
+        """PI must be available for all scheduled meetings."""
+        availability = _make_test_availability()
+        # Make Jeremy unavailable on Tuesday
+        availability.loc["Tuesday", "Jeremy"] = 0
+
+        PI = ["Jeremy"]
+        groups = {"Meeting": ["Alice"]}
+        durations = {"Meeting": 2}
+
+        scheduled, _ = find_best_meeting_times(
+            availability, PI, [], [], groups, durations,
+        )
+
+        if "Meeting" in scheduled:
+            assert scheduled["Meeting"]["day"] == "Monday"
+
+    def test_no_overlap(self):
+        """Two weekly meetings should not overlap."""
+        availability = _make_test_availability()
+        PI = ["Jeremy"]
+        groups = {
+            "Meeting A": ["Alice"],
+            "Meeting B": ["Bob"],
+        }
+        durations = {"Meeting A": 4, "Meeting B": 4}
+
+        scheduled, _ = find_best_meeting_times(
+            availability, PI, [], [], groups, durations,
+        )
+
+        if "Meeting A" in scheduled and "Meeting B" in scheduled:
+            a_slots = set((scheduled["Meeting A"]["day"], t) for t in scheduled["Meeting A"]["times"])
+            b_slots = set((scheduled["Meeting B"]["day"], t) for t in scheduled["Meeting B"]["times"])
+            assert a_slots.isdisjoint(b_slots)
+
+    def test_senior_weighting(self):
+        """Senior members should be weighted higher in scoring."""
+        availability = _make_test_availability()
+        PI = ["Jeremy"]
+        senior = ["Alice"]
+        groups = {"Meeting": ["Alice", "Bob", "Charlie"]}
+        durations = {"Meeting": 2}
+
+        scheduled, _ = find_best_meeting_times(
+            availability, PI, senior, [], groups, durations,
+        )
+
+        # Alice is available Monday only; meeting should prefer Monday
+        assert scheduled["Meeting"]["day"] == "Monday"
+
+
+class TestFormatScheduleForSlack:
+    def test_basic_format(self):
+        availability = _make_test_availability()
+        scheduled, schedule_df = find_best_meeting_times(
+            availability, ["Jeremy"], [], [], {"Meeting": ["Alice"]}, {"Meeting": 2},
+        )
+        result = format_schedule_for_slack(scheduled, schedule_df, {"Meeting": ":star:"})
+        assert "Meeting" in result
+        assert ":star:" in result
+
+    def test_empty_schedule(self):
+        result = format_schedule_for_slack({}, pd.DataFrame(), {})
+        assert "No meetings" in result
+
+
+class TestFormatAnnouncement:
+    def test_basic_announcement(self):
+        availability = _make_test_availability()
+        groups = {"Lab Meeting": ["Alice", "Bob"]}
+        scheduled, schedule_df = find_best_meeting_times(
+            availability, ["Jeremy"], [], [], groups, {"Lab Meeting": 4},
+        )
+        result = format_announcement(
+            scheduled, schedule_df, groups,
+            {"Lab Meeting": ":microscope:"}, "Spring 2026",
+        )
+        assert "Spring 2026" in result
+        assert "Lab Meeting" in result
+        assert ":microscope:" in result
+
+
+# ── When2Meet Service Tests (live) ───────────────────────────────────────────
+
+class TestWhen2MeetService:
+    def test_parse_real_survey(self):
+        """Parse an actual When2Meet survey (the one from the CDL notebook)."""
+        svc = When2MeetService()
+        df = svc.parse_responses("https://www.when2meet.com/?34050837-QFUDh")
+
+        assert not df.empty
+        assert len(df.columns) >= 15  # At least 15 respondents
+        assert "Jeremy" in df.columns
+        assert df.index.names == ["Day", "Time"]
+        # All values should be 0 or 1
+        assert set(df.values.flatten()) <= {0, 1}
+
+    def test_get_respondent_names(self):
+        svc = When2MeetService()
+        names = svc.get_respondent_names("https://www.when2meet.com/?34050837-QFUDh")
+        assert len(names) >= 15
+        assert "Jeremy" in names
+
+    def test_next_weekdays(self):
+        svc = When2MeetService()
+        days = svc._next_weekdays()
+        assert len(days) == 5
+        # Should be in MM/DD/YYYY format
+        for d in days:
+            datetime.strptime(d, "%m/%d/%Y")
+
+
+# ── Integration Test ─────────────────────────────────────────────────────────
+
+class TestEndToEndScheduling:
+    def test_full_pipeline(self):
+        """Test the complete pipeline: scrape → match → schedule → format."""
+        svc = When2MeetService()
+        availability = svc.parse_responses("https://www.when2meet.com/?34050837-QFUDh")
+
+        expected = [
+            "Aaron", "Alex", "Alishba", "Angelyn", "Claudia", "Colson",
+            "Daniel", "Jacob", "Jay", "Jennifer", "Jeremy", "Kevin",
+            "MJ", "Om", "Paxton", "Will",
+        ]
+        mapping, unmatched = _fuzzy_match_names(list(availability.columns), expected)
+        assert len(mapping) >= 14  # Most should match
+
+        availability = availability.rename(columns=mapping)
+        expected_set = set(expected)
+        availability = availability[[c for c in availability.columns if c in expected_set]]
+
+        PI = ["Jeremy"]
+        senior = ["Paxton", "Claudia"]
+        external = []
+        groups = {
+            "Lab Meeting": list(availability.columns),
+            "Project A": ["Paxton", "Jacob"],
+        }
+        durations = {"Lab Meeting": 4, "Project A": 2}
+        emojis = {"Lab Meeting": ":microscope:", "Project A": ":star:"}
+
+        scheduled, schedule_df = find_best_meeting_times(
+            availability, PI, senior, external, groups, durations,
+        )
+
+        assert "Lab Meeting" in scheduled
+        assert not schedule_df.empty
+
+        slack_msg = format_schedule_for_slack(scheduled, schedule_df, emojis)
+        assert "Lab Meeting" in slack_msg
+        assert ":microscope:" in slack_msg
+
+        announcement = format_announcement(
+            scheduled, schedule_df, groups, emojis, "Spring 2026",
+        )
+        assert "Spring 2026" in announcement

@@ -22,6 +22,11 @@ openpyxl>=3.1.0
 # Bio editing (Claude API)
 anthropic>=0.7.0
 
+# Scheduling
+numpy>=1.24.0
+pandas>=2.0.0
+rapidfuzz>=3.0.0
+
 # Configuration
 python-dotenv>=1.0.0
 
