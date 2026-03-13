@@ -466,11 +466,9 @@ def register_schedule_handlers(app: App, config: Config):
         ]
 
         try:
-            # TODO: Change back to #general for production
-            # channel_id = _find_channel(client, "general")
-            channel_id = session.dm_channel  # TEST MODE: post to DM instead of #general
+            channel_id = _find_channel(client, "general")
             if not channel_id:
-                channel_id = session.dm_channel
+                channel_id = session.dm_channel  # Fallback to DM if #general not found
 
             result = client.chat_postMessage(
                 channel=channel_id,
@@ -837,9 +835,7 @@ def register_schedule_handlers(app: App, config: Config):
             session.groups, session.project_emojis, session.term,
         )
 
-        # TODO: Change back to survey_channel for production
-        # channel = session.survey_channel or session.dm_channel
-        channel = session.dm_channel  # TEST MODE
+        channel = session.survey_channel or _find_channel(client, "general") or session.dm_channel
         try:
             result = client.chat_postMessage(
                 channel=channel,
