@@ -14,7 +14,7 @@ import pytest
 # Ensure scripts package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.onboarding.models.onboarding_request import OnboardingRequest, OnboardingStatus
+from cdl_bot.models.onboarding_request import OnboardingRequest, OnboardingStatus
 
 
 class TestOnboardingStatus:

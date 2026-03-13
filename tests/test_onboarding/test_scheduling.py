@@ -14,17 +14,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.onboarding.models.scheduling_session import (
+from cdl_bot.models.scheduling_session import (
     SchedulingSession, SchedulingStatus,
 )
-from scripts.onboarding.scheduling_storage import SchedulingStorage
-from scripts.onboarding.handlers.schedule import (
+from cdl_bot.scheduling_storage import SchedulingStorage
+from cdl_bot.handlers.schedule import (
     _derive_term, _parse_projects, _fuzzy_match_names, _format_config_summary,
 )
-from scripts.onboarding.services.scheduling_service import (
+from cdl_bot.services.scheduling_service import (
     find_best_meeting_times, format_schedule_for_slack, format_announcement,
 )
-from scripts.onboarding.services.when2meet_service import When2MeetService
+from cdl_bot.services.when2meet_service import When2MeetService
 
 
 # ── Model Tests ──────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ class TestSchedulingStorage:
 class TestProjectStore:
     def test_load_default_database(self):
         """Test loading the shipped projects.json database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         active = store.list_active()
         assert "Lab Meeting" in active
@@ -148,7 +148,7 @@ class TestProjectStore:
 
     def test_channels_populated(self):
         """Test that channels are populated from the database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         kraken = store.get("Kraken")
         assert "#kraken" in kraken["channels"]
@@ -157,14 +157,14 @@ class TestProjectStore:
 
     def test_descriptions_populated(self):
         """Test that descriptions are populated from the database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         assert store.get("Kraken")["description"] == "LLMs"
         assert "Optimizing" in store.get("Efficient Learning")["description"]
 
     def test_upsert_new_project(self, tmp_path):
         """Test adding a new project to the database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         db_path = tmp_path / "projects.json"
         db_path.write_text("{}")
         store = ProjectStore(db_path)
@@ -182,7 +182,7 @@ class TestProjectStore:
 
     def test_deactivate_project(self, tmp_path):
         """Test deactivating a project hides it from active list."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         db_path = tmp_path / "projects.json"
         db_path.write_text('{"Old": {"emoji": ":x:", "channels": [], "description": "Old", "default_duration": 2, "active": true}}')
         store = ProjectStore(db_path)
@@ -195,7 +195,7 @@ class TestProjectStore:
 
     def test_sync_from_session(self, tmp_path):
         """Test syncing session projects back to the database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         db_path = tmp_path / "projects.json"
         db_path.write_text('{"Existing": {"emoji": ":old:", "channels": ["#existing"], "description": "Existing project", "default_duration": 2, "active": true}}')
         store = ProjectStore(db_path)
@@ -221,7 +221,7 @@ class TestProjectStore:
 
     def test_get_config_text(self):
         """Test formatting projects for the config modal."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         text = store.get_config_text()
         assert "Lab Meeting | 4 | :raising_hand:" in text
@@ -229,7 +229,7 @@ class TestProjectStore:
 
     def test_get_survey_project_list(self):
         """Test formatting projects for survey announcement."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         text = store.get_survey_project_list(
             ["Kraken", "Efficient Learning"],
@@ -243,7 +243,7 @@ class TestProjectStore:
 
     def test_survey_list_excludes_office_hours(self):
         """Test that office hours are excluded from survey project list."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
         text = store.get_survey_project_list(
             ["Lab Meeting", "Jeremy Office Hours"],
@@ -304,7 +304,7 @@ Kraken | 4 | :octopus:
 
     def test_default_projects(self):
         """Test parsing the default pre-populated project list from database."""
-        from scripts.onboarding.project_store import ProjectStore
+        from cdl_bot.project_store import ProjectStore
         store = ProjectStore()  # loads from data/projects.json
         text = store.get_config_text()
         names, durs, emojis = _parse_projects(text)

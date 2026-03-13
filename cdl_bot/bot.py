@@ -15,7 +15,7 @@ Features:
 - Bio editing via Claude API
 
 Usage:
-    python -m scripts.onboarding.bot
+    python -m cdl_bot.bot
 
 Environment Variables Required:
     SLACK_BOT_TOKEN - Slack bot OAuth token (xoxb-...)

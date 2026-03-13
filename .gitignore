@@ -29,13 +29,15 @@ html_test/
 # Playwright MCP screenshots
 .playwright-mcp/
 
-# CDL Onboarding Bot
-scripts/onboarding/.env
-scripts/onboarding/output/
-scripts/onboarding/*.json
-scripts/onboarding/secrets/
-scripts/onboarding/data/
-!scripts/onboarding/data/projects.json
+# CDL Bot
+cdl_bot/.env
+cdl_bot/output/
+cdl_bot/*.json
+cdl_bot/secrets/
+cdl_bot/data/
+!cdl_bot/data/projects.json
+.cdl-bot.pid
+.cdl-bot.log
 *.credentials.json
 service-account*.json
 google-credentials.json
@@ -73,3 +75,5 @@ env/
 
 # Claude session notes
 notes/
+.omc/
+cdl_bot/CDL_scheduler.ipynb

@@ -3,7 +3,7 @@
 ## Status: Implementation in progress
 
 ## Source Material
-- Notebook: `scripts/onboarding/CDL_scheduler.ipynb`
+- Notebook: `cdl_bot/CDL_scheduler.ipynb`
 - Key functions: `parse_when2meet(url)` and `find_best_meeting_times()`
 - Example Slack messages below
 
@@ -21,7 +21,7 @@
 - **Name matching**: Fuzzy match when2meet names to Slack users, director confirms via dropdown
 - **Calendar events**: Google Apps Script web app (serverless, free)
 - **Credentials**: GitHub Secrets preferred, or gitignored local file
-- **Scheduling algorithm**: Extract from notebook into `scripts/onboarding/services/scheduling_service.py`
+- **Scheduling algorithm**: Extract from notebook into `cdl_bot/services/scheduling_service.py`
 
 ## Flow
 1. `/cdl-schedule` → project config modal (names, durations, emojis — NO members)

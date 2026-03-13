@@ -15,7 +15,7 @@ from PIL import Image
 # Ensure scripts package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.onboarding.services.image_service import ImageService
+from cdl_bot.services.image_service import ImageService
 
 
 class TestImageServiceInit:
