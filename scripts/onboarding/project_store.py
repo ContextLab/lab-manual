@@ -101,14 +101,22 @@ class ProjectStore:
             lines.append(f"{name} | {dur} | {emoji}")
         return "\n".join(lines)
 
-    def get_survey_project_list(self, project_names: list, emojis: dict) -> str:
+    def get_survey_project_list(self, project_names: list, emojis: dict,
+                               exclude_from_survey: list = None) -> str:
         """
         Format the project list for the When2Meet survey announcement.
         Uses description + channels from the database.
-        Format: "Description (channels): emoji"
+        Excludes projects like office hours that don't need emoji reactions.
+        Format: "• Description (channel1 + channel2): emoji"
         """
+        if exclude_from_survey is None:
+            exclude_from_survey = []
+
         lines = []
         for name in project_names:
+            if any(exc.lower() in name.lower() for exc in exclude_from_survey):
+                continue
+
             info = self._data.get(name, {})
             desc = info.get("description", name)
             channels = info.get("channels", [])
@@ -116,11 +124,11 @@ class ProjectStore:
 
             if channels:
                 channel_str = " + ".join(channels)
-                line = f"{desc} ({channel_str}): {emoji}"
+                line = f"• {desc} ({channel_str}): {emoji}"
             elif emoji:
-                line = f"{desc}: {emoji}"
+                line = f"• {desc}: {emoji}"
             else:
-                line = desc
+                line = f"• {desc}"
             lines.append(line)
         return "\n".join(lines)
 

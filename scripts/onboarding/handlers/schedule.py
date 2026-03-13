@@ -227,7 +227,8 @@ def register_schedule_handlers(app: App, config: Config):
         project_store = get_project_store()
         project_names = list(session.groups.keys())
         project_list_text = project_store.get_survey_project_list(
-            project_names, session.project_emojis
+            project_names, session.project_emojis,
+            exclude_from_survey=["Office Hours"],
         )
 
         survey_blocks = [

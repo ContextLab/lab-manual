@@ -233,11 +233,25 @@ class TestProjectStore:
         store = ProjectStore()
         text = store.get_survey_project_list(
             ["Kraken", "Efficient Learning"],
-            {":octopus:": ":octopus:", "Kraken": ":octopus:", "Efficient Learning": ":teacher:"},
+            {"Kraken": ":octopus:", "Efficient Learning": ":teacher:"},
         )
         assert "#kraken" in text
         assert "LLMs" in text
         assert "#efficientlearning" in text
+        # Should be bulleted
+        assert "•" in text
+
+    def test_survey_list_excludes_office_hours(self):
+        """Test that office hours are excluded from survey project list."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        text = store.get_survey_project_list(
+            ["Lab Meeting", "Jeremy Office Hours"],
+            {"Lab Meeting": ":raising_hand:"},
+            exclude_from_survey=["Office Hours"],
+        )
+        assert "Lab meeting" in text
+        assert "Office Hours" not in text
 
 
 # ── Handler Utility Tests ────────────────────────────────────────────────────
@@ -520,13 +534,15 @@ class TestWhen2MeetService:
         assert len(names) >= 15
         assert "Jeremy" in names
 
-    def test_next_weekdays(self):
+    def test_create_survey(self):
+        """Test creating a When2Meet survey with DaysOfTheWeek mode."""
         svc = When2MeetService()
-        days = svc._next_weekdays()
-        assert len(days) == 5
-        # Should be in MM/DD/YYYY format
-        for d in days:
-            datetime.strptime(d, "%m/%d/%Y")
+        url = svc.create_survey("Test Survey Creation")
+        assert "when2meet.com/?" in url
+        # Verify it has time slots
+        names = svc.get_respondent_names(url)
+        # New survey has no respondents yet
+        assert names == []
 
 
 # ── Integration Test ─────────────────────────────────────────────────────────

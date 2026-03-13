@@ -7,7 +7,7 @@ Handles creating surveys and scraping responses.
 import logging
 import re
 from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import requests
@@ -30,43 +30,38 @@ class When2MeetService:
     def __init__(self, timezone_str: str = DEFAULT_TIMEZONE):
         self.timezone_str = timezone_str
 
-    def create_survey(self, name: str, days: list[str] = None,
+    def create_survey(self, name: str,
                       start_hour: int = DEFAULT_START_HOUR,
-                      end_hour: int = DEFAULT_END_HOUR) -> str:
+                      end_hour: int = DEFAULT_END_HOUR,
+                      weekdays: list[int] = None) -> str:
         """
         Create a new When2Meet survey via HTTP POST.
 
+        Uses "DaysOfTheWeek" mode so respondents mark recurring weekly
+        availability (not specific calendar dates).
+
         Args:
             name: Survey title (e.g., "CDL Spring 2026 Availability")
-            days: List of date strings in MM/DD/YYYY format. If None, uses next Mon-Fri.
             start_hour: Start hour (0-23)
             end_hour: End hour (0-23)
+            weekdays: Day numbers (Sunday=0). Defaults to Mon-Fri [1,2,3,4,5].
 
         Returns:
             Full URL of the created survey
         """
-        if days is None:
-            days = self._next_weekdays()
-
-        # When2Meet expects dates as pipe-separated list of Unix timestamps
-        # for midnight of each day in the survey timezone
-        tz = ZoneInfo(self.timezone_str)
-        date_timestamps = []
-        for day_str in days:
-            dt = datetime.strptime(day_str, "%m/%d/%Y")
-            dt_tz = dt.replace(tzinfo=tz)
-            date_timestamps.append(str(int(dt_tz.timestamp())))
+        if weekdays is None:
+            weekdays = [1, 2, 3, 4, 5]  # Mon-Fri (Sunday=0)
 
         data = {
             "NewEventName": name,
-            "DateTypes": "SpecificDates",
-            "PossibleDates": "|".join(date_timestamps),
+            "DateTypes": "DaysOfTheWeek",
+            "PossibleDates": "|".join(str(d) for d in weekdays),
             "NoEarlierThan": start_hour,
             "NoLaterThan": end_hour,
             "TimeZone": self.timezone_str,
         }
 
-        logger.info(f"Creating When2Meet survey: {name} ({len(days)} days, {start_hour}-{end_hour})")
+        logger.info(f"Creating When2Meet survey: {name} (weekdays {weekdays}, {start_hour}-{end_hour})")
 
         resp = requests.post(f"{BASE_URL}/SaveNewEvent.php", data=data, timeout=30,
                              allow_redirects=False)
@@ -187,16 +182,3 @@ class When2MeetService:
                 names.append(base)
         return names
 
-    def _next_weekdays(self) -> list[str]:
-        """Get MM/DD/YYYY strings for next Monday-Friday."""
-        today = datetime.now()
-        # Find next Monday
-        days_until_monday = (7 - today.weekday()) % 7
-        if days_until_monday == 0:
-            days_until_monday = 7
-        monday = today + timedelta(days=days_until_monday)
-
-        return [
-            (monday + timedelta(days=i)).strftime("%m/%d/%Y")
-            for i in range(5)
-        ]
