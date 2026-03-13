@@ -510,7 +510,7 @@ class TestFormatAnnouncement:
         )
         assert "Spring 2026" in result
         assert "Lab Meeting" in result
-        assert ":microscope:" in result
+        assert "(Weekly)" in result or "(Biweekly)" in result
 
 
 # ── When2Meet Service Tests (live) ───────────────────────────────────────────

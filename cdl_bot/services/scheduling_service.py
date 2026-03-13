@@ -386,17 +386,17 @@ def format_announcement(scheduled: dict, schedule_df: pd.DataFrame,
     """
     Format the final announcement message for #general.
 
-    Matches the style from the example:
-    - Term header
-    - Each meeting with emoji, day/time, and member list
-    - React-with-emoji instruction
+    Groups meetings by day with indented time entries:
+        Monday:
+          11:30 - 12:00: StockProphet (Weekly)
+          15:00 - 16:00: Lab Meeting (Weekly)
     """
     if schedule_df is None or schedule_df.empty:
         return "No meetings were scheduled."
 
     lines = []
     if term:
-        lines.append(f"*{term} meeting schedule:*\n")
+        lines.append(f"Hi @channel! Here's the schedule for *{term}* meetings:\n")
 
     day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     for day in day_order:
@@ -404,27 +404,21 @@ def format_announcement(scheduled: dict, schedule_df: pd.DataFrame,
         if day_meetings.empty:
             continue
 
+        lines.append(f"*{day}:*")
+
         for meeting_name, row in day_meetings.iterrows():
-            emoji = (project_emojis or {}).get(meeting_name, "")
-            emoji_str = f"{emoji} " if emoji else ""
-            freq_note = " (biweekly)" if "Biweekly" in row["Frequency"] else ""
-
-            members = groups.get(meeting_name, [])
-            if meeting_name == "Jeremy Office Hours":
-                member_str = "open to all lab members"
-            elif members:
-                member_str = ", ".join(members)
-            else:
-                member_str = ""
-
+            freq = "Biweekly" if "Biweekly" in row["Frequency"] else "Weekly"
             start = row["Start Time"][:5]
             end = row["End Time"][:5]
-            lines.append(
-                f"{emoji_str}*{meeting_name}*{freq_note}: "
-                f"{day}s {start}-{end}"
-            )
-            if member_str:
-                lines.append(f"  _{member_str}_")
-            lines.append("")
+
+            # Format one-on-one meetings as "Individual Meeting (Name)"
+            display_name = meeting_name
+            if meeting_name.endswith(" one-on-one"):
+                person = meeting_name.replace(" one-on-one", "")
+                display_name = f"Individual Meeting ({person})"
+
+            lines.append(f"  {start} - {end}: {display_name} ({freq})")
+
+        lines.append("")  # blank line between days
 
     return "\n".join(lines)

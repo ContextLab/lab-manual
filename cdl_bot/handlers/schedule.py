@@ -660,9 +660,16 @@ def register_schedule_handlers(app: App, config: Config):
                 session.project_emojis,
             )
 
+            # Create Google Calendar events if credentials are configured
+            cal_summary = _create_calendar_events(client, session, schedule_df)
+
+            done_text = f"Scheduling complete for {session.term}!"
+            if cal_summary:
+                done_text += f"\n\n{cal_summary}"
+
             client.chat_postMessage(
                 channel=session.dm_channel,
-                text=f"Scheduling complete for {session.term}!",
+                text=done_text,
             )
         except SlackApiError as e:
             logger.error(f"Error posting announcement: {e}")
@@ -1552,3 +1559,56 @@ def _auto_populate_senior(client: WebClient, session, respondent_names: list):
 
     except SlackApiError as e:
         logger.error(f"Error auto-populating senior members: {e}")
+
+
+def _create_calendar_events(client: WebClient, session, schedule_df) -> str:
+    """
+    Create Google Calendar recurring events for all scheduled meetings.
+    Returns a summary string, or empty string if calendar is not configured.
+    """
+    import os
+    credentials_file = os.environ.get("GOOGLE_CREDENTIALS_FILE")
+    if not credentials_file:
+        logger.info("GOOGLE_CREDENTIALS_FILE not set — skipping calendar event creation")
+        return ""
+
+    calendar_id_env = os.environ.get("GOOGLE_CALENDAR_CONTEXTUAL_DYNAMICS_LAB")
+    if not calendar_id_env:
+        logger.info("GOOGLE_CALENDAR_CONTEXTUAL_DYNAMICS_LAB not set — skipping events")
+        return ""
+
+    if not session.term_start or not session.term_end:
+        logger.warning("Term start/end dates missing — skipping calendar events")
+        return ""
+
+    try:
+        from ..services.calendar_service import CalendarService
+        cal = CalendarService(credentials_file)
+
+        results = cal.create_schedule_events(
+            calendar_id=calendar_id_env,
+            schedule_df=schedule_df,
+            groups=session.groups,
+            term_start=session.term_start,
+            term_end=session.term_end,
+        )
+
+        created = [r for r in results if r["success"]]
+        failed = [r for r in results if not r["success"]]
+
+        # Store event IDs on session for potential rollback
+        session.calendar_event_ids = [r["event_id"] for r in created if r["event_id"]]
+
+        lines = []
+        if created:
+            lines.append(f":calendar: Created {len(created)} calendar events.")
+        if failed:
+            lines.append(f":warning: Failed to create {len(failed)} events:")
+            for r in failed:
+                lines.append(f"  • {r['meeting_name']}: {r['error']}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.error(f"Error creating calendar events: {e}")
+        return f":warning: Calendar event creation failed: {e}"
