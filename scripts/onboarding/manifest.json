@@ -1,0 +1,166 @@
+{
+  "_metadata": {
+    "major_version": 2,
+    "minor_version": 1
+  },
+  "display_information": {
+    "name": "CDL Onboarding Bot",
+    "description": "Automates the onboarding and offboarding process for CDL lab members",
+    "background_color": "#00693E"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "CDL Onboarding",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/cdl-onboard",
+        "description": "Start onboarding a new lab member",
+        "usage_hint": "@username"
+      },
+      {
+        "command": "/cdl-offboard",
+        "description": "Start the offboarding process"
+      },
+      {
+        "command": "/cdl-schedule",
+        "description": "Start term meeting scheduling"
+      },
+      {
+        "command": "/cdl-ping",
+        "description": "Check if the bot is running"
+      },
+      {
+        "command": "/cdl-help",
+        "description": "Show help information"
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "commands",
+        "users:read",
+        "users:read.email",
+        "im:write",
+        "im:history",
+        "files:read",
+        "files:write",
+        "workflow.steps:execute"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "file_shared",
+        "function_executed"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": true,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  },
+  "functions": {
+    "cdl_onboarding_step": {
+      "title": "Process CDL Onboarding",
+      "description": "Process a new member's onboarding request and send approval to admin",
+      "input_parameters": {
+        "submitter_id": {
+          "type": "slack#/types/user_id",
+          "title": "New Member",
+          "description": "The Slack user who is joining the lab",
+          "is_required": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Full Name",
+          "description": "The new member's full name",
+          "is_required": false
+        },
+        "github_username": {
+          "type": "string",
+          "title": "GitHub Username",
+          "description": "The new member's GitHub username",
+          "is_required": true
+        },
+        "bio": {
+          "type": "string",
+          "title": "Bio",
+          "description": "A short bio about the new member",
+          "is_required": false
+        },
+        "website_url": {
+          "type": "string",
+          "title": "Personal Website",
+          "description": "The new member's personal website URL",
+          "is_required": false
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The new member's email address",
+          "is_required": false
+        },
+        "photo_url": {
+          "type": "string",
+          "title": "Photo URL",
+          "description": "URL to the new member's profile photo",
+          "is_required": false
+        }
+      },
+      "output_parameters": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The result of the onboarding process (approved/rejected)"
+        },
+        "github_username": {
+          "type": "string",
+          "title": "GitHub Username",
+          "description": "The approved GitHub username"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The new member's name"
+        }
+      }
+    },
+    "cdl_offboarding_step": {
+      "title": "Process CDL Offboarding",
+      "description": "Process a member's departure and notify admin",
+      "input_parameters": {
+        "submitter_id": {
+          "type": "slack#/types/user_id",
+          "title": "Departing Member",
+          "description": "The Slack user who is leaving the lab",
+          "is_required": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Full Name",
+          "description": "The departing member's full name",
+          "is_required": false
+        }
+      },
+      "output_parameters": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The result of the offboarding notification"
+        },
+        "member_name": {
+          "type": "string",
+          "title": "Member Name",
+          "description": "The departing member's name"
+        }
+      }
+    }
+  }
+}
