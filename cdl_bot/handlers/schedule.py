@@ -13,7 +13,7 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from slack_bolt import App
 from slack_sdk import WebClient
@@ -415,6 +415,8 @@ def register_schedule_handlers(app: App, config: Config):
         )
 
         season_emojis = _season_emojis(session.term)
+        term_start_friendly = _friendly_date(session.term_start)
+        deadline = _friday_before(session.term_start)
 
         survey_blocks = [
             {
@@ -426,19 +428,38 @@ def register_schedule_handlers(app: App, config: Config):
                 "text": {
                     "type": "mrkdwn",
                     "text": (
-                        f"It's time to schedule meetings for *{session.term}*!{season_emojis}\n\n"
-                        f"Please fill out this When2Meet with your availability "
-                        f"(weekdays, 9 AM - 5 PM ET):\n\n"
+                        f"Hey @channel!{season_emojis}\n\n"
+                        f"I'd like to nail down our meeting times for the upcoming "
+                        f"*{session.term}* term! Please fill out your availability "
+                        f"for weekly meetings (lab meetings + project meetings):\n\n"
                         f"*<{url}|Fill out When2Meet>*\n\n"
+                        f"Regular meetings will start up again on *{term_start_friendly}* "
+                        f"(i.e., on the first day of the term).\n\n"
                         f"Here's the list of our weekly meetings for this term:\n\n"
                         f"{project_list_text}\n\n"
-                        f"Please react to this message with the appropriate emoji(s) "
-                        f"for meetings you want to attend. "
                         f"If you'd like a recurring individual meeting with me, "
                         f"react with :zoom:\n\n"
-                        f"Use your *first name and last initial* on When2Meet so "
-                        f"we can match you. "
-                        f"Please complete this by end of day Friday."
+                        f"In addition to filling out your availability, please react to "
+                        f"this message with the appropriate emoji(s) corresponding to "
+                        f"meetings you want to attend (note: everyone should be at the "
+                        f"full-lab meetings if at all possible; adding your reaction helps "
+                        f"me gauge who is active in the lab this term). I'll use your "
+                        f"responses to figure out times that accommodate as many people as "
+                        f"possible. Everything will go on the CDL calendar, and anyone is "
+                        f"welcome at any of the project meetings if you're interested in "
+                        f"learning more, even if it's not for your primary project(s). "
+                        f"The lab's policy is: anyone can work on any project they are "
+                        f"interested in. So if you're new to the group, feel free to "
+                        f"explore!\n\n"
+                        f"All group meetings will be hybrid: in person (Moore 416) and "
+                        f"via Zoom (<https://dartmouth.zoom.us/my/contextlab|link>). "
+                        f"Individual meetings will be in my office (Moore 349) or via "
+                        f"the same Zoom link.\n\n"
+                        f"Please use your *first name and last initial* on When2Meet so "
+                        f"we can match you. Fill out your availability + add your emoji "
+                        f"reactions by *end of day {deadline}*. "
+                        f"(If you don't fill it out by then, your preferences won't be "
+                        f"taken into account for scheduling.)"
                     ),
                 },
             },
@@ -1793,3 +1814,28 @@ def _create_calendar_events(client: WebClient, session, schedule_df) -> str:
     except Exception as e:
         logger.error(f"Error creating calendar events: {e}")
         return f":warning: Calendar event creation failed: {e}"
+
+
+def _friendly_date(iso_date: str) -> str:
+    """Convert "2026-03-30" to "Monday, March 30"."""
+    try:
+        d = date.fromisoformat(iso_date)
+        return d.strftime("%A, %B %-d")
+    except (ValueError, TypeError):
+        return iso_date
+
+
+def _friday_before(iso_date: str) -> str:
+    """
+    Find the Friday before a term start date.
+    Returns a friendly string like "Friday, March 27".
+    """
+    try:
+        d = date.fromisoformat(iso_date)
+        # Find the Friday before (or on) the day before term starts
+        day_before = d - timedelta(days=1)
+        days_since_friday = (day_before.weekday() - 4) % 7
+        friday = day_before - timedelta(days=days_since_friday)
+        return friday.strftime("Friday, %B %-d")
+    except (ValueError, TypeError):
+        return "Friday before the term starts"
