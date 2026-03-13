@@ -102,15 +102,21 @@ class ProjectStore:
         return "\n".join(lines)
 
     def get_survey_project_list(self, project_names: list, emojis: dict,
-                               exclude_from_survey: list = None) -> str:
+                               exclude_from_survey: list = None,
+                               channel_id_map: dict = None) -> str:
         """
         Format the project list for the When2Meet survey announcement.
         Uses description + channels from the database.
         Excludes projects like office hours that don't need emoji reactions.
-        Format: "• Description (channel1 + channel2): emoji"
+
+        Args:
+            channel_id_map: dict of "#channel-name" -> "C12345" Slack channel IDs
+                           for rendering clickable links. If None, channels shown as plain text.
         """
         if exclude_from_survey is None:
             exclude_from_survey = []
+        if channel_id_map is None:
+            channel_id_map = {}
 
         lines = []
         for name in project_names:
@@ -123,12 +129,19 @@ class ProjectStore:
             emoji = emojis.get(name, info.get("emoji", ""))
 
             if channels:
-                channel_str = " + ".join(channels)
-                line = f"• {desc} ({channel_str}): {emoji}"
+                linked = []
+                for ch in channels:
+                    ch_id = channel_id_map.get(ch)
+                    if ch_id:
+                        linked.append(f"<#{ch_id}|{ch.lstrip('#')}>")
+                    else:
+                        linked.append(ch)
+                channel_str = " + ".join(linked)
+                line = f"   • {desc} ({channel_str}): {emoji}"
             elif emoji:
-                line = f"• {desc}: {emoji}"
+                line = f"   • {desc}: {emoji}"
             else:
-                line = f"• {desc}"
+                line = f"   • {desc}"
             lines.append(line)
         return "\n".join(lines)
 

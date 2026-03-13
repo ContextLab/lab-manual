@@ -223,13 +223,17 @@ def register_schedule_handlers(app: App, config: Config):
             )
             return
 
-        # Build project list with descriptions and channels from database
+        # Build project list with descriptions and channel links from database
         project_store = get_project_store()
         project_names = list(session.groups.keys())
+        channel_id_map = _build_channel_id_map(client, project_store, project_names)
         project_list_text = project_store.get_survey_project_list(
             project_names, session.project_emojis,
             exclude_from_survey=["Office Hours"],
+            channel_id_map=channel_id_map,
         )
+
+        season_emojis = _season_emojis(session.term)
 
         survey_blocks = [
             {
@@ -241,15 +245,18 @@ def register_schedule_handlers(app: App, config: Config):
                 "text": {
                     "type": "mrkdwn",
                     "text": (
-                        f"It's time to schedule meetings for *{session.term}*!\n\n"
+                        f"It's time to schedule meetings for *{session.term}*!{season_emojis}\n\n"
                         f"Please fill out this When2Meet with your availability "
                         f"(weekdays, 9 AM - 5 PM ET):\n\n"
                         f"*<{url}|Fill out When2Meet>*\n\n"
                         f"Here's the list of our weekly meetings for this term:\n\n"
                         f"{project_list_text}\n\n"
                         f"Please tag this message with the appropriate emoji(s) "
-                        f"for meetings you want to attend.\n\n"
-                        f"Use your *first name* so we can match you. "
+                        f"for meetings you want to attend. "
+                        f"If you'd like a recurring individual meeting with me, "
+                        f"react with :zoom:\n\n"
+                        f"Use your *first name and last initial* on When2Meet so "
+                        f"we can match you. "
                         f"Please complete this by end of day Friday."
                     ),
                 },
@@ -1096,4 +1103,55 @@ def _find_channel(client: WebClient, channel_name: str) -> str:
                 return ch["id"]
     except SlackApiError as e:
         logger.error(f"Error listing channels: {e}")
+    return ""
+
+
+def _build_channel_id_map(client: WebClient, project_store, project_names: list) -> dict:
+    """
+    Look up Slack channel IDs for all channels referenced in the project database.
+    Returns dict of "#channel-name" -> "C12345".
+    """
+    # Collect all channel names we need
+    needed = set()
+    for name in project_names:
+        info = project_store.get(name)
+        if info:
+            for ch in info.get("channels", []):
+                needed.add(ch.lstrip("#"))
+
+    if not needed:
+        return {}
+
+    # Fetch workspace channels (paginated)
+    channel_map = {}
+    try:
+        cursor = None
+        while True:
+            kwargs = {"types": "public_channel", "limit": 200}
+            if cursor:
+                kwargs["cursor"] = cursor
+            result = client.conversations_list(**kwargs)
+            for ch in result["channels"]:
+                if ch["name"] in needed:
+                    channel_map[f"#{ch['name']}"] = ch["id"]
+            cursor = result.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
+    except SlackApiError as e:
+        logger.error(f"Error listing channels for ID lookup: {e}")
+
+    return channel_map
+
+
+def _season_emojis(term: str) -> str:
+    """Return season-appropriate emojis for the term name."""
+    term_lower = term.lower()
+    if "winter" in term_lower:
+        return " :snowflake: :snowman:"
+    elif "spring" in term_lower:
+        return " :cherry_blossom: :tulip: :sunny:"
+    elif "summer" in term_lower:
+        return " :sunny: :palm_tree: :ocean:"
+    elif "fall" in term_lower:
+        return " :fallen_leaf: :maple_leaf: :jack_o_lantern:"
     return ""

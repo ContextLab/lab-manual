@@ -4,13 +4,13 @@
     "minor_version": 1
   },
   "display_information": {
-    "name": "CDL Onboarding Bot",
-    "description": "Automates the onboarding and offboarding process for CDL lab members",
+    "name": "CDL Bot",
+    "description": "CDL lab automation: onboarding, offboarding, and term scheduling",
     "background_color": "#00693E"
   },
   "features": {
     "bot_user": {
-      "display_name": "CDL Onboarding",
+      "display_name": "CDL Bot",
       "always_online": true
     },
     "slash_commands": [
