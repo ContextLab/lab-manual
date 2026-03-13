@@ -79,6 +79,10 @@ class SchedulingSession:
     # Calendar event IDs (for potential rollback)
     calendar_event_ids: list = field(default_factory=list)
 
+    # Individual meeting requests (from :zoom: reactions)
+    # zoom_requests: list of {user_id, name, accepted, duration_blocks}
+    zoom_requests: list = field(default_factory=list)
+
     # Announcement
     announcement_message_ts: str = ""
 
@@ -120,6 +124,7 @@ class SchedulingSession:
             "scheduled": self.scheduled,
             "schedule_summary": self.schedule_summary,
             "calendar_event_ids": self.calendar_event_ids,
+            "zoom_requests": self.zoom_requests,
             "announcement_message_ts": self.announcement_message_ts,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
@@ -151,6 +156,7 @@ class SchedulingSession:
             scheduled=data.get("scheduled", {}),
             schedule_summary=data.get("schedule_summary", ""),
             calendar_event_ids=data.get("calendar_event_ids", []),
+            zoom_requests=data.get("zoom_requests", []),
             announcement_message_ts=data.get("announcement_message_ts", ""),
             status=SchedulingStatus(data.get("status", "configuring")),
             created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(),

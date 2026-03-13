@@ -128,7 +128,8 @@ def find_best_meeting_times(
         if meeting_name == "Lab Meeting":
             group_members = [m for m in group_members if m not in external]
 
-        full_group = PI + group_members
+        # Deduplicate: PI may also appear in group_members (e.g., from When2Meet)
+        full_group = PI + [m for m in group_members if m not in PI]
         missing = [name for name in full_group if name not in availability.columns]
         if missing:
             logger.info(f"{meeting_name}: {missing} not in survey — assuming always available")

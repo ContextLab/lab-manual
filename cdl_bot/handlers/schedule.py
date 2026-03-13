@@ -251,8 +251,6 @@ def register_schedule_handlers(app: App, config: Config):
                         f"*<{url}|Fill out When2Meet>*\n\n"
                         f"Here's the list of our weekly meetings for this term:\n\n"
                         f"{project_list_text}\n\n"
-                        f"Please tag this message with the appropriate emoji(s) "
-                        f"for meetings you want to attend. "
                         f"If you'd like a recurring individual meeting with me, "
                         f"react with :zoom:\n\n"
                         f"Use your *first name and last initial* on When2Meet so "
@@ -366,11 +364,56 @@ def register_schedule_handlers(app: App, config: Config):
         session.update_status(SchedulingStatus.NAME_MATCHING)
         save_session(session)
 
+        # Check for :zoom: reactions on the survey message (individual meeting requests)
+        zoom_requesters = _get_zoom_reactors(client, session)
+        if zoom_requesters:
+            session.zoom_requests = [
+                {"user_id": uid, "name": name, "accepted": True, "duration_blocks": 2}
+                for uid, name in zoom_requesters
+            ]
+
+        # Auto-populate project assignments from emoji reactions
+        _auto_populate_from_reactions(client, session, clean_names)
+
+        # Auto-populate senior members from #senior-lab-stuff channel
+        _auto_populate_senior(client, session, clean_names)
+
+        save_session(session)
+
         names_list = "\n".join(f"  • {name}" for name in clean_names)
         project_list = "\n".join(
             f"  • {session.project_emojis.get(p, '')} {p}"
             for p in session.groups
         )
+
+        # Build action buttons
+        action_elements = []
+        if zoom_requesters:
+            action_elements.append({
+                "type": "button",
+                "text": {"type": "plain_text", "text": f"Review {len(zoom_requesters)} Meeting Request(s)"},
+                "style": "primary",
+                "action_id": "sched_review_zoom",
+                "value": session_id,
+            })
+        action_elements.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
+            "style": "primary" if not zoom_requesters else "danger",
+            "action_id": "sched_open_assignment",
+            "value": session_id,
+        })
+        action_elements.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Re-collect"},
+            "action_id": "sched_collect_responses",
+            "value": session_id,
+        })
+
+        zoom_text = ""
+        if zoom_requesters:
+            zoom_names = ", ".join(name for _, name in zoom_requesters)
+            zoom_text = f"\n\n:zoom: *Individual meeting requests:* {zoom_names}"
 
         client.chat_postMessage(
             channel=session.dm_channel,
@@ -382,7 +425,8 @@ def register_schedule_handlers(app: App, config: Config):
                         "type": "mrkdwn",
                         "text": (
                             f"*{len(clean_names)} respondents found:*\n{names_list}\n\n"
-                            f"*Projects to assign:*\n{project_list}\n\n"
+                            f"*Projects to assign:*\n{project_list}"
+                            f"{zoom_text}\n\n"
                             f"Click below to assign people to projects and "
                             f"set senior/external designations."
                         ),
@@ -390,24 +434,90 @@ def register_schedule_handlers(app: App, config: Config):
                 },
                 {
                     "type": "actions",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
-                            "style": "primary",
-                            "action_id": "sched_open_assignment",
-                            "value": session_id,
-                        },
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "Re-collect"},
-                            "action_id": "sched_collect_responses",
-                            "value": session_id,
-                        },
-                    ],
+                    "elements": action_elements,
                 },
             ],
         )
+
+    # ── Step 3b: Review :zoom: individual meeting requests ──────────────
+
+    @app.action("sched_review_zoom")
+    def handle_review_zoom(ack, body, client: WebClient, action):
+        """Open modal for director to accept/deny individual meeting requests."""
+        ack()
+
+        session_id = action["value"]
+        session = get_session(session_id)
+        if not session or not session.zoom_requests:
+            return
+
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=_build_zoom_review_modal(session),
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening zoom review modal: {e}")
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Error opening meeting request review: {e}",
+            )
+
+    @app.view("sched_zoom_review_submit")
+    def handle_zoom_review_submit(ack, body, client: WebClient, view):
+        """Process director's decisions on individual meeting requests."""
+        ack()
+
+        metadata = json.loads(view["private_metadata"])
+        session_id = metadata["session_id"]
+        session = get_session(session_id)
+        if not session:
+            return
+
+        values = view["state"]["values"]
+
+        accepted_meetings = []
+        for i, req in enumerate(session.zoom_requests):
+            # Accept/deny is in zoom_req_{i} block (section accessory)
+            accept_block = values.get(f"zoom_req_{i}", {})
+            accept_action = accept_block.get(f"zoom_accept_{i}", {})
+            selected = accept_action.get("selected_option", {})
+            is_accepted = selected.get("value", "deny") == "accept"
+
+            # Duration is in zoom_dur_block_{i} block (actions element)
+            dur_block = values.get(f"zoom_dur_block_{i}", {})
+            dur_action = dur_block.get(f"zoom_dur_{i}", {})
+            dur_selected = dur_action.get("selected_option", {})
+            duration = float(dur_selected.get("value", "2")) if dur_selected else 2.0
+
+            req["accepted"] = is_accepted
+            req["duration_blocks"] = duration
+            if is_accepted:
+                accepted_meetings.append(req)
+
+        session.zoom_requests = session.zoom_requests  # keep all for record
+        save_session(session)
+
+        # Add accepted meetings to session groups and durations
+        for req in accepted_meetings:
+            meeting_name = f"{req['name']} one-on-one"
+            session.groups[meeting_name] = [req["name"], "Jeremy"]
+            session.preferred_durations[meeting_name] = req["duration_blocks"]
+            session.project_emojis[meeting_name] = ":zoom:"
+        save_session(session)
+
+        if accepted_meetings:
+            names = ", ".join(r["name"] for r in accepted_meetings)
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f":zoom: Accepted individual meetings: {names}\n"
+                     f"These will be included in the scheduling algorithm.",
+            )
+        else:
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text="No individual meetings accepted.",
+            )
 
     # ── Step 4: Assignment modal ─────────────────────────────────────────
 
@@ -1155,3 +1265,288 @@ def _season_emojis(term: str) -> str:
     elif "fall" in term_lower:
         return " :fallen_leaf: :maple_leaf: :jack_o_lantern:"
     return ""
+
+
+def _get_zoom_reactors(client: WebClient, session) -> list:
+    """
+    Fetch :zoom: reactions from the survey message.
+    Returns list of (user_id, display_name) tuples, excluding the bot and director.
+    """
+    if not session.survey_message_ts or not session.survey_channel:
+        return []
+
+    try:
+        result = client.reactions_get(
+            channel=session.survey_channel,
+            timestamp=session.survey_message_ts,
+        )
+    except SlackApiError as e:
+        logger.error(f"Error fetching reactions: {e}")
+        return []
+
+    message = result.get("message", {})
+    reactions = message.get("reactions", [])
+
+    zoom_user_ids = []
+    for reaction in reactions:
+        if reaction["name"] == "zoom":
+            zoom_user_ids = reaction.get("users", [])
+            break
+
+    if not zoom_user_ids:
+        return []
+
+    # Resolve user IDs to display names, skip the director
+    reactors = []
+    for uid in zoom_user_ids:
+        if uid == session.initiated_by:
+            continue
+        try:
+            user_info = client.users_info(user=uid)
+            profile = user_info["user"]["profile"]
+            name = profile.get("real_name") or profile.get("display_name") or uid
+            reactors.append((uid, name))
+        except SlackApiError:
+            reactors.append((uid, uid))
+
+    return reactors
+
+
+def _build_zoom_review_modal(session) -> dict:
+    """
+    Build a modal for the director to accept/deny individual meeting requests
+    and set duration for each.
+    """
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    ":zoom: *Individual Meeting Requests*\n\n"
+                    "The following people reacted with :zoom: to request a "
+                    "recurring one-on-one meeting. For each, choose whether to "
+                    "accept and set the duration."
+                ),
+            },
+        },
+        {"type": "divider"},
+    ]
+
+    duration_options = [
+        {"text": {"type": "plain_text", "text": "15 min"}, "value": "1"},
+        {"text": {"type": "plain_text", "text": "30 min"}, "value": "2"},
+        {"text": {"type": "plain_text", "text": "30 min biweekly"}, "value": "1.5"},
+        {"text": {"type": "plain_text", "text": "45 min"}, "value": "3"},
+        {"text": {"type": "plain_text", "text": "60 min"}, "value": "4"},
+        {"text": {"type": "plain_text", "text": "60 min biweekly"}, "value": "2.5"},
+    ]
+
+    for i, req in enumerate(session.zoom_requests):
+        block_id = f"zoom_req_{i}"
+        blocks.append({
+            "type": "section",
+            "block_id": block_id,
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*{req['name']}*",
+            },
+            "accessory": {
+                "type": "static_select",
+                "action_id": f"zoom_accept_{i}",
+                "placeholder": {"type": "plain_text", "text": "Accept/Deny"},
+                "initial_option": {
+                    "text": {"type": "plain_text", "text": "Accept"},
+                    "value": "accept",
+                },
+                "options": [
+                    {"text": {"type": "plain_text", "text": "Accept"}, "value": "accept"},
+                    {"text": {"type": "plain_text", "text": "Deny"}, "value": "deny"},
+                ],
+            },
+        })
+        blocks.append({
+            "type": "actions",
+            "block_id": f"zoom_dur_block_{i}",
+            "elements": [
+                {
+                    "type": "static_select",
+                    "action_id": f"zoom_dur_{i}",
+                    "placeholder": {"type": "plain_text", "text": "Duration"},
+                    "initial_option": {
+                        "text": {"type": "plain_text", "text": "30 min"},
+                        "value": "2",
+                    },
+                    "options": duration_options,
+                },
+            ],
+        })
+
+    metadata = json.dumps({"session_id": session.session_id})
+
+    return {
+        "type": "modal",
+        "callback_id": "sched_zoom_review_submit",
+        "private_metadata": metadata,
+        "title": {"type": "plain_text", "text": "Meeting Requests"},
+        "submit": {"type": "plain_text", "text": "Save Decisions"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": blocks,
+    }
+
+
+def _auto_populate_from_reactions(client: WebClient, session, respondent_names: list):
+    """
+    Fetch emoji reactions from the survey message and use them to auto-populate
+    project assignments. Maps Slack user IDs (from reactions) to When2Meet
+    respondent names via fuzzy matching on display names.
+    """
+    if not session.survey_message_ts or not session.survey_channel:
+        return
+
+    try:
+        result = client.reactions_get(
+            channel=session.survey_channel,
+            timestamp=session.survey_message_ts,
+        )
+    except SlackApiError as e:
+        logger.error(f"Error fetching reactions for auto-populate: {e}")
+        return
+
+    message = result.get("message", {})
+    reactions = message.get("reactions", [])
+
+    if not reactions:
+        return
+
+    # Build reverse map: emoji name -> project name
+    emoji_to_project = {}
+    for project_name, emoji in session.project_emojis.items():
+        # Strip colons: ":octopus:" -> "octopus"
+        clean_emoji = emoji.strip(":")
+        if clean_emoji:
+            emoji_to_project[clean_emoji] = project_name
+
+    # Build a user ID -> respondent name map by resolving reactor profiles
+    uid_to_respondent = {}
+
+    for reaction in reactions:
+        emoji_name = reaction["name"]
+        if emoji_name not in emoji_to_project:
+            continue
+
+        project_name = emoji_to_project[emoji_name]
+        user_ids = reaction.get("users", [])
+
+        for uid in user_ids:
+            # Resolve display name if not cached
+            if uid not in uid_to_respondent:
+                try:
+                    user_info = client.users_info(user=uid)
+                    profile = user_info["user"]["profile"]
+                    display = profile.get("real_name") or profile.get("display_name") or ""
+                    # Fuzzy match to respondent names
+                    matched = _match_display_to_respondent(display, respondent_names)
+                    uid_to_respondent[uid] = matched  # None if no match
+                except SlackApiError:
+                    uid_to_respondent[uid] = None
+
+            matched_name = uid_to_respondent[uid]
+            if matched_name and matched_name not in session.groups.get(project_name, []):
+                if project_name in session.groups:
+                    session.groups[project_name].append(matched_name)
+
+
+def _match_display_to_respondent(display_name: str, respondent_names: list):
+    """
+    Match a Slack display name to a When2Meet respondent name.
+    Tries exact match, first-name match, then fuzzy match.
+    Returns the matched respondent name or None.
+    """
+    if not display_name:
+        return None
+
+    display_lower = display_name.lower().strip()
+
+    # Exact match
+    for name in respondent_names:
+        if name.lower() == display_lower:
+            return name
+
+    # First name match (respondents typically use "FirstName LastInitial")
+    display_first = display_lower.split()[0] if display_lower else ""
+    for name in respondent_names:
+        resp_first = name.lower().split()[0] if name else ""
+        if display_first and resp_first and display_first == resp_first:
+            return name
+
+    # Fuzzy match
+    try:
+        from rapidfuzz import fuzz, process
+        result = process.extractOne(
+            display_name, respondent_names,
+            scorer=fuzz.token_sort_ratio,
+            score_cutoff=60,
+        )
+        if result:
+            return result[0]
+    except ImportError:
+        pass
+
+    return None
+
+
+def _auto_populate_senior(client: WebClient, session, respondent_names: list):
+    """
+    Look up members of #senior-lab-stuff channel and cross-reference with
+    respondent names to auto-populate the senior members list.
+    """
+    try:
+        # Find the channel ID for #senior-lab-stuff
+        channel_id = None
+        cursor = None
+        while True:
+            kwargs = {"types": "public_channel,private_channel", "limit": 200}
+            if cursor:
+                kwargs["cursor"] = cursor
+            result = client.conversations_list(**kwargs)
+            for ch in result["channels"]:
+                if ch["name"] == "senior-lab-stuff":
+                    channel_id = ch["id"]
+                    break
+            if channel_id:
+                break
+            cursor = result.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
+
+        if not channel_id:
+            logger.info("Could not find #senior-lab-stuff channel for auto-populating seniors")
+            return
+
+        # Get channel members
+        members_result = client.conversations_members(channel=channel_id, limit=200)
+        member_ids = members_result.get("members", [])
+
+        # Resolve each member's display name and match to respondents
+        senior_names = []
+        for uid in member_ids:
+            try:
+                user_info = client.users_info(user=uid)
+                profile = user_info["user"]["profile"]
+                display = profile.get("real_name") or profile.get("display_name") or ""
+                matched = _match_display_to_respondent(display, respondent_names)
+                if matched and matched not in senior_names:
+                    senior_names.append(matched)
+            except SlackApiError:
+                continue
+
+        # Remove PI from senior list (they're weighted separately)
+        senior_names = [n for n in senior_names if n not in session.pi]
+
+        if senior_names:
+            session.senior = senior_names
+            logger.info(f"Auto-populated senior members from #senior-lab-stuff: {senior_names}")
+
+    except SlackApiError as e:
+        logger.error(f"Error auto-populating senior members: {e}")
