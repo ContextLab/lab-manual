@@ -79,9 +79,13 @@ class When2MeetService:
                 logger.info(f"Created When2Meet survey: {url}")
                 return url
 
-        # Fallback: parse from response body
+        # Fallback: parse from response body (JS redirect or link)
         if resp.status_code == 200:
-            match = re.search(r'href="(/\?[\w-]+)"', resp.text)
+            # Try window.location JS redirect: window.location='./?35550844-wQkFY'
+            match = re.search(r"window\.location\s*=\s*['\"]\.(/\?[\w-]+)['\"]", resp.text)
+            if not match:
+                # Try href link
+                match = re.search(r'href="(/\?[\w-]+)"', resp.text)
             if match:
                 url = f"{BASE_URL}{match.group(1)}"
                 logger.info(f"Created When2Meet survey: {url}")
