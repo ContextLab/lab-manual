@@ -18,7 +18,7 @@ import pytest
 # Ensure scripts package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.onboarding.services.github_service import GitHubService
+from cdl_bot.services.github_service import GitHubService
 
 
 class TestGitHubServiceInit:

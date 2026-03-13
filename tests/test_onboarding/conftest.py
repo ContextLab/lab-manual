@@ -77,19 +77,19 @@ def test_email():
 @pytest.fixture
 def github_service(github_token):
     """Create a GitHubService instance for testing."""
-    from scripts.onboarding.services.github_service import GitHubService
+    from cdl_bot.services.github_service import GitHubService
     return GitHubService(github_token, "ContextLab")
 
 
 @pytest.fixture
 def image_service():
     """Create an ImageService instance for testing."""
-    from scripts.onboarding.services.image_service import ImageService
+    from cdl_bot.services.image_service import ImageService
     return ImageService()
 
 
 @pytest.fixture
 def bio_service(anthropic_api_key):
     """Create a BioService instance for testing."""
-    from scripts.onboarding.services.bio_service import BioService
+    from cdl_bot.services.bio_service import BioService
     return BioService(anthropic_api_key)

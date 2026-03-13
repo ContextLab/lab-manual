@@ -15,7 +15,7 @@ Features:
 - Bio editing via Claude API
 
 Usage:
-    python -m scripts.onboarding.bot
+    python -m cdl_bot.bot
 
 Environment Variables Required:
     SLACK_BOT_TOKEN - Slack bot OAuth token (xoxb-...)
@@ -43,6 +43,7 @@ from .handlers.offboard import register_offboard_handlers
 from .handlers.workflow_step import register_workflow_step_handlers
 from .handlers.workflow_listener import register_workflow_listener_handlers
 from .handlers.website_approval import register_website_approval_handlers
+from .handlers.schedule import register_schedule_handlers
 from .startup_queue import process_startup_queue, StartupQueueProcessor, register_startup_queue_handlers
 
 # Configure logging
@@ -75,6 +76,7 @@ def create_app(config: Config) -> App:
     register_workflow_step_handlers(app, config)
     register_workflow_listener_handlers(app, config)
     register_website_approval_handlers(app, config)
+    register_schedule_handlers(app, config)
     register_startup_queue_handlers(app, config)
 
     # Add a health check command
@@ -106,6 +108,8 @@ def create_app(config: Config) -> App:
   • Can be initiated by the member leaving or by admin
   • Admin selects which access to revoke
   • Generates a checklist for manual steps
+
+`/cdl-schedule` - Start term meeting scheduling (director only)
 
 `/cdl-ping` - Check if the bot is running
 

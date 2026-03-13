@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cdl-bot"
+version = "0.1.0"
+description = "CDL lab automation: onboarding, offboarding, and term scheduling"
+requires-python = ">=3.9"
+dependencies = [
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.21.0",
+    "PyGithub>=2.1.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.1.1",
+    "Pillow>=10.0.0",
+    "openpyxl>=3.1.0",
+    "anthropic>=0.7.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "rapidfuzz>=3.0.0",
+    "python-dotenv>=1.0.0",
+    "requests",
+    "beautifulsoup4>=4.12.0",
+]
+
+[project.scripts]
+cdl-bot = "cdl_bot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cdl_bot*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
