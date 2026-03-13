@@ -40,8 +40,10 @@
   "oauth_config": {
     "scopes": {
       "bot": [
+        "channels:read",
         "chat:write",
         "commands",
+        "reactions:read",
         "users:read",
         "users:read.email",
         "im:write",
