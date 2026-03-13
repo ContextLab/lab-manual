@@ -2,12 +2,11 @@
 Scheduling workflow handlers for Slack.
 
 Implements the /cdl-schedule command and the multi-step scheduling flow:
-1. Director runs /cdl-schedule → opens project configuration modal
+1. Director runs /cdl-schedule → configures project names, durations, emojis
 2. Bot creates when2meet survey → posts link to #general
-3. Director clicks "Collect Responses" → bot scrapes + fuzzy-matches names
-4. Director confirms name mappings → algorithm runs
-5. Director reviews proposed schedule → confirms
-6. Bot posts announcement to #general
+3. Director clicks "Collect Responses" → bot scrapes respondent names
+4. Director assigns respondents to projects + marks senior/external via modal
+5. Algorithm runs → director reviews → approves → announcement posted
 """
 
 import json
@@ -55,7 +54,6 @@ def _derive_term() -> tuple[str, str, str]:
     elif month in (8, 9):
         return f"Fall {year}", f"{year}-09-15", f"{year}-11-20"
     else:
-        # Off-cycle month — default to next upcoming term
         if month in (2,):
             return f"Spring {year}", f"{year}-03-25", f"{year}-06-03"
         elif month == 5:
@@ -66,18 +64,46 @@ def _derive_term() -> tuple[str, str, str]:
             return f"Winter {year}", f"{year}-01-06", f"{year}-03-10"
 
 
-def _get_previous_emojis() -> dict:
-    """Load project emoji mappings from the most recent completed session."""
+# Default projects from previous terms (baseline if no completed session exists)
+DEFAULT_PROJECTS = [
+    ("Lab Meeting", 4, ":raising_hand:"),
+    ("Kraken", 4, ":octopus:"),
+    ("Efficient Learning", 2, ":teacher:"),
+    ("StockProphet", 2, ":chart_with_upwards_trend:"),
+    ("Brain Dynamics", 2, ":spider_web:"),
+    ("Memory Dynamics", 2, ":brain:"),
+    ("Asymmetries", 2, ":scales:"),
+    ("Jeremy Office Hours", 6, ""),
+]
+
+
+def _get_previous_projects_text() -> str:
+    """
+    Get pre-populated project text from the most recent completed session,
+    falling back to hardcoded defaults.
+    """
     prev = get_latest_completed_session()
-    if prev and prev.project_emojis:
-        return dict(prev.project_emojis)
-    return {}
+    if prev and prev.groups:
+        lines = []
+        for name in prev.groups:
+            dur = prev.preferred_durations.get(name, 2)
+            emoji = prev.project_emojis.get(name, "")
+            lines.append(f"{name} | {dur} | {emoji}")
+        return "\n".join(lines)
+
+    # Hardcoded baseline defaults
+    lines = []
+    for name, dur, emoji in DEFAULT_PROJECTS:
+        lines.append(f"{name} | {dur} | {emoji}")
+    return "\n".join(lines)
 
 
 def register_schedule_handlers(app: App, config: Config):
     """Register all scheduling-related handlers with the Slack app."""
 
     when2meet_service = When2MeetService()
+
+    # ── Step 1: /cdl-schedule → config modal ─────────────────────────────
 
     @app.command("/cdl-schedule")
     def handle_schedule_command(ack, command, client: WebClient, respond):
@@ -86,12 +112,10 @@ def register_schedule_handlers(app: App, config: Config):
 
         user_id = command["user_id"]
 
-        # Admin only
         if user_id != config.slack.admin_user_id:
             respond("Only the lab director can initiate scheduling.")
             return
 
-        # Check for existing active session
         active = get_active_session()
         if active:
             respond(
@@ -101,14 +125,13 @@ def register_schedule_handlers(app: App, config: Config):
             )
             return
 
-        # Open the configuration modal
         term, term_start, term_end = _derive_term()
-        prev_emojis = _get_previous_emojis()
+        projects_text = _get_previous_projects_text()
 
         try:
             client.views_open(
                 trigger_id=command["trigger_id"],
-                view=_build_config_modal(term, term_start, term_end, prev_emojis),
+                view=_build_config_modal(term, term_start, term_end, projects_text),
             )
         except SlackApiError as e:
             logger.error(f"Error opening schedule config modal: {e}")
@@ -116,32 +139,22 @@ def register_schedule_handlers(app: App, config: Config):
 
     @app.view("scheduling_config_form")
     def handle_config_submit(ack, body, client: WebClient, view):
-        """Handle submission of the scheduling configuration modal."""
+        """Handle submission of the project configuration modal."""
         ack()
 
         user_id = body["user"]["id"]
         values = view["state"]["values"]
 
-        # Parse form values
         term = values["term_block"]["term_input"]["value"]
         term_start = values["term_start_block"]["term_start_input"]["value"]
         term_end = values["term_end_block"]["term_end_input"]["value"]
-
-        # Parse projects (one per line: "Project Name: member1, member2 | duration_blocks | emoji")
-        projects_text = values["projects_block"]["projects_input"]["value"]
-        groups, durations, emojis = _parse_projects(projects_text)
-
-        # Parse priority lists
         pi_text = values["pi_block"]["pi_input"]["value"]
         pi = [n.strip() for n in pi_text.split(",") if n.strip()]
 
-        senior_text = values.get("senior_block", {}).get("senior_input", {}).get("value", "")
-        senior_list = [n.strip() for n in senior_text.split(",") if n.strip()] if senior_text else []
+        # Parse projects: "Project Name | duration | emoji" (NO members)
+        projects_text = values["projects_block"]["projects_input"]["value"]
+        project_names, durations, emojis = _parse_projects(projects_text)
 
-        external_text = values.get("external_block", {}).get("external_input", {}).get("value", "")
-        external_list = [n.strip() for n in external_text.split(",") if n.strip()] if external_text else []
-
-        # Create session
         session_id = f"sched_{int(time.time())}"
         session = SchedulingSession(
             session_id=session_id,
@@ -149,15 +162,12 @@ def register_schedule_handlers(app: App, config: Config):
             term=term,
             term_start=term_start,
             term_end=term_end,
-            groups=groups,
+            groups={name: [] for name in project_names},  # Empty until assignment
             preferred_durations=durations,
             project_emojis=emojis,
             pi=pi,
-            senior=senior_list,
-            external=external_list,
         )
 
-        # Open DM with director
         try:
             dm = client.conversations_open(users=[user_id])
             session.dm_channel = dm["channel"]["id"]
@@ -167,7 +177,6 @@ def register_schedule_handlers(app: App, config: Config):
 
         save_session(session)
 
-        # Show config summary and offer to create when2meet
         summary = _format_config_summary(session)
         try:
             client.chat_postMessage(
@@ -187,7 +196,10 @@ def register_schedule_handlers(app: App, config: Config):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "Ready to create the When2Meet survey and post it to #general?",
+                            "text": (
+                                "Ready to create the When2Meet survey?\n"
+                                "After people respond, you'll assign them to projects."
+                            ),
                         },
                     },
                     {
@@ -214,9 +226,11 @@ def register_schedule_handlers(app: App, config: Config):
         except SlackApiError as e:
             logger.error(f"Error sending config summary: {e}")
 
+    # ── Step 2: Create When2Meet → post to channel ───────────────────────
+
     @app.action("sched_create_survey")
     def handle_create_survey(ack, body, client: WebClient, action):
-        """Create When2Meet survey and post to #general."""
+        """Create When2Meet survey and post to channel."""
         ack()
 
         session_id = action["value"]
@@ -224,7 +238,6 @@ def register_schedule_handlers(app: App, config: Config):
         if not session:
             return
 
-        # Create the survey
         try:
             survey_name = f"CDL {session.term} Availability"
             url = when2meet_service.create_survey(survey_name)
@@ -237,10 +250,6 @@ def register_schedule_handlers(app: App, config: Config):
                 text=f"Error creating When2Meet survey: {e}",
             )
             return
-
-        # Post to #general
-        all_members = session.get_all_members()
-        member_list = ", ".join(all_members)
 
         survey_blocks = [
             {
@@ -264,11 +273,11 @@ def register_schedule_handlers(app: App, config: Config):
         ]
 
         try:
-            # Try to find #general channel
-            channel_id = _find_channel(client, "general")
+            # TODO: Change back to #general for production
+            # channel_id = _find_channel(client, "general")
+            channel_id = session.dm_channel  # TEST MODE: post to DM instead of #general
             if not channel_id:
                 channel_id = session.dm_channel
-                logger.warning("Could not find #general, posting to DM instead")
 
             result = client.chat_postMessage(
                 channel=channel_id,
@@ -282,20 +291,19 @@ def register_schedule_handlers(app: App, config: Config):
         except SlackApiError as e:
             logger.error(f"Error posting survey to channel: {e}")
 
-        # Send control message to director
         client.chat_postMessage(
             channel=session.dm_channel,
-            text=f"When2Meet survey created and posted!",
+            text="When2Meet survey created and posted!",
             blocks=[
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
                         "text": (
-                            f"Survey created and posted to <#{session.survey_channel}>.\n\n"
+                            f"Survey created!\n\n"
                             f"*Survey URL:* <{url}>\n\n"
-                            f"When everyone has responded, click below to collect responses "
-                            f"and run the scheduling algorithm."
+                            f"When everyone has responded, click below to collect "
+                            f"responses and assign people to projects."
                         ),
                     },
                 },
@@ -304,7 +312,7 @@ def register_schedule_handlers(app: App, config: Config):
                     "elements": [
                         {
                             "type": "button",
-                            "text": {"type": "plain_text", "text": "Collect Responses & Schedule"},
+                            "text": {"type": "plain_text", "text": "Collect Responses"},
                             "style": "primary",
                             "action_id": "sched_collect_responses",
                             "value": session_id,
@@ -314,9 +322,11 @@ def register_schedule_handlers(app: App, config: Config):
             ],
         )
 
+    # ── Step 3: Collect responses → show respondents ─────────────────────
+
     @app.action("sched_collect_responses")
     def handle_collect_responses(ack, body, client: WebClient, action):
-        """Scrape When2Meet responses, fuzzy-match names, and run algorithm."""
+        """Scrape When2Meet responses and present respondent list."""
         ack()
 
         session_id = action["value"]
@@ -327,16 +337,13 @@ def register_schedule_handlers(app: App, config: Config):
         session.update_status(SchedulingStatus.COLLECTING)
         save_session(session)
 
-        # Status message
         client.chat_postMessage(
             channel=session.dm_channel,
             text="Collecting When2Meet responses...",
         )
 
-        # Scrape responses
         try:
-            import pandas as pd
-            availability = when2meet_service.parse_responses(session.when2meet_url)
+            respondent_names = when2meet_service.get_respondent_names(session.when2meet_url)
         except Exception as e:
             logger.error(f"Error scraping When2Meet: {e}")
             client.chat_postMessage(
@@ -347,7 +354,7 @@ def register_schedule_handlers(app: App, config: Config):
             save_session(session)
             return
 
-        if availability.empty:
+        if not respondent_names:
             client.chat_postMessage(
                 channel=session.dm_channel,
                 text="No responses found on the When2Meet survey yet. Try again later.",
@@ -356,64 +363,66 @@ def register_schedule_handlers(app: App, config: Config):
             save_session(session)
             return
 
-        respondent_names = list(availability.columns)
-        expected_members = session.get_all_members()
+        # Clean up names (skip emails, normalize)
+        clean_names = []
+        for name in respondent_names:
+            if "@" in name:
+                continue
+            clean_names.append(name.strip())
 
-        # Fuzzy match names
-        name_mapping, unmatched = _fuzzy_match_names(respondent_names, expected_members)
-        session.name_mapping = name_mapping
-        session.unmatched_names = unmatched
+        # Store respondent names on the session for the assignment modal
+        session.name_mapping = {name: name for name in clean_names}  # identity for now
+        session.update_status(SchedulingStatus.NAME_MATCHING)
+        save_session(session)
 
-        # If there are unmatched names, ask director to confirm
-        if unmatched:
-            session.update_status(SchedulingStatus.NAME_MATCHING)
-            save_session(session)
+        names_list = "\n".join(f"  • {name}" for name in clean_names)
+        project_list = "\n".join(
+            f"  • {session.project_emojis.get(p, '')} {p}"
+            for p in session.groups
+        )
 
-            match_summary = "*Name Matching Results:*\n\n"
-            match_summary += "*Matched:*\n"
-            for w2m_name, member_name in name_mapping.items():
-                match_summary += f"  {w2m_name} → {member_name}\n"
-            match_summary += f"\n*Unmatched ({len(unmatched)}):*\n"
-            for name in unmatched:
-                match_summary += f"  {name} (not matched to any expected member)\n"
-            match_summary += "\n_Unmatched respondents will be ignored. Continue?_"
-
-            client.chat_postMessage(
-                channel=session.dm_channel,
-                text="Name matching results",
-                blocks=[
-                    {
-                        "type": "section",
-                        "text": {"type": "mrkdwn", "text": match_summary},
+        client.chat_postMessage(
+            channel=session.dm_channel,
+            text=f"Found {len(clean_names)} respondents",
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            f"*{len(clean_names)} respondents found:*\n{names_list}\n\n"
+                            f"*Projects to assign:*\n{project_list}\n\n"
+                            f"Click below to assign people to projects and "
+                            f"set senior/external designations."
+                        ),
                     },
-                    {
-                        "type": "actions",
-                        "elements": [
-                            {
-                                "type": "button",
-                                "text": {"type": "plain_text", "text": "Continue with Scheduling"},
-                                "style": "primary",
-                                "action_id": "sched_run_algorithm",
-                                "value": session_id,
-                            },
-                            {
-                                "type": "button",
-                                "text": {"type": "plain_text", "text": "Re-collect"},
-                                "action_id": "sched_collect_responses",
-                                "value": session_id,
-                            },
-                        ],
-                    },
-                ],
-            )
-            return
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
+                            "style": "primary",
+                            "action_id": "sched_open_assignment",
+                            "value": session_id,
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "Re-collect"},
+                            "action_id": "sched_collect_responses",
+                            "value": session_id,
+                        },
+                    ],
+                },
+            ],
+        )
 
-        # All matched — proceed directly to scheduling
-        _run_scheduling(client, session, availability, name_mapping)
+    # ── Step 4: Assignment modal ─────────────────────────────────────────
 
-    @app.action("sched_run_algorithm")
-    def handle_run_algorithm(ack, body, client: WebClient, action):
-        """Run the scheduling algorithm after name confirmation."""
+    @app.action("sched_open_assignment")
+    def handle_open_assignment(ack, body, client: WebClient, action):
+        """Open the member assignment modal."""
         ack()
 
         session_id = action["value"]
@@ -421,17 +430,84 @@ def register_schedule_handlers(app: App, config: Config):
         if not session:
             return
 
-        # Re-scrape and apply confirmed mappings
+        respondent_names = list(session.name_mapping.keys())
+
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=_build_assignment_modal(session, respondent_names),
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening assignment modal: {e}")
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Error opening assignment modal: {e}",
+            )
+
+    @app.view("scheduling_assignment_form")
+    def handle_assignment_submit(ack, body, client: WebClient, view):
+        """Handle submission of the member assignment modal."""
+        ack()
+
+        values = view["state"]["values"]
+
+        # Extract session_id from private_metadata
+        session_id = view.get("private_metadata", "")
+        session = get_session(session_id)
+        if not session:
+            logger.error(f"No session found for {session_id}")
+            return
+
+        respondent_names = list(session.name_mapping.keys())
+
+        # Parse project assignments
+        for project_name in list(session.groups.keys()):
+            block_id = f"proj_{_safe_id(project_name)}"
+            action_id = f"assign_{_safe_id(project_name)}"
+            selected = values.get(block_id, {}).get(action_id, {}).get("selected_options", [])
+            session.groups[project_name] = [opt["value"] for opt in selected]
+
+        # Parse senior members
+        senior_selected = values.get("senior_block", {}).get("senior_select", {}).get("selected_options", [])
+        session.senior = [opt["value"] for opt in senior_selected]
+
+        # Parse external members
+        external_selected = values.get("external_block", {}).get("external_select", {}).get("selected_options", [])
+        session.external = [opt["value"] for opt in external_selected]
+
+        # Parse extra external names (not in survey)
+        extra_text = values.get("extra_external_block", {}).get("extra_external_input", {}).get("value", "")
+        if extra_text:
+            extra_names = [n.strip() for n in extra_text.split(",") if n.strip()]
+            session.external.extend(extra_names)
+            # Add extra externals to their assigned projects (they won't be in availability
+            # but the algorithm handles missing names gracefully)
+
+        # Lab Meeting gets everyone not external
+        all_assigned = set()
+        for members in session.groups.values():
+            all_assigned.update(members)
+        all_assigned.update(session.pi)
+
+        # If Lab Meeting exists and is empty, auto-populate with all respondents
+        if "Lab Meeting" in session.groups and not session.groups["Lab Meeting"]:
+            session.groups["Lab Meeting"] = respondent_names
+
+        save_session(session)
+
+        # Now scrape full availability and run the algorithm
         try:
             availability = when2meet_service.parse_responses(session.when2meet_url)
         except Exception as e:
             client.chat_postMessage(
                 channel=session.dm_channel,
-                text=f"Error re-scraping When2Meet: {e}",
+                text=f"Error scraping When2Meet: {e}",
             )
             return
 
-        _run_scheduling(client, session, availability, session.name_mapping)
+        _run_scheduling(client, session, availability)
+
+    # ── Step 5: Review and approve ───────────────────────────────────────
 
     @app.action("sched_approve_schedule")
     def handle_approve_schedule(ack, body, client: WebClient, action):
@@ -446,7 +522,6 @@ def register_schedule_handlers(app: App, config: Config):
         session.update_status(SchedulingStatus.ANNOUNCING)
         save_session(session)
 
-        # Build announcement
         import pandas as pd
         schedule_df = pd.DataFrame(session.scheduled.get("_schedule_df_data", []))
         if not schedule_df.empty and "Meeting" in schedule_df.columns:
@@ -457,8 +532,9 @@ def register_schedule_handlers(app: App, config: Config):
             session.groups, session.project_emojis, session.term,
         )
 
-        # Post to #general (or the survey channel)
-        channel = session.survey_channel or session.dm_channel
+        # TODO: Change back to survey_channel for production
+        # channel = session.survey_channel or session.dm_channel
+        channel = session.dm_channel  # TEST MODE
         try:
             result = client.chat_postMessage(
                 channel=channel,
@@ -476,20 +552,20 @@ def register_schedule_handlers(app: App, config: Config):
 
             client.chat_postMessage(
                 channel=session.dm_channel,
-                text=f"Announcement posted to <#{channel}>! Scheduling complete for {session.term}.",
+                text=f"Scheduling complete for {session.term}!",
             )
         except SlackApiError as e:
             logger.error(f"Error posting announcement: {e}")
             client.chat_postMessage(
                 channel=session.dm_channel,
-                text=f"Error posting announcement: {e}\n\nHere's the text to post manually:\n\n{announcement}",
+                text=f"Error posting announcement: {e}\n\nManual text:\n\n{announcement}",
             )
             session.update_status(SchedulingStatus.ERROR, str(e))
             save_session(session)
 
-    @app.action("sched_edit_schedule")
-    def handle_edit_schedule(ack, body, client: WebClient, action):
-        """Director wants to re-run with adjustments."""
+    @app.action("sched_reassign")
+    def handle_reassign(ack, body, client: WebClient, action):
+        """Re-open the assignment modal to change project assignments."""
         ack()
 
         session_id = action["value"]
@@ -497,17 +573,15 @@ def register_schedule_handlers(app: App, config: Config):
         if not session:
             return
 
-        client.chat_postMessage(
-            channel=session.dm_channel,
-            text=(
-                "To adjust the schedule, you can:\n"
-                "1. Re-run `/cdl-schedule` with different project config\n"
-                "2. Click 'Collect Responses & Schedule' again to re-run the algorithm\n\n"
-                "The algorithm optimizes for attendance, day concentration, and contiguity. "
-                "If a specific meeting needs a different time, you can manually adjust "
-                "after posting."
-            ),
-        )
+        respondent_names = list(session.name_mapping.keys())
+
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=_build_assignment_modal(session, respondent_names),
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening assignment modal: {e}")
 
     @app.action("sched_cancel")
     def handle_cancel(ack, body, client: WebClient, action):
@@ -528,8 +602,9 @@ def register_schedule_handlers(app: App, config: Config):
         )
 
 
-def _run_scheduling(client: WebClient, session: SchedulingSession,
-                    availability, name_mapping: dict):
+# ── Run scheduling algorithm ─────────────────────────────────────────────
+
+def _run_scheduling(client: WebClient, session: SchedulingSession, availability):
     """Run the scheduling algorithm and present results to director."""
     import pandas as pd
 
@@ -541,14 +616,9 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
         text="Running scheduling algorithm...",
     )
 
-    # Rename columns from when2meet names to expected member names
-    rename_map = {w2m: member for w2m, member in name_mapping.items()}
-    availability = availability.rename(columns=rename_map)
-
-    # Drop columns not in our expected members (unmatched respondents)
-    expected = set(session.get_all_members())
-    cols_to_keep = [c for c in availability.columns if c in expected]
-    availability = availability[cols_to_keep]
+    # The availability columns are When2Meet names. We use them directly
+    # since the director assigned people using those same names.
+    # No renaming needed — the group members ARE the When2Meet names.
 
     try:
         scheduled, schedule_df = find_best_meeting_times(
@@ -569,7 +639,7 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
         save_session(session)
         return
 
-    # Store results — serialize scheduled dict (convert non-serializable types)
+    # Serialize results
     serializable_scheduled = {}
     for meeting_name, details in scheduled.items():
         serializable_scheduled[meeting_name] = {
@@ -584,7 +654,6 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
             "shares_with": details.get("shares_with"),
         }
 
-    # Store schedule_df data for later use
     if schedule_df is not None and not schedule_df.empty:
         df_data = schedule_df.reset_index().to_dict("records")
         serializable_scheduled["_schedule_df_data"] = df_data
@@ -592,14 +661,12 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
     session.scheduled = serializable_scheduled
     session.update_status(SchedulingStatus.REVIEW)
 
-    # Format for Slack
     slack_summary = format_schedule_for_slack(
         scheduled, schedule_df, session.project_emojis
     )
     session.schedule_summary = slack_summary
     save_session(session)
 
-    # Count unscheduled meetings
     unscheduled = [name for name in session.groups if name not in scheduled]
 
     blocks = [
@@ -629,21 +696,21 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
             "elements": [
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "Approve & Post Announcement"},
+                    "text": {"type": "plain_text", "text": "Approve & Post"},
                     "style": "primary",
                     "action_id": "sched_approve_schedule",
                     "value": session.session_id,
                 },
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "Re-run Algorithm"},
-                    "action_id": "sched_collect_responses",
+                    "text": {"type": "plain_text", "text": "Re-assign Members"},
+                    "action_id": "sched_reassign",
                     "value": session.session_id,
                 },
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "Edit Config"},
-                    "action_id": "sched_edit_schedule",
+                    "text": {"type": "plain_text", "text": "Re-collect Responses"},
+                    "action_id": "sched_collect_responses",
                     "value": session.session_id,
                 },
             ],
@@ -657,22 +724,23 @@ def _run_scheduling(client: WebClient, session: SchedulingSession,
     )
 
 
-def _build_config_modal(term: str, term_start: str, term_end: str,
-                        prev_emojis: dict) -> dict:
-    """Build the scheduling configuration modal."""
+# ── Modal builders ───────────────────────────────────────────────────────
 
-    # Pre-populate projects from previous emojis if available
+def _safe_id(name: str) -> str:
+    """Convert a project name to a safe block_id (alphanumeric + underscore, max 255)."""
+    safe = re.sub(r'[^a-zA-Z0-9]', '_', name)[:100]
+    return safe
+
+
+def _build_config_modal(term: str, term_start: str, term_end: str,
+                        projects_text: str = "") -> dict:
+    """Build the initial configuration modal (projects only, no members)."""
+
     projects_hint = (
-        "One project per line. Format:\n"
-        "Project Name: member1, member2 | duration_blocks | emoji\n\n"
-        "Examples:\n"
-        "Lab Meeting: everyone | 4 | :microscope:\n"
-        "Kraken: Paxton, Jacob, MJ | 4 | :octopus:\n"
-        "1:1 (Claudia): Claudia | 2 | :speech_balloon:\n"
-        "Office Hours: | 6 |\n\n"
+        "One project per line. Format: Project Name | duration | emoji\n\n"
         "Duration = number of 15-min blocks (4=60min). "
         "Add .5 for biweekly (2.5 = biweekly 30min).\n"
-        "Use 'everyone' to include all members."
+        "Edit/add/remove projects as needed for this term."
     )
 
     return {
@@ -719,12 +787,14 @@ def _build_config_modal(term: str, term_start: str, term_end: str,
                     "type": "plain_text_input",
                     "action_id": "projects_input",
                     "multiline": True,
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Lab Meeting: everyone | 4 | :microscope:",
-                    },
+                    **({"initial_value": projects_text} if projects_text else {
+                        "placeholder": {
+                            "type": "plain_text",
+                            "text": "Lab Meeting | 4 | :raising_hand:\nKraken | 4 | :octopus:",
+                        },
+                    }),
                 },
-                "label": {"type": "plain_text", "text": "Projects & Members"},
+                "label": {"type": "plain_text", "text": "Projects (name | duration | emoji)"},
                 "hint": {"type": "plain_text", "text": projects_hint},
             },
             {
@@ -736,41 +806,154 @@ def _build_config_modal(term: str, term_start: str, term_end: str,
                     "initial_value": "Jeremy",
                 },
                 "label": {"type": "plain_text", "text": "PI Name(s) (comma-separated)"},
-            },
-            {
-                "type": "input",
-                "block_id": "senior_block",
-                "optional": True,
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "senior_input",
-                    "placeholder": {"type": "plain_text", "text": "Paxton, Claudia, MJ"},
+                "hint": {
+                    "type": "plain_text",
+                    "text": "Must match their When2Meet name exactly.",
                 },
-                "label": {"type": "plain_text", "text": "Senior Members (3x weight, comma-separated)"},
-            },
-            {
-                "type": "input",
-                "block_id": "external_block",
-                "optional": True,
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "external_input",
-                    "placeholder": {"type": "plain_text", "text": "Dan, MJ, Jay"},
-                },
-                "label": {"type": "plain_text", "text": "External Members (skip lab meeting, comma-separated)"},
             },
         ],
     }
 
 
-def _parse_projects(text: str) -> tuple[dict, dict, dict]:
+def _build_assignment_modal(session: SchedulingSession,
+                            respondent_names: list) -> dict:
     """
-    Parse the projects text block into groups, durations, and emojis.
+    Build the member assignment modal.
 
-    Format per line: "Project Name: member1, member2 | duration | emoji"
-    'everyone' as member list means all members (will be resolved later).
+    One multi-select per project (pick from respondent names),
+    plus senior and external designation selects.
     """
-    groups = {}
+    # Build options from respondent names
+    member_options = [
+        {"text": {"type": "plain_text", "text": name}, "value": name}
+        for name in sorted(respondent_names)
+    ]
+
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    f"Assign the {len(respondent_names)} respondents to projects.\n"
+                    f"_Lab Meeting will default to all non-external members if left empty._"
+                ),
+            },
+        },
+        {"type": "divider"},
+    ]
+
+    # One multi-select per project
+    for project_name in session.groups:
+        block_id = f"proj_{_safe_id(project_name)}"
+        action_id = f"assign_{_safe_id(project_name)}"
+        emoji = session.project_emojis.get(project_name, "")
+        label = f"{emoji} {project_name}" if emoji else project_name
+
+        # Pre-select members if already assigned (for re-assignment)
+        initial = None
+        existing = session.groups.get(project_name, [])
+        if existing:
+            initial = [
+                opt for opt in member_options
+                if opt["value"] in existing
+            ]
+
+        element = {
+            "type": "multi_static_select",
+            "action_id": action_id,
+            "placeholder": {"type": "plain_text", "text": "Select members..."},
+            "options": member_options,
+        }
+        if initial:
+            element["initial_options"] = initial
+
+        blocks.append({
+            "type": "input",
+            "block_id": block_id,
+            "optional": True,
+            "element": element,
+            "label": {"type": "plain_text", "text": label[:75]},  # Slack limit
+        })
+
+    blocks.append({"type": "divider"})
+
+    # Senior members select
+    senior_element = {
+        "type": "multi_static_select",
+        "action_id": "senior_select",
+        "placeholder": {"type": "plain_text", "text": "Select senior members..."},
+        "options": member_options,
+    }
+    if session.senior:
+        initial_senior = [opt for opt in member_options if opt["value"] in session.senior]
+        if initial_senior:
+            senior_element["initial_options"] = initial_senior
+
+    blocks.append({
+        "type": "input",
+        "block_id": "senior_block",
+        "optional": True,
+        "element": senior_element,
+        "label": {"type": "plain_text", "text": "Senior Members (3x scheduling weight)"},
+    })
+
+    # External members select
+    external_element = {
+        "type": "multi_static_select",
+        "action_id": "external_select",
+        "placeholder": {"type": "plain_text", "text": "Select external members..."},
+        "options": member_options,
+    }
+    if session.external:
+        initial_ext = [opt for opt in member_options if opt["value"] in session.external]
+        if initial_ext:
+            external_element["initial_options"] = initial_ext
+
+    blocks.append({
+        "type": "input",
+        "block_id": "external_block",
+        "optional": True,
+        "element": external_element,
+        "label": {"type": "plain_text", "text": "External Members (skip Lab Meeting)"},
+    })
+
+    # Extra external people not in survey
+    blocks.append({
+        "type": "input",
+        "block_id": "extra_external_block",
+        "optional": True,
+        "element": {
+            "type": "plain_text_input",
+            "action_id": "extra_external_input",
+            "placeholder": {"type": "plain_text", "text": "Dan, MJ (names not in survey)"},
+        },
+        "label": {"type": "plain_text", "text": "Additional External Members (not in survey, comma-separated)"},
+    })
+
+    return {
+        "type": "modal",
+        "callback_id": "scheduling_assignment_form",
+        "private_metadata": session.session_id,
+        "title": {"type": "plain_text", "text": "Assign Members"},
+        "submit": {"type": "plain_text", "text": "Run Scheduler"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": blocks,
+    }
+
+
+# ── Helper functions ─────────────────────────────────────────────────────
+
+def _parse_projects(text: str) -> tuple[list, dict, dict]:
+    """
+    Parse the projects text block into names, durations, and emojis.
+
+    Format per line: "Project Name | duration | emoji"
+    No members — those are assigned after collecting When2Meet responses.
+
+    Returns (project_names list, durations dict, emojis dict).
+    """
+    project_names = []
     durations = {}
     emojis = {}
 
@@ -779,41 +962,24 @@ def _parse_projects(text: str) -> tuple[dict, dict, dict]:
         if not line:
             continue
 
-        # Split on | for parts
-        parts = line.split("|")
+        parts = [p.strip() for p in line.split("|")]
+        name = parts[0].strip()
+        if not name:
+            continue
 
-        # First part: "Project Name: member1, member2"
-        name_members = parts[0].strip()
-        if ":" in name_members:
-            name, members_str = name_members.split(":", 1)
-            name = name.strip()
-            members_str = members_str.strip()
+        project_names.append(name)
 
-            if members_str.lower() == "everyone":
-                members = ["everyone"]  # Special marker, resolved at runtime
-            else:
-                members = [m.strip() for m in members_str.split(",") if m.strip()]
-        else:
-            name = name_members
-            members = []
-
-        groups[name] = members
-
-        # Second part: duration (number of 15-min blocks)
-        if len(parts) > 1:
+        if len(parts) > 1 and parts[1]:
             dur_str = parts[1].strip()
             try:
                 durations[name] = float(dur_str) if "." in dur_str else int(dur_str)
             except ValueError:
-                durations[name] = 2  # Default 30 min
+                durations[name] = 2
 
-        # Third part: emoji
-        if len(parts) > 2:
-            emoji = parts[2].strip()
-            if emoji:
-                emojis[name] = emoji
+        if len(parts) > 2 and parts[2]:
+            emojis[name] = parts[2].strip()
 
-    return groups, durations, emojis
+    return project_names, durations, emojis
 
 
 def _format_config_summary(session: SchedulingSession) -> str:
@@ -821,22 +987,18 @@ def _format_config_summary(session: SchedulingSession) -> str:
     lines = [
         f"*Term:* {session.term} ({session.term_start} to {session.term_end})",
         f"*PI:* {', '.join(session.pi)}",
+        f"\n*Projects ({len(session.groups)}):*",
     ]
 
-    if session.senior:
-        lines.append(f"*Senior:* {', '.join(session.senior)}")
-    if session.external:
-        lines.append(f"*External:* {', '.join(session.external)}")
-
-    lines.append(f"\n*Projects ({len(session.groups)}):*")
-    for name, members in session.groups.items():
+    for name in session.groups:
         dur = session.preferred_durations.get(name, 2)
         dur_min = int(dur) * 15 if dur == int(dur) else int(dur) * 15
         biweekly = " (biweekly)" if dur != int(dur) else ""
         emoji = session.project_emojis.get(name, "")
         emoji_str = f" {emoji}" if emoji else ""
-        member_str = ", ".join(members) if members else "(open)"
-        lines.append(f"  {emoji_str} *{name}* — {dur_min}min{biweekly}: {member_str}")
+        lines.append(f"  {emoji_str} *{name}* — {dur_min}min{biweekly}")
+
+    lines.append("\n_Members will be assigned after collecting When2Meet responses._")
 
     return "\n".join(lines)
 
@@ -848,8 +1010,9 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
     Strategy:
     1. Exact match (case-insensitive)
     2. First-name match (respondent's first word matches expected name)
-    3. Fuzzy match via rapidfuzz (score >= 60)
-    4. First-name prefix match (fallback)
+    3. Match respondent to first name of multi-word expected member
+    4. Fuzzy match via rapidfuzz (score >= 60)
+    5. First-name prefix match (fallback)
 
     Returns (mapping dict, unmatched list).
     """
@@ -863,8 +1026,6 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
     mapping = {}
     unmatched = []
     remaining_members = list(expected_members)
-
-    # Build first-name lookup: "Aaron" -> "Aaron" (expected members are typically first names)
     member_lower_map = {m.lower(): m for m in remaining_members}
 
     for resp_name in respondent_names:
@@ -872,12 +1033,11 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
         resp_lower = resp_name.lower().strip()
         resp_first = resp_lower.split()[0] if resp_lower.split() else resp_lower
 
-        # Skip obvious non-names (emails)
         if "@" in resp_name:
             unmatched.append(resp_name)
             continue
 
-        # 1. Exact match (case-insensitive)
+        # 1. Exact match
         if resp_lower in member_lower_map:
             member = member_lower_map[resp_lower]
             mapping[resp_name] = member
@@ -885,7 +1045,7 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
             member_lower_map = {m.lower(): m for m in remaining_members}
             continue
 
-        # 2a. First-name match: "Aaron Raycove" -> "Aaron"
+        # 2. First-name match: "Aaron Raycove" -> "Aaron"
         if resp_first in member_lower_map:
             member = member_lower_map[resp_first]
             mapping[resp_name] = member
@@ -893,8 +1053,7 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
             member_lower_map = {m.lower(): m for m in remaining_members}
             continue
 
-        # 2b. Match respondent to first name of a multi-word expected member:
-        #     "Xin" -> "Xin Jin" (not "Xinming")
+        # 3. Match to first name of multi-word expected: "Xin" -> "Xin Jin"
         first_name_matches = [
             m for m in remaining_members
             if m.lower().split()[0] == resp_first and len(m.split()) > 1
@@ -906,7 +1065,7 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
             member_lower_map = {m.lower(): m for m in remaining_members}
             continue
 
-        # 3. Fuzzy match on full name
+        # 4. Fuzzy match
         if has_rapidfuzz and remaining_members:
             result = process.extractOne(
                 resp_name, remaining_members,
@@ -920,7 +1079,7 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
                 member_lower_map = {m.lower(): m for m in remaining_members}
                 continue
 
-        # 4. First-name prefix/contains fallback
+        # 5. Prefix fallback
         for member in remaining_members:
             member_lower = member.lower()
             if (resp_first.startswith(member_lower) or

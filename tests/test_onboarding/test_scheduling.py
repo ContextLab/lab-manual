@@ -152,38 +152,45 @@ class TestTermDerivation:
 
 class TestParseProjects:
     def test_basic_parsing(self):
-        text = "Lab Meeting: Alice, Bob | 4 | :microscope:"
-        groups, durs, emojis = _parse_projects(text)
-        assert groups == {"Lab Meeting": ["Alice", "Bob"]}
+        text = "Lab Meeting | 4 | :raising_hand:"
+        names, durs, emojis = _parse_projects(text)
+        assert names == ["Lab Meeting"]
         assert durs == {"Lab Meeting": 4}
-        assert emojis == {"Lab Meeting": ":microscope:"}
+        assert emojis == {"Lab Meeting": ":raising_hand:"}
 
-    def test_everyone_keyword(self):
-        text = "Lab Meeting: everyone | 4 | :microscope:"
-        groups, _, _ = _parse_projects(text)
-        assert groups["Lab Meeting"] == ["everyone"]
-
-    def test_empty_members(self):
-        text = "Office Hours: | 6 |"
-        groups, durs, _ = _parse_projects(text)
-        assert groups["Office Hours"] == []
+    def test_no_emoji(self):
+        text = "Office Hours | 6 |"
+        names, durs, emojis = _parse_projects(text)
+        assert "Office Hours" in names
         assert durs["Office Hours"] == 6
+        assert "Office Hours" not in emojis
 
     def test_biweekly_duration(self):
-        text = "Project X: Alice | 2.5 | :calendar:"
+        text = "Project X | 2.5 | :calendar:"
         _, durs, _ = _parse_projects(text)
         assert durs["Project X"] == 2.5
 
     def test_multiline(self):
         text = """
-Lab Meeting: everyone | 4 | :microscope:
-Kraken: Paxton, Jacob | 4 | :octopus:
-1:1 (Claudia): Claudia | 2 |
+Lab Meeting | 4 | :raising_hand:
+Kraken | 4 | :octopus:
+1:1 (Claudia) | 2 |
 """
-        groups, durs, emojis = _parse_projects(text)
-        assert len(groups) == 3
-        assert groups["Kraken"] == ["Paxton", "Jacob"]
-        assert emojis.get("1:1 (Claudia)") is None  # No emoji for this one
+        names, durs, emojis = _parse_projects(text)
+        assert len(names) == 3
+        assert "Kraken" in names
+        assert emojis.get("1:1 (Claudia)") is None
+
+    def test_default_projects(self):
+        """Test parsing the default pre-populated project list."""
+        from scripts.onboarding.handlers.schedule import _get_previous_projects_text
+        text = _get_previous_projects_text()
+        names, durs, emojis = _parse_projects(text)
+        assert "Lab Meeting" in names
+        assert "Kraken" in names
+        assert durs["Lab Meeting"] == 4
+        assert emojis["Lab Meeting"] == ":raising_hand:"
+        assert emojis["Kraken"] == ":octopus:"
 
 
 class TestFuzzyMatchNames:
@@ -253,13 +260,13 @@ class TestFormatConfigSummary:
         s = SchedulingSession(session_id="t", initiated_by="U1", term="Spring 2026",
                               term_start="2026-03-25", term_end="2026-06-03")
         s.pi = ["Jeremy"]
-        s.senior = ["Paxton"]
-        s.groups = {"Lab Meeting": ["Alice", "Bob"]}
-        s.preferred_durations = {"Lab Meeting": 4}
+        s.groups = {"Lab Meeting": [], "Kraken": []}
+        s.preferred_durations = {"Lab Meeting": 4, "Kraken": 4}
         summary = _format_config_summary(s)
         assert "Spring 2026" in summary
         assert "Jeremy" in summary
         assert "Lab Meeting" in summary
+        assert "Members will be assigned" in summary
 
 
 # ── Scheduling Algorithm Tests ───────────────────────────────────────────────
