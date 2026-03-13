@@ -427,9 +427,4 @@ def format_announcement(scheduled: dict, schedule_df: pd.DataFrame,
                 lines.append(f"  _{member_str}_")
             lines.append("")
 
-    # Emoji reaction instruction
-    emoji_meetings = {name: emoji for name, emoji in (project_emojis or {}).items() if emoji}
-    if emoji_meetings:
-        lines.append("React to this message with your project emoji to confirm you've noted the schedule!")
-
     return "\n".join(lines)

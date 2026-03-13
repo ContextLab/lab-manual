@@ -251,6 +251,8 @@ def register_schedule_handlers(app: App, config: Config):
                         f"*<{url}|Fill out When2Meet>*\n\n"
                         f"Here's the list of our weekly meetings for this term:\n\n"
                         f"{project_list_text}\n\n"
+                        f"Please react to this message with the appropriate emoji(s) "
+                        f"for meetings you want to attend. "
                         f"If you'd like a recurring individual meeting with me, "
                         f"react with :zoom:\n\n"
                         f"Use your *first name and last initial* on When2Meet so "
