@@ -36,11 +36,193 @@ logger = logging.getLogger(__name__)
 
 def _derive_term() -> tuple[str, str, str]:
     """
-    Derive the current term name and approximate start/end dates from the month.
+    Derive the upcoming term name and dates by scraping Dartmouth's academic calendar.
+
+    Scrapes the registrar's term calendar index to find calendar page links,
+    then parses the relevant page for classes begin/end dates.
+    Falls back to month-based approximations if scraping fails.
 
     Returns (term_name, start_date_iso, end_date_iso).
-    Term derivation: Dec-Jan→Winter, Mar-Apr→Spring, Jun-Jul→Summer, Aug-Sep→Fall.
     """
+    try:
+        terms = _scrape_dartmouth_calendar()
+        if terms:
+            return _pick_upcoming_term(terms)
+    except Exception as e:
+        logger.warning(f"Calendar scrape failed, using fallback: {e}")
+
+    return _derive_term_fallback()
+
+
+def _scrape_dartmouth_calendar() -> list[dict]:
+    """
+    Scrape Dartmouth registrar for term dates.
+
+    1. Fetch index page to discover term calendar page URLs
+    2. Fetch each calendar page and parse <dl> structure for dates
+
+    Returns list of {name, start, end} dicts sorted by start date.
+    """
+    import requests
+    from bs4 import BeautifulSoup
+
+    base_url = "https://www.dartmouth.edu/reg/calendar/term/"
+    index_resp = requests.get(base_url, timeout=10)
+    index_resp.raise_for_status()
+    index_soup = BeautifulSoup(index_resp.text, "html.parser")
+
+    # Find links to term calendar pages (e.g., "25_26_term_calendar.html")
+    calendar_links = set()
+    for a in index_soup.find_all("a", href=True):
+        href = a["href"]
+        if "term_calendar" not in href:
+            continue
+        # Strip anchor fragments (#a, #b, etc.)
+        href = href.split("#")[0]
+        if not href.endswith(".html"):
+            continue
+        # Normalize to absolute URL
+        if href.startswith("/"):
+            calendar_links.add("https://www.dartmouth.edu" + href)
+        elif not href.startswith("http"):
+            calendar_links.add(base_url + href)
+        else:
+            calendar_links.add(href)
+
+    all_terms = []
+    for url in sorted(calendar_links):
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            terms = _parse_term_calendar_page(resp.text)
+            all_terms.extend(terms)
+        except Exception as e:
+            logger.warning(f"Failed to parse {url}: {e}")
+
+    return sorted(all_terms, key=lambda t: t["start"])
+
+
+def _parse_term_calendar_page(html: str) -> list[dict]:
+    """
+    Parse a Dartmouth term calendar page for term dates.
+
+    Structure: <table class="tableizer-table"> with:
+    - Term headers in <tr class="tableizer-firstrow"><th>Summer Term 2025</th></tr>
+    - Date entries in <tr><td>description</td><td>date</td></tr>
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    # Look in the main content area
+    content = soup.find("div", id="b-content") or soup
+
+    terms = []
+    current_term = None
+    classes_begin = None
+    classes_end = None
+
+    for table in content.find_all("table"):
+        for row in table.find_all("tr"):
+            # Check for term header row
+            th = row.find("th")
+            if th:
+                # Save previous term if complete
+                if current_term and classes_begin and classes_end:
+                    terms.append({
+                        "name": current_term,
+                        "start": classes_begin,
+                        "end": classes_end,
+                    })
+                term_match = re.search(
+                    r"(Summer|Fall|Winter|Spring)\s+Term\s+(\d{4})",
+                    th.get_text(strip=True), re.IGNORECASE,
+                )
+                if term_match:
+                    season = term_match.group(1).capitalize()
+                    year = term_match.group(2)
+                    current_term = f"{season} {year}"
+                    classes_begin = None
+                    classes_end = None
+                continue
+
+            # Parse data rows
+            cells = row.find_all("td")
+            if len(cells) >= 2 and current_term:
+                desc = cells[0].get_text(strip=True).lower()
+                date_text = cells[1].get_text(strip=True)
+
+                if "classes begin" in desc and not classes_begin:
+                    parsed = _parse_calendar_date(date_text)
+                    if parsed:
+                        classes_begin = parsed
+                elif "classes end" in desc and not classes_end:
+                    parsed = _parse_calendar_date(date_text)
+                    if parsed:
+                        classes_end = parsed
+
+    # Don't forget the last term
+    if current_term and classes_begin and classes_end:
+        terms.append({
+            "name": current_term,
+            "start": classes_begin,
+            "end": classes_end,
+        })
+
+    return terms
+
+
+def _parse_calendar_date(text: str) -> str:
+    """
+    Parse a date string like "January 5, 2026" or "March 10, 2026" to ISO format.
+    Returns "YYYY-MM-DD" or None if parsing fails.
+    """
+    from datetime import datetime as dt
+
+    # Clean up: remove asterisks, footnote markers, extra whitespace
+    clean = re.sub(r"[*†‡§]", "", text).strip()
+    # Try multiple date formats
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y"):
+        try:
+            return dt.strptime(clean, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    # Try extracting a date from longer text
+    match = re.search(r"(\w+ \d{1,2},?\s*\d{4})", clean)
+    if match:
+        for fmt in ("%B %d, %Y", "%B %d %Y"):
+            try:
+                return dt.strptime(match.group(1), fmt).strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+    return None
+
+
+def _pick_upcoming_term(terms: list[dict]) -> tuple[str, str, str]:
+    """
+    Pick the most relevant upcoming term from the scraped list.
+
+    Logic: find the next term whose classes haven't ended yet,
+    or if we're between terms, the next one starting.
+    """
+    today_str = date.today().isoformat()
+
+    # Find terms that haven't ended yet
+    upcoming = [t for t in terms if t["end"] >= today_str]
+    if upcoming:
+        # Pick the one that starts soonest (or is currently in progress)
+        best = upcoming[0]
+        return best["name"], best["start"], best["end"]
+
+    # All terms are in the past — shouldn't happen, fall back
+    if terms:
+        last = terms[-1]
+        return last["name"], last["start"], last["end"]
+
+    raise ValueError("No terms found")
+
+
+def _derive_term_fallback() -> tuple[str, str, str]:
+    """Fallback: approximate term dates from the current month."""
     today = date.today()
     month = today.month
     year = today.year
@@ -54,15 +236,14 @@ def _derive_term() -> tuple[str, str, str]:
         return f"Summer {year}", f"{year}-06-20", f"{year}-08-20"
     elif month in (8, 9):
         return f"Fall {year}", f"{year}-09-15", f"{year}-11-20"
+    elif month == 2:
+        return f"Spring {year}", f"{year}-03-25", f"{year}-06-03"
+    elif month == 5:
+        return f"Summer {year}", f"{year}-06-20", f"{year}-08-20"
+    elif month in (10, 11):
+        return f"Winter {year + 1}", f"{year + 1}-01-06", f"{year + 1}-03-10"
     else:
-        if month in (2,):
-            return f"Spring {year}", f"{year}-03-25", f"{year}-06-03"
-        elif month == 5:
-            return f"Summer {year}", f"{year}-06-20", f"{year}-08-20"
-        elif month in (10, 11):
-            return f"Winter {year + 1}", f"{year + 1}-01-06", f"{year + 1}-03-10"
-        else:
-            return f"Winter {year}", f"{year}-01-06", f"{year}-03-10"
+        return f"Winter {year}", f"{year}-01-06", f"{year}-03-10"
 
 
 def _get_previous_projects_text() -> str:

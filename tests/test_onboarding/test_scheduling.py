@@ -270,6 +270,26 @@ class TestTermDerivation:
         seasons = ["Winter", "Spring", "Summer", "Fall"]
         assert any(s in term for s in seasons)
 
+    def test_scrape_dartmouth_calendar(self):
+        """Test live scraping of Dartmouth academic calendar."""
+        from cdl_bot.handlers.schedule import _scrape_dartmouth_calendar
+        terms = _scrape_dartmouth_calendar()
+        assert len(terms) >= 4  # At least one academic year
+        for t in terms:
+            assert "name" in t and "start" in t and "end" in t
+            assert t["start"] < t["end"]  # Start before end
+            seasons = ["Summer", "Fall", "Winter", "Spring"]
+            assert any(s in t["name"] for s in seasons)
+
+    def test_dates_are_iso_format(self):
+        """Term dates should be valid ISO dates."""
+        term, start, end = _derive_term()
+        from datetime import date
+        # Should not raise
+        date.fromisoformat(start)
+        date.fromisoformat(end)
+        assert start < end
+
 
 class TestParseProjects:
     def test_basic_parsing(self):
