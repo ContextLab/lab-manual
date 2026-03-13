@@ -35,6 +35,7 @@ scripts/onboarding/output/
 scripts/onboarding/*.json
 scripts/onboarding/secrets/
 scripts/onboarding/data/
+!scripts/onboarding/data/projects.json
 *.credentials.json
 service-account*.json
 google-credentials.json

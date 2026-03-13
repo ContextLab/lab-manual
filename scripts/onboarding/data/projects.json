@@ -1,0 +1,58 @@
+{
+  "Lab Meeting": {
+    "description": "Lab meeting (full group)",
+    "channels": [],
+    "emoji": ":raising_hand:",
+    "default_duration": 4,
+    "active": true
+  },
+  "Kraken": {
+    "description": "LLMs",
+    "channels": ["#kraken"],
+    "emoji": ":octopus:",
+    "default_duration": 4,
+    "active": true
+  },
+  "Efficient Learning": {
+    "description": "Optimizing learning meeting",
+    "channels": ["#mooc-learning", "#khan-academy-eeg", "#course-shapes", "#exploratorium-dartmouth-collab", "#efficientlearning"],
+    "emoji": ":teacher:",
+    "default_duration": 2,
+    "active": true
+  },
+  "StockProphet": {
+    "description": "StockProphet/Network Dynamics meeting",
+    "channels": ["#stockprophet", "#timecorr"],
+    "emoji": ":chart_with_upwards_trend:",
+    "default_duration": 2,
+    "active": true
+  },
+  "Brain Dynamics": {
+    "description": "Brain dynamics",
+    "channels": ["#directedforgetting", "#timecorr", "#giblet-decoding", "#niinja"],
+    "emoji": ":spider_web:",
+    "default_duration": 2,
+    "active": true
+  },
+  "Memory Dynamics": {
+    "description": "Memory Dynamics",
+    "channels": ["#memory-dynamics"],
+    "emoji": ":brain:",
+    "default_duration": 2,
+    "active": true
+  },
+  "Asymmetries": {
+    "description": "Temporal asymmetries in memory",
+    "channels": ["#prediction-retrodiction", "#memory-cueing", "#memory-entropy"],
+    "emoji": ":scales:",
+    "default_duration": 2,
+    "active": true
+  },
+  "Jeremy Office Hours": {
+    "description": "Jeremy Office Hours",
+    "channels": [],
+    "emoji": "",
+    "default_duration": 6,
+    "active": true
+  }
+}

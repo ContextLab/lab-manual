@@ -133,6 +133,113 @@ class TestSchedulingStorage:
         assert storage.get("s1") is None
 
 
+# ── Project Store Tests ──────────────────────────────────────────────────────
+
+class TestProjectStore:
+    def test_load_default_database(self):
+        """Test loading the shipped projects.json database."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        active = store.list_active()
+        assert "Lab Meeting" in active
+        assert "Kraken" in active
+        assert active["Lab Meeting"]["emoji"] == ":raising_hand:"
+        assert active["Kraken"]["default_duration"] == 4
+
+    def test_channels_populated(self):
+        """Test that channels are populated from the database."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        kraken = store.get("Kraken")
+        assert "#kraken" in kraken["channels"]
+        el = store.get("Efficient Learning")
+        assert "#efficientlearning" in el["channels"]
+
+    def test_descriptions_populated(self):
+        """Test that descriptions are populated from the database."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        assert store.get("Kraken")["description"] == "LLMs"
+        assert "Optimizing" in store.get("Efficient Learning")["description"]
+
+    def test_upsert_new_project(self, tmp_path):
+        """Test adding a new project to the database."""
+        from scripts.onboarding.project_store import ProjectStore
+        db_path = tmp_path / "projects.json"
+        db_path.write_text("{}")
+        store = ProjectStore(db_path)
+
+        store.upsert("New Project", emoji=":rocket:", channels=["#new"],
+                      description="A new project", default_duration=3)
+
+        reloaded = ProjectStore(db_path)
+        proj = reloaded.get("New Project")
+        assert proj is not None
+        assert proj["emoji"] == ":rocket:"
+        assert proj["channels"] == ["#new"]
+        assert proj["default_duration"] == 3
+        assert proj["active"] is True
+
+    def test_deactivate_project(self, tmp_path):
+        """Test deactivating a project hides it from active list."""
+        from scripts.onboarding.project_store import ProjectStore
+        db_path = tmp_path / "projects.json"
+        db_path.write_text('{"Old": {"emoji": ":x:", "channels": [], "description": "Old", "default_duration": 2, "active": true}}')
+        store = ProjectStore(db_path)
+
+        assert "Old" in store.list_active()
+        store.deactivate("Old")
+        assert "Old" not in store.list_active()
+        # Still in database, just inactive
+        assert store.get("Old") is not None
+
+    def test_sync_from_session(self, tmp_path):
+        """Test syncing session projects back to the database."""
+        from scripts.onboarding.project_store import ProjectStore
+        db_path = tmp_path / "projects.json"
+        db_path.write_text('{"Existing": {"emoji": ":old:", "channels": ["#existing"], "description": "Existing project", "default_duration": 2, "active": true}}')
+        store = ProjectStore(db_path)
+
+        # Session has existing + new project
+        store.sync_from_session(
+            ["Existing", "Brand New"],
+            {"Existing": 4, "Brand New": 2},
+            {"Existing": ":updated:", "Brand New": ":star:"},
+        )
+
+        reloaded = ProjectStore(db_path)
+        # Existing project updated emoji/duration, kept channels
+        ex = reloaded.get("Existing")
+        assert ex["emoji"] == ":updated:"
+        assert ex["default_duration"] == 4
+        assert ex["channels"] == ["#existing"]
+        # New project created
+        nw = reloaded.get("Brand New")
+        assert nw is not None
+        assert nw["emoji"] == ":star:"
+        assert nw["active"] is True
+
+    def test_get_config_text(self):
+        """Test formatting projects for the config modal."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        text = store.get_config_text()
+        assert "Lab Meeting | 4 | :raising_hand:" in text
+        assert "Kraken | 4 | :octopus:" in text
+
+    def test_get_survey_project_list(self):
+        """Test formatting projects for survey announcement."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()
+        text = store.get_survey_project_list(
+            ["Kraken", "Efficient Learning"],
+            {":octopus:": ":octopus:", "Kraken": ":octopus:", "Efficient Learning": ":teacher:"},
+        )
+        assert "#kraken" in text
+        assert "LLMs" in text
+        assert "#efficientlearning" in text
+
+
 # ── Handler Utility Tests ────────────────────────────────────────────────────
 
 class TestTermDerivation:
@@ -182,9 +289,10 @@ Kraken | 4 | :octopus:
         assert emojis.get("1:1 (Claudia)") is None
 
     def test_default_projects(self):
-        """Test parsing the default pre-populated project list."""
-        from scripts.onboarding.handlers.schedule import _get_previous_projects_text
-        text = _get_previous_projects_text()
+        """Test parsing the default pre-populated project list from database."""
+        from scripts.onboarding.project_store import ProjectStore
+        store = ProjectStore()  # loads from data/projects.json
+        text = store.get_config_text()
         names, durs, emojis = _parse_projects(text)
         assert "Lab Meeting" in names
         assert "Kraken" in names

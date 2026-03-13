@@ -43,7 +43,8 @@ Admin can also start onboarding manually:
 - Runs attendance-maximizing algorithm with PI-required, senior priority weighting
 - Director reviews proposed schedule and approves
 - Posts formatted announcement to #general
-- Persists project emoji mappings across terms
+- Maintains a project database (`data/projects.json`) with emojis, channels, descriptions, and durations
+- New projects added during scheduling are saved to the database for future terms
 
 ## Setup
 
@@ -266,7 +267,10 @@ scripts/onboarding/
 ├── models/
 │   ├── onboarding_request.py  # Onboarding data models
 │   └── scheduling_session.py  # Scheduling session state
+├── project_store.py      # Project database CRUD
 ├── scheduling_storage.py  # Scheduling session persistence
+├── data/
+│   └── projects.json      # Project database (emojis, channels, descriptions)
 └── services/
     ├── github_service.py      # GitHub API integration
     ├── calendar_service.py    # Google Calendar API

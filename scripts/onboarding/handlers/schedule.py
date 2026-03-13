@@ -25,6 +25,7 @@ from ..scheduling_storage import (
     get_active_session, get_latest_completed_session,
     get_session, save_session,
 )
+from ..project_store import get_project_store
 from ..services.when2meet_service import When2MeetService
 from ..services.scheduling_service import (
     find_best_meeting_times, format_schedule_for_slack, format_announcement,
@@ -64,38 +65,9 @@ def _derive_term() -> tuple[str, str, str]:
             return f"Winter {year}", f"{year}-01-06", f"{year}-03-10"
 
 
-# Default projects from previous terms (baseline if no completed session exists)
-DEFAULT_PROJECTS = [
-    ("Lab Meeting", 4, ":raising_hand:"),
-    ("Kraken", 4, ":octopus:"),
-    ("Efficient Learning", 2, ":teacher:"),
-    ("StockProphet", 2, ":chart_with_upwards_trend:"),
-    ("Brain Dynamics", 2, ":spider_web:"),
-    ("Memory Dynamics", 2, ":brain:"),
-    ("Asymmetries", 2, ":scales:"),
-    ("Jeremy Office Hours", 6, ""),
-]
-
-
 def _get_previous_projects_text() -> str:
-    """
-    Get pre-populated project text from the most recent completed session,
-    falling back to hardcoded defaults.
-    """
-    prev = get_latest_completed_session()
-    if prev and prev.groups:
-        lines = []
-        for name in prev.groups:
-            dur = prev.preferred_durations.get(name, 2)
-            emoji = prev.project_emojis.get(name, "")
-            lines.append(f"{name} | {dur} | {emoji}")
-        return "\n".join(lines)
-
-    # Hardcoded baseline defaults
-    lines = []
-    for name, dur, emoji in DEFAULT_PROJECTS:
-        lines.append(f"{name} | {dur} | {emoji}")
-    return "\n".join(lines)
+    """Get pre-populated project text from the project database."""
+    return get_project_store().get_config_text()
 
 
 def register_schedule_handlers(app: App, config: Config):
@@ -251,6 +223,13 @@ def register_schedule_handlers(app: App, config: Config):
             )
             return
 
+        # Build project list with descriptions and channels from database
+        project_store = get_project_store()
+        project_names = list(session.groups.keys())
+        project_list_text = project_store.get_survey_project_list(
+            project_names, session.project_emojis
+        )
+
         survey_blocks = [
             {
                 "type": "header",
@@ -265,6 +244,10 @@ def register_schedule_handlers(app: App, config: Config):
                         f"Please fill out this When2Meet with your availability "
                         f"(weekdays, 9 AM - 5 PM ET):\n\n"
                         f"*<{url}|Fill out When2Meet>*\n\n"
+                        f"Here's the list of our weekly meetings for this term:\n\n"
+                        f"{project_list_text}\n\n"
+                        f"Please tag this message with the appropriate emoji(s) "
+                        f"for meetings you want to attend.\n\n"
                         f"Use your *first name* so we can match you. "
                         f"Please complete this by end of day Friday."
                     ),
@@ -549,6 +532,13 @@ def register_schedule_handlers(app: App, config: Config):
             session.announcement_message_ts = result["ts"]
             session.update_status(SchedulingStatus.COMPLETED)
             save_session(session)
+
+            # Sync projects back to database for future terms
+            get_project_store().sync_from_session(
+                list(session.groups.keys()),
+                session.preferred_durations,
+                session.project_emojis,
+            )
 
             client.chat_postMessage(
                 channel=session.dm_channel,
