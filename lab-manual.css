@@ -153,7 +153,10 @@ dd dl {
   width: 100%;
 }
 
-/* Margin notes inside definition lists need adjusted positioning */
+/* Margin notes inside definition lists need wider offset since
+   dd elements are narrower than article-level paragraphs.
+   These notes are repositioned by JavaScript (see toc.js) to
+   prevent them from expanding dd height or overlapping. */
 dl .marginnote, dl .sidenote {
   margin-right: -80%;
   width: 40%;
