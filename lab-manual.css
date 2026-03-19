@@ -91,16 +91,18 @@ p.noindent img {
 div.columns-2,
 .columns-2,
 .personnel-list {
-  width: 55%;
+  width: 80%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.3em 2em;
-  line-height: 1.6;
+  gap: 0.2em 2em;
 }
 
 /* Individual personnel items (wrapped by JavaScript) */
 .personnel-item {
   display: block;
+  font-size: 1.4rem;
+  line-height: 1.8;
+  white-space: nowrap;
 }
 
 /* Margin notes styling - positioned in right margin */
@@ -131,9 +133,12 @@ label.sidenote-number {
 }
 
 /* Definition lists (used for numbered items) */
-/* Only top-level dl gets 55% width; nested dl inherits parent width */
+/* Only top-level dl gets 55% width; nested dl inherits parent width.
+   position: relative makes this the containing block for absolutely
+   positioned margin notes inside dd elements. */
 article > dl {
   width: 55%;
+  position: relative;
 }
 
 dt {
@@ -153,13 +158,16 @@ dd dl {
   width: 100%;
 }
 
-/* Margin notes inside definition lists need wider offset since
-   dd elements are narrower than article-level paragraphs.
-   These notes are repositioned by JavaScript (see toc.js) to
-   prevent them from expanding dd height or overlapping. */
-dl .marginnote, dl .sidenote {
-  margin-right: -80%;
-  width: 40%;
+/* Margin notes inside definition lists: absolutely positioned relative
+   to the top-level dl. This removes them from flow so dd elements don't
+   expand vertically. left:110% aligns with non-dl margin notes. */
+dd .marginnote, dd .sidenote {
+  position: absolute;
+  left: 110%;
+  width: 50%;
+  float: none;
+  clear: none;
+  margin-right: 0;
 }
 
 /* Checklist styling - make checkboxes visible */
