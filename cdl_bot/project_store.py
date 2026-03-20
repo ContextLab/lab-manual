@@ -70,17 +70,20 @@ class ProjectStore:
             self._save()
 
     def sync_from_session(self, project_names: list, durations: dict,
-                          emojis: dict):
+                          emojis: dict, descriptions: dict = None,
+                          channels: dict = None):
         """
         After a scheduling session, sync any new or changed projects
         back to the database. Only updates emoji/duration if they changed;
         never removes existing projects (just marks them inactive if absent).
         """
+        descriptions = descriptions or {}
+        channels = channels or {}
         for name in project_names:
             existing = self._data.get(name, {})
             self._data[name] = {
-                "description": existing.get("description", name),
-                "channels": existing.get("channels", []),
+                "description": descriptions.get(name, existing.get("description", name)),
+                "channels": channels.get(name, existing.get("channels", [])),
                 "emoji": emojis.get(name, existing.get("emoji", "")),
                 "default_duration": durations.get(name, existing.get("default_duration", 2)),
                 "active": True,
@@ -90,7 +93,7 @@ class ProjectStore:
     def get_config_text(self) -> str:
         """
         Format active projects as the text block for the config modal.
-        Format: "Project Name | duration | emoji"
+        Format: "Project Name | duration | emoji | description | #ch1, #ch2"
         """
         lines = []
         for name, info in self._data.items():
@@ -98,7 +101,9 @@ class ProjectStore:
                 continue
             dur = info.get("default_duration", 2)
             emoji = info.get("emoji", "")
-            lines.append(f"{name} | {dur} | {emoji}")
+            desc = info.get("description", "")
+            chs = ", ".join(info.get("channels", []))
+            lines.append(f"{name} | {dur} | {emoji} | {desc} | {chs}")
         return "\n".join(lines)
 
     def get_survey_project_list(self, project_names: list, emojis: dict,

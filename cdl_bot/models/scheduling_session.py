@@ -53,6 +53,10 @@ class SchedulingSession:
     preferred_durations: dict = field(default_factory=dict)
     # project_emojis: dict of meeting_name -> emoji string
     project_emojis: dict = field(default_factory=dict)
+    # project_descriptions: dict of meeting_name -> description string
+    project_descriptions: dict = field(default_factory=dict)
+    # project_channels: dict of meeting_name -> list of "#channel" strings
+    project_channels: dict = field(default_factory=dict)
 
     # Priority lists
     pi: list = field(default_factory=list)  # PI names
@@ -113,6 +117,8 @@ class SchedulingSession:
             "groups": self.groups,
             "preferred_durations": self.preferred_durations,
             "project_emojis": self.project_emojis,
+            "project_descriptions": self.project_descriptions,
+            "project_channels": self.project_channels,
             "pi": self.pi,
             "senior": self.senior,
             "external": self.external,
@@ -145,6 +151,8 @@ class SchedulingSession:
             groups=data.get("groups", {}),
             preferred_durations=data.get("preferred_durations", {}),
             project_emojis=data.get("project_emojis", {}),
+            project_descriptions=data.get("project_descriptions", {}),
+            project_channels=data.get("project_channels", {}),
             pi=data.get("pi", []),
             senior=data.get("senior", []),
             external=data.get("external", []),

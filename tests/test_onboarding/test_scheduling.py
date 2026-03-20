@@ -159,8 +159,8 @@ class TestProjectStore:
         """Test that descriptions are populated from the database."""
         from cdl_bot.project_store import ProjectStore
         store = ProjectStore()
-        assert store.get("Kraken")["description"] == "LLMs"
-        assert "Optimizing" in store.get("Efficient Learning")["description"]
+        assert "LLM" in store.get("Kraken")["description"]
+        assert "learn" in store.get("Efficient Learning")["description"].lower()
 
     def test_upsert_new_project(self, tmp_path):
         """Test adding a new project to the database."""
@@ -236,7 +236,7 @@ class TestProjectStore:
             {"Kraken": ":octopus:", "Efficient Learning": ":teacher:"},
         )
         assert "#kraken" in text
-        assert "LLMs" in text
+        assert "LLM" in text
         assert "#efficientlearning" in text
         # Should be bulleted
         assert "•" in text
@@ -294,21 +294,21 @@ class TestTermDerivation:
 class TestParseProjects:
     def test_basic_parsing(self):
         text = "Lab Meeting | 4 | :raising_hand:"
-        names, durs, emojis = _parse_projects(text)
+        names, durs, emojis, descs, chs = _parse_projects(text)
         assert names == ["Lab Meeting"]
         assert durs == {"Lab Meeting": 4}
         assert emojis == {"Lab Meeting": ":raising_hand:"}
 
     def test_no_emoji(self):
         text = "Office Hours | 6 |"
-        names, durs, emojis = _parse_projects(text)
+        names, durs, emojis, descs, chs = _parse_projects(text)
         assert "Office Hours" in names
         assert durs["Office Hours"] == 6
         assert "Office Hours" not in emojis
 
     def test_biweekly_duration(self):
         text = "Project X | 2.5 | :calendar:"
-        _, durs, _ = _parse_projects(text)
+        names, durs, emojis, descs, chs = _parse_projects(text)
         assert durs["Project X"] == 2.5
 
     def test_multiline(self):
@@ -317,7 +317,7 @@ Lab Meeting | 4 | :raising_hand:
 Kraken | 4 | :octopus:
 1:1 (Claudia) | 2 |
 """
-        names, durs, emojis = _parse_projects(text)
+        names, durs, emojis, descs, chs = _parse_projects(text)
         assert len(names) == 3
         assert "Kraken" in names
         assert emojis.get("1:1 (Claudia)") is None
@@ -327,12 +327,15 @@ Kraken | 4 | :octopus:
         from cdl_bot.project_store import ProjectStore
         store = ProjectStore()  # loads from data/projects.json
         text = store.get_config_text()
-        names, durs, emojis = _parse_projects(text)
+        names, durs, emojis, descs, chs = _parse_projects(text)
         assert "Lab Meeting" in names
         assert "Kraken" in names
         assert durs["Lab Meeting"] == 4
         assert emojis["Lab Meeting"] == ":raising_hand:"
         assert emojis["Kraken"] == ":octopus:"
+        # New format includes descriptions and channels
+        assert "LLM" in descs.get("Kraken", "")
+        assert "#kraken" in chs.get("Kraken", [])
 
 
 class TestFuzzyMatchNames:

@@ -304,9 +304,9 @@ def register_schedule_handlers(app: App, config: Config):
         pi_text = values["pi_block"]["pi_input"]["value"]
         pi = [n.strip() for n in pi_text.split(",") if n.strip()]
 
-        # Parse projects: "Project Name | duration | emoji" (NO members)
+        # Parse projects: "Name | duration | emoji | description | #ch1, #ch2"
         projects_text = values["projects_block"]["projects_input"]["value"]
-        project_names, durations, emojis = _parse_projects(projects_text)
+        project_names, durations, emojis, descriptions, channels = _parse_projects(projects_text)
 
         session_id = f"sched_{int(time.time())}"
         session = SchedulingSession(
@@ -318,7 +318,15 @@ def register_schedule_handlers(app: App, config: Config):
             groups={name: [] for name in project_names},  # Empty until assignment
             preferred_durations=durations,
             project_emojis=emojis,
+            project_descriptions=descriptions,
+            project_channels=channels,
             pi=pi,
+        )
+
+        # Sync new/changed projects to the database immediately
+        # so the survey announcement can use descriptions and channels
+        get_project_store().sync_from_session(
+            project_names, durations, emojis, descriptions, channels,
         )
 
         try:
@@ -856,6 +864,8 @@ def register_schedule_handlers(app: App, config: Config):
                 list(session.groups.keys()),
                 session.preferred_durations,
                 session.project_emojis,
+                session.project_descriptions,
+                session.project_channels,
             )
 
             # Create Google Calendar events if credentials are configured
@@ -1052,10 +1062,11 @@ def _build_config_modal(term: str, term_start: str, term_end: str,
     """Build the initial configuration modal (projects only, no members)."""
 
     projects_hint = (
-        "One project per line. Format: Project Name | duration | emoji\n\n"
+        "One project per line:\n"
+        "Name | duration | emoji | description | #ch1, #ch2\n\n"
         "Duration = number of 15-min blocks (4=60min). "
         "Add .5 for biweekly (2.5 = biweekly 30min).\n"
-        "Edit/add/remove projects as needed for this term."
+        "Description and channels are optional but recommended for new projects."
     )
 
     return {
@@ -1109,7 +1120,7 @@ def _build_config_modal(term: str, term_start: str, term_end: str,
                         },
                     }),
                 },
-                "label": {"type": "plain_text", "text": "Projects (name | duration | emoji)"},
+                "label": {"type": "plain_text", "text": "Projects (name | dur | emoji | desc | channels)"},
                 "hint": {"type": "plain_text", "text": projects_hint},
             },
             {
@@ -1259,18 +1270,21 @@ def _build_assignment_modal(session: SchedulingSession,
 
 # ── Helper functions ─────────────────────────────────────────────────────
 
-def _parse_projects(text: str) -> tuple[list, dict, dict]:
+def _parse_projects(text: str) -> tuple[list, dict, dict, dict, dict]:
     """
-    Parse the projects text block into names, durations, and emojis.
+    Parse the projects text block into names, durations, emojis,
+    descriptions, and channels.
 
-    Format per line: "Project Name | duration | emoji"
-    No members — those are assigned after collecting When2Meet responses.
+    Format per line: "Project Name | duration | emoji | description | #ch1, #ch2"
+    Last two fields are optional.
 
-    Returns (project_names list, durations dict, emojis dict).
+    Returns (project_names, durations, emojis, descriptions, channels).
     """
     project_names = []
     durations = {}
     emojis = {}
+    descriptions = {}
+    channels = {}
 
     for line in text.strip().split("\n"):
         line = line.strip()
@@ -1293,6 +1307,14 @@ def _parse_projects(text: str) -> tuple[list, dict, dict]:
 
         if len(parts) > 2 and parts[2]:
             emojis[name] = parts[2].strip()
+
+        if len(parts) > 3 and parts[3]:
+            descriptions[name] = parts[3].strip()
+
+        if len(parts) > 4 and parts[4]:
+            channels[name] = [c.strip() for c in parts[4].split(",") if c.strip()]
+
+    return project_names, durations, emojis, descriptions, channels
 
     return project_names, durations, emojis
 
@@ -1412,12 +1434,28 @@ def _fuzzy_match_names(respondent_names: list, expected_members: list) -> tuple[
 
 
 def _find_channel(client: WebClient, channel_name: str) -> str:
-    """Find a channel ID by name."""
+    """Find a channel ID by name, joining the channel if needed."""
     try:
-        result = client.conversations_list(types="public_channel", limit=200)
-        for ch in result["channels"]:
-            if ch["name"] == channel_name:
-                return ch["id"]
+        cursor = None
+        while True:
+            kwargs = {"types": "public_channel", "limit": 200}
+            if cursor:
+                kwargs["cursor"] = cursor
+            result = client.conversations_list(**kwargs)
+            for ch in result["channels"]:
+                if ch["name"] == channel_name:
+                    channel_id = ch["id"]
+                    # Join the channel so the bot can post
+                    if not ch.get("is_member"):
+                        try:
+                            client.conversations_join(channel=channel_id)
+                            logger.info(f"Joined #{channel_name}")
+                        except SlackApiError as e:
+                            logger.warning(f"Could not join #{channel_name}: {e}")
+                    return channel_id
+            cursor = result.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
     except SlackApiError as e:
         logger.error(f"Error listing channels: {e}")
     return ""

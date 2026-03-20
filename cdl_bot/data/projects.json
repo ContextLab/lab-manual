@@ -7,7 +7,7 @@
     "active": true
   },
   "Kraken": {
-    "description": "LLMs",
+    "description": "LLM research: building new models, tests, and text analysis tools",
     "channels": [
       "#kraken"
     ],
@@ -16,7 +16,7 @@
     "active": true
   },
   "Efficient Learning": {
-    "description": "Optimizing learning meeting",
+    "description": "How people learn and teach more efficiently, including EEG analysis of Khan Academy learning",
     "channels": [
       "#mooc-learning",
       "#khan-academy-eeg",
@@ -29,13 +29,13 @@
     "active": true
   },
   "StockProphet": {
-    "description": "StockProphet/Network Dynamics meeting",
+    "description": "Network dynamics in financial markets vs. brains; building and testing trading algorithms",
     "channels": [
       "#stockprophet",
       "#timecorr"
     ],
     "emoji": ":chart_with_upwards_trend:",
-    "default_duration": 2,
+    "default_duration": 2.5,
     "active": true
   },
   "Brain Dynamics": {
@@ -47,11 +47,11 @@
       "#niinja"
     ],
     "emoji": ":spider_web:",
-    "default_duration": 2,
+    "default_duration": 2.5,
     "active": true
   },
   "Memory Dynamics": {
-    "description": "Memory Dynamics",
+    "description": "How memories of experiences change over time and with new experiences",
     "channels": [
       "#memory-dynamics"
     ],
@@ -60,7 +60,7 @@
     "active": true
   },
   "Asymmetries": {
-    "description": "Temporal asymmetries in memory",
+    "description": "Mental time travel forwards and backwards relative to past moments",
     "channels": [
       "#prediction-retrodiction",
       "#memory-cueing",
@@ -75,6 +75,27 @@
     "channels": [],
     "emoji": "",
     "default_duration": 6,
+    "active": true
+  },
+  "JARVIS": {
+    "description": "Autonomous tools for turning course materials into interactive visualizations",
+    "channels": [
+      "#kraken",
+      "#jarvis",
+      "#efficientlearning"
+    ],
+    "emoji": ":robot_face:",
+    "default_duration": 2.5,
+    "active": true
+  },
+  "Dream Engineering": {
+    "description": "Developing and testing tools for shaping how, when, and what we dream",
+    "channels": [
+      "#dream-stream",
+      "#calm-night"
+    ],
+    "emoji": ":sleeping:",
+    "default_duration": 2.5,
     "active": true
   }
 }
