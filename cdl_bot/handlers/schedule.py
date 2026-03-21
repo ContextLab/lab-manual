@@ -442,32 +442,39 @@ def register_schedule_handlers(app: App, config: Config):
                         f"for weekly meetings (lab meetings + project meetings):\n\n"
                         f"*<{url}|Fill out When2Meet>*\n\n"
                         f"Regular meetings will start up again on *{term_start_friendly}* "
-                        f"(i.e., on the first day of the term).\n\n"
+                        f"(i.e., on the first day of the term)."
+                    ),
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
                         f"Here's the list of our weekly meetings for this term:\n\n"
-                        f"{project_list_text}\n\n"
-                        f"If you'd like a recurring individual meeting with me, "
-                        f"react with :zoom:\n\n"
-                        f"In addition to filling out your availability, please react to "
-                        f"this message with the appropriate emoji(s) corresponding to "
-                        f"meetings you want to attend (note: everyone should be at the "
-                        f"full-lab meetings if at all possible; adding your reaction helps "
-                        f"me gauge who is active in the lab this term). I'll use your "
-                        f"responses to figure out times that accommodate as many people as "
-                        f"possible. Everything will go on the CDL calendar, and anyone is "
-                        f"welcome at any of the project meetings if you're interested in "
-                        f"learning more, even if it's not for your primary project(s). "
-                        f"The lab's policy is: anyone can work on any project they are "
-                        f"interested in. So if you're new to the group, feel free to "
-                        f"explore!\n\n"
-                        f"All group meetings will be hybrid: in person (Moore 416) and "
+                        f"{project_list_text}"
+                    ),
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"Please react to this message with the appropriate emoji(s) "
+                        f"for meetings you want to attend (everyone should be at "
+                        f"full-lab meetings if possible). If you'd like a recurring "
+                        f"individual meeting with me, react with :zoom:\n\n"
+                        f"Anyone is welcome at any project meeting — the lab's policy "
+                        f"is: anyone can work on any project they are interested in. "
+                        f"Feel free to explore!\n\n"
+                        f"All group meetings are hybrid: in person (Moore 416) and "
                         f"via Zoom (<https://dartmouth.zoom.us/my/contextlab|link>). "
-                        f"Individual meetings will be in my office (Moore 349) or via "
-                        f"the same Zoom link.\n\n"
-                        f"Please use your *first name and last initial* on When2Meet so "
-                        f"we can match you. Fill out your availability + add your emoji "
-                        f"reactions by *end of day {deadline}*. "
-                        f"(If you don't fill it out by then, your preferences won't be "
-                        f"taken into account for scheduling.)"
+                        f"Individual meetings in Moore 349 or same Zoom link.\n\n"
+                        f"Use your *first name and last initial* on When2Meet. "
+                        f"Fill out availability + add emoji reactions by "
+                        f"*end of day {deadline}*. "
+                        f"(If you don't, your preferences won't be taken into account.)"
                     ),
                 },
             },
