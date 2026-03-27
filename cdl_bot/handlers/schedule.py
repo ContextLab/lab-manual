@@ -576,6 +576,13 @@ def register_schedule_handlers(app: App, config: Config):
                 continue
             clean_names.append(name.strip())
 
+        # Auto-detect PI respondent names and set up merges so PI availability
+        # is used as a real constraint (not assumed always-available).
+        pi_merges = _auto_match_pi_names(session.pi, clean_names)
+        if pi_merges:
+            session.name_merges.update(pi_merges)
+            logger.info(f"Auto-matched PI names: {pi_merges}")
+
         # Store respondent names on the session for the assignment modal
         session.name_mapping = {name: name for name in clean_names}  # identity for now
         session.update_status(SchedulingStatus.NAME_MATCHING)
@@ -1013,15 +1020,26 @@ def register_schedule_handlers(app: App, config: Config):
             if selected:
                 session.required_members[project_name] = [opt["value"] for opt in selected]
 
+        # Auto-add PI to every project group (PI attends all meetings)
+        for project_name in session.groups:
+            for pi_name in session.pi:
+                if pi_name not in session.groups[project_name]:
+                    session.groups[project_name].append(pi_name)
+
         # Lab Meeting gets everyone not external
         all_assigned = set()
         for members in session.groups.values():
             all_assigned.update(members)
         all_assigned.update(session.pi)
 
-        # If Lab Meeting exists and is empty, auto-populate with all respondents
-        if "Lab Meeting" in session.groups and not session.groups["Lab Meeting"]:
-            session.groups["Lab Meeting"] = respondent_names
+        # If Lab Meeting exists and has only the PI, auto-populate with all respondents
+        pi_set = set(session.pi)
+        if "Lab Meeting" in session.groups:
+            non_pi = [m for m in session.groups["Lab Meeting"] if m not in pi_set]
+            if not non_pi:
+                session.groups["Lab Meeting"] = list(session.pi) + [
+                    n for n in respondent_names if n not in pi_set
+                ]
 
         save_session(session)
 
@@ -1310,14 +1328,20 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
     # since the director assigned people using those same names.
     # No renaming needed — the group members ARE the When2Meet names.
 
-    # Filter out projects with 0 members (no point scheduling them)
-    active_groups = {
-        name: members for name, members in session.groups.items()
-        if members
-    }
-    empty_projects = [name for name in session.groups if name not in active_groups]
+    # Filter out projects with 0 non-PI members.
+    # "Office hours" style meetings (only the PI) are kept as free blocks.
+    pi_set = set(session.pi)
+    active_groups = {}
+    empty_projects = []
+    for name, members in session.groups.items():
+        non_pi_members = [m for m in members if m not in pi_set]
+        is_office_hours = "office hours" in name.lower()
+        if non_pi_members or is_office_hours:
+            active_groups[name] = members
+        else:
+            empty_projects.append(name)
     if empty_projects:
-        logger.info(f"Skipping empty projects: {empty_projects}")
+        logger.info(f"Skipping PI-only projects: {empty_projects}")
 
     active_durations = {
         name: dur for name, dur in session.preferred_durations.items()
@@ -2085,6 +2109,48 @@ def _build_zoom_review_modal(session) -> dict:
         "close": {"type": "plain_text", "text": "Cancel"},
         "blocks": blocks,
     }
+
+
+def _auto_match_pi_names(pi_names: list, respondent_names: list) -> dict:
+    """
+    Auto-detect which respondent corresponds to each PI name.
+
+    If the PI name (e.g., "Jeremy") doesn't exactly match a respondent but
+    a respondent starts with that name (e.g., "Jeremy M"), create a merge
+    mapping: "Jeremy M" → "Jeremy" so the algorithm uses the right column.
+
+    Returns dict of respondent_name -> pi_name (merge mapping).
+    """
+    merges = {}
+    for pi in pi_names:
+        pi_lower = pi.lower().strip()
+        # Check exact match first
+        if any(r.lower() == pi_lower for r in respondent_names):
+            continue  # Already matches, no merge needed
+
+        # Find respondents whose first name matches the PI name
+        candidates = []
+        for r in respondent_names:
+            r_first = r.lower().strip().split()[0]
+            if r_first == pi_lower or r.lower().startswith(pi_lower):
+                candidates.append(r)
+
+        if len(candidates) == 1:
+            merges[candidates[0]] = pi
+            logger.info(f"Auto-matched PI '{pi}' to respondent '{candidates[0]}'")
+        elif len(candidates) > 1:
+            # Multiple matches — pick the one most likely (shortest name or exact first-name match)
+            exact_first = [c for c in candidates if c.lower().split()[0] == pi_lower]
+            if len(exact_first) == 1:
+                merges[exact_first[0]] = pi
+                logger.info(f"Auto-matched PI '{pi}' to respondent '{exact_first[0]}' (from {candidates})")
+            else:
+                logger.warning(
+                    f"Multiple respondents match PI '{pi}': {candidates}. "
+                    f"Use 'Resolve Names' to pick the right one."
+                )
+
+    return merges
 
 
 def _detect_potential_duplicates(names: list) -> list[list[str]]:

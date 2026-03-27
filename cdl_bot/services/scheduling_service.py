@@ -226,11 +226,13 @@ def find_best_meeting_times(
                 if is_biweekly_meeting:
                     for t in block_index:
                         if t in biweekly_times:
-                            sharing_bonus = 10
+                            # Strongly prefer sharing a slot with another biweekly meeting
+                            # — this is the primary optimization for biweekly efficiency
+                            sharing_bonus = 100
                             shares_with = biweekly_times[t]
                             break
 
-                final_score = attendance_score + (pi_time_score, is_contiguous, sharing_bonus)
+                final_score = attendance_score + (sharing_bonus, pi_time_score, is_contiguous)
 
                 candidates.append({
                     "score": final_score,
