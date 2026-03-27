@@ -741,8 +741,13 @@ def register_schedule_handlers(app: App, config: Config):
                 text=f"Name resolution notes:\n{error_text}",
             )
 
-        # Store merges on the session
-        session.name_merges = merges
+        # Preserve auto-generated merges (e.g., PI name matching) and layer
+        # user merges on top. Auto-merges are overridden if user explicitly
+        # addresses the same name.
+        preserved = {k: v for k, v in (session.name_merges or {}).items()
+                     if k not in merges and k not in canonical_names}
+        preserved.update(merges)
+        session.name_merges = preserved
 
         # Update name_mapping to only contain canonical names
         old_mapping = dict(session.name_mapping)
@@ -2208,8 +2213,15 @@ def _build_name_resolution_modal(session) -> dict:
     respondent_names = sorted(session.name_mapping.keys())
     potential_dupes = _detect_potential_duplicates(respondent_names)
 
-    # Build existing merges (for re-resolution)
-    existing_merges = session.name_merges or {}
+    # Separate auto-merges (PI matching) from user merges — only show user merges
+    existing_merges = {}
+    auto_merges = {}
+    pi_set = set(session.pi)
+    for alias, canonical in (session.name_merges or {}).items():
+        if canonical in pi_set and alias not in respondent_names:
+            auto_merges[alias] = canonical  # PI auto-merge, hide from UI
+        else:
+            existing_merges[alias] = canonical
 
     lines = []
     already_listed = set()
@@ -2218,32 +2230,25 @@ def _build_name_resolution_modal(session) -> dict:
     if potential_dupes:
         lines.append("# Potential duplicates — use → to merge (or leave separate):")
         for group in potential_dupes:
-            canonical = group[0]  # Default: first alphabetically is canonical
-            # Check if there's an existing merge for this group
-            for name in group:
-                if name in existing_merges:
-                    canonical = existing_merges[name]
-                    break
+            # If an existing merge exists within this group, show it
             for name in group:
                 if name in existing_merges:
                     lines.append(f"{name} → {existing_merges[name]}")
-                elif name == canonical and len(group) > 1:
-                    lines.append(f"{name}")
                 else:
                     lines.append(f"{name}")
                 already_listed.add(name)
             lines.append("")  # Blank line between groups
 
     # List remaining names
-    if already_listed:
+    remaining = [n for n in respondent_names if n not in already_listed]
+    if remaining and already_listed:
         lines.append("# Other respondents:")
-    for name in respondent_names:
-        if name not in already_listed:
-            if name in existing_merges:
-                lines.append(f"{name} → {existing_merges[name]}")
-            else:
-                lines.append(name)
-            already_listed.add(name)
+    for name in remaining:
+        if name in existing_merges:
+            lines.append(f"{name} → {existing_merges[name]}")
+        else:
+            lines.append(name)
+        already_listed.add(name)
 
     merge_text = "\n".join(lines)
 
