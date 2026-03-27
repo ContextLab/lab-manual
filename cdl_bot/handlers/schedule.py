@@ -911,7 +911,9 @@ def register_schedule_handlers(app: App, config: Config):
         if accepted_meetings:
             for req in accepted_meetings:
                 dur = req["duration_blocks"]
-                dur_min = int(dur) * 15 if dur == int(dur) else int(dur) * 15
+                import math
+                actual_blocks = math.floor(dur)
+                dur_min = actual_blocks * 15
                 freq = "biweekly" if dur != int(dur) else "weekly"
                 summary_lines.append(f"  :white_check_mark: {req['name']} — {dur_min}min {freq}")
         denied = [r for r in session.zoom_requests if not r.get("accepted")]
@@ -2066,11 +2068,12 @@ def _build_zoom_review_modal(session) -> dict:
 
     duration_options = [
         {"text": {"type": "plain_text", "text": "15 min"}, "value": "1"},
+        {"text": {"type": "plain_text", "text": "15 min biweekly"}, "value": "1.5"},
         {"text": {"type": "plain_text", "text": "30 min"}, "value": "2"},
-        {"text": {"type": "plain_text", "text": "30 min biweekly"}, "value": "1.5"},
+        {"text": {"type": "plain_text", "text": "30 min biweekly"}, "value": "2.5"},
         {"text": {"type": "plain_text", "text": "45 min"}, "value": "3"},
         {"text": {"type": "plain_text", "text": "60 min"}, "value": "4"},
-        {"text": {"type": "plain_text", "text": "60 min biweekly"}, "value": "2.5"},
+        {"text": {"type": "plain_text", "text": "60 min biweekly"}, "value": "4.5"},
     ]
 
     for i, req in enumerate(session.zoom_requests):
