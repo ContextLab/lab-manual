@@ -883,10 +883,20 @@ def register_schedule_handlers(app: App, config: Config):
         session.zoom_requests = session.zoom_requests  # keep all for record
         save_session(session)
 
-        # Add accepted meetings to session groups and durations
+        # Add accepted meetings to session groups and durations.
+        # Match Slack display names to When2Meet respondent names so the
+        # algorithm can look up their availability correctly.
+        respondent_names = list(session.name_mapping.keys())
         for req in accepted_meetings:
-            meeting_name = f"{req['name']} one-on-one"
-            session.groups[meeting_name] = [req["name"], "Jeremy"]
+            slack_name = req["name"]
+            # Match to a respondent name
+            matched = _match_display_to_respondent(slack_name, respondent_names)
+            respondent_name = matched or slack_name
+            req["respondent_name"] = respondent_name
+
+            meeting_name = f"{respondent_name} one-on-one"
+            # Use PI canonical name + matched respondent name
+            session.groups[meeting_name] = [respondent_name] + list(session.pi)
             session.preferred_durations[meeting_name] = req["duration_blocks"]
             session.project_emojis[meeting_name] = ":zoom:"
         save_session(session)
