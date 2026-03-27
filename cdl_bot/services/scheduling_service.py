@@ -22,6 +22,7 @@ def find_best_meeting_times(
     external: list,
     groups: dict,
     preferred_durations: dict = None,
+    required_members: dict = None,
     pi_unencumbered_weight: float = 2.0,
     day_concentration_weight: float = 3.0,
     contiguity_weight: float = 1.5,
@@ -46,6 +47,9 @@ def find_best_meeting_times(
         meeting_name -> number of 15-min blocks.
         Durations ending in .5 indicate biweekly meetings
         (e.g., 2.5 = biweekly 30-min meeting).
+    required_members : dict
+        meeting_name -> list of member names whose availability is a hard
+        constraint for that specific meeting (like external PIs).
     pi_unencumbered_weight : float
         Weight for preserving PI's free time blocks.
     day_concentration_weight : float
@@ -182,6 +186,16 @@ def find_best_meeting_times(
                 if not pi_check:
                     continue
 
+                # Required members (external PIs) must also be available
+                meeting_required = (required_members or {}).get(meeting_name, [])
+                if meeting_required:
+                    req_check = all(
+                        day_df.loc[block_times, req].all() if req in day_df.columns else True
+                        for req in meeting_required
+                    )
+                    if not req_check:
+                        continue
+
                 # Score attendance
                 seniors_in_group = [p for p in group_members if p in senior]
                 other_members = [p for p in group_members if p not in senior]
@@ -290,12 +304,14 @@ def find_best_meeting_times(
         schedule_meeting(meeting_name, group_members, True)
 
     # Build summary DataFrame
-    schedule_df = _build_schedule_df(scheduled, groups, PI, senior, external, preferred_durations)
+    schedule_df = _build_schedule_df(scheduled, groups, PI, senior, external,
+                                     preferred_durations, required_members)
 
     return scheduled, schedule_df
 
 
-def _build_schedule_df(scheduled, groups, PI, senior, external, preferred_durations):
+def _build_schedule_df(scheduled, groups, PI, senior, external,
+                       preferred_durations, required_members=None):
     """Build a summary DataFrame from scheduled meetings."""
     schedule_data = []
 

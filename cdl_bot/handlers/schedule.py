@@ -603,23 +603,49 @@ def register_schedule_handlers(app: App, config: Config):
             for p in session.groups
         )
 
+        # Auto-detect potential duplicate respondents by first name
+        potential_dupes = _detect_potential_duplicates(clean_names)
+        dupe_text = ""
+        if potential_dupes:
+            dupe_lines = []
+            for group in potential_dupes:
+                dupe_lines.append(f"  :warning: {' / '.join(group)}")
+            dupe_text = (
+                f"\n\n*Potential duplicates detected:*\n"
+                + "\n".join(dupe_lines)
+                + "\n_Use 'Resolve Names' to merge duplicates or confirm distinct._"
+            )
+
         # Build action buttons
         action_elements = []
+
+        # Always show "Resolve Names" first (recommended if duplicates detected)
+        action_elements.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Resolve Names"},
+            "style": "primary" if potential_dupes else None,
+            "action_id": "sched_resolve_names",
+            "value": session_id,
+        })
+        # Remove None style (Slack doesn't accept it)
+        if action_elements[-1]["style"] is None:
+            del action_elements[-1]["style"]
+
         if zoom_requesters:
             action_elements.append({
                 "type": "button",
-                "text": {"type": "plain_text", "text": f"Review {len(zoom_requesters)} Meeting Request(s)"},
-                "style": "primary",
+                "text": {"type": "plain_text", "text": f"Review {len(zoom_requesters)} 1-on-1 Request(s)"},
                 "action_id": "sched_review_zoom",
                 "value": session_id,
             })
-        action_elements.append({
-            "type": "button",
-            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
-            "style": "primary" if not zoom_requesters else "danger",
-            "action_id": "sched_open_assignment",
-            "value": session_id,
-        })
+        if not zoom_requesters and not potential_dupes:
+            # No zoom requests and no duplicates — can go straight to assignment
+            action_elements.append({
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Assign Members to Projects"},
+                "action_id": "sched_open_assignment",
+                "value": session_id,
+            })
         action_elements.append({
             "type": "button",
             "text": {"type": "plain_text", "text": "Re-collect"},
@@ -630,7 +656,10 @@ def register_schedule_handlers(app: App, config: Config):
         zoom_text = ""
         if zoom_requesters:
             zoom_names = ", ".join(name for _, name in zoom_requesters)
-            zoom_text = f"\n\n:zoom: *Individual meeting requests:* {zoom_names}"
+            zoom_text = (
+                f"\n\n:zoom: *Individual meeting requests:* {zoom_names}\n"
+                f"_Review these after resolving names._"
+            )
 
         client.chat_postMessage(
             channel=session.dm_channel,
@@ -641,11 +670,10 @@ def register_schedule_handlers(app: App, config: Config):
                     "text": {
                         "type": "mrkdwn",
                         "text": (
-                            f"*{len(clean_names)} respondents found:*\n{names_list}\n\n"
-                            f"*Projects to assign:*\n{project_list}"
+                            f"*{len(clean_names)} respondents found:*\n{names_list}"
+                            f"{dupe_text}"
                             f"{zoom_text}\n\n"
-                            f"Click below to assign people to projects and "
-                            f"set senior/external designations."
+                            f"*Projects to assign:*\n{project_list}"
                         ),
                     },
                 },
@@ -656,7 +684,140 @@ def register_schedule_handlers(app: App, config: Config):
             ],
         )
 
-    # ── Step 3b: Review :zoom: individual meeting requests ──────────────
+    # ── Step 3b: Resolve names (merge duplicates) ───────────────────────
+
+    @app.action("sched_resolve_names")
+    def handle_resolve_names(ack, body, client: WebClient, action):
+        """Open a modal for the director to merge duplicate respondents."""
+        ack()
+
+        session_id = action["value"]
+        session = get_session(session_id)
+        if not session:
+            return
+
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=_build_name_resolution_modal(session),
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening name resolution modal: {e}")
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Error opening name resolution: {e}",
+            )
+
+    @app.view("sched_resolve_names_submit")
+    def handle_resolve_names_submit(ack, body, client: WebClient, view):
+        """Process name resolution decisions."""
+        ack()
+
+        metadata = json.loads(view["private_metadata"])
+        session_id = metadata["session_id"]
+        session = get_session(session_id)
+        if not session:
+            return
+
+        values = view["state"]["values"]
+        merge_text = values["name_merge_block"]["name_merge_input"]["value"]
+
+        # Parse the merge text
+        merges, canonical_names, parse_errors = _parse_name_merges(
+            merge_text, list(session.name_mapping.keys())
+        )
+
+        if parse_errors:
+            error_text = "\n".join(f"  :warning: {e}" for e in parse_errors)
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Name resolution notes:\n{error_text}",
+            )
+
+        # Store merges on the session
+        session.name_merges = merges
+
+        # Update name_mapping to only contain canonical names
+        old_mapping = dict(session.name_mapping)
+        session.name_mapping = {name: name for name in canonical_names}
+
+        # Update groups: replace alias names with canonical names
+        for project_name in session.groups:
+            updated = []
+            for member in session.groups[project_name]:
+                canonical = merges.get(member, member)
+                if canonical not in updated:
+                    updated.append(canonical)
+            session.groups[project_name] = updated
+
+        save_session(session)
+
+        # Build summary
+        merge_lines = []
+        if merges:
+            # Group by canonical name
+            from collections import defaultdict
+            canonical_to_aliases = defaultdict(list)
+            for alias, canonical in merges.items():
+                canonical_to_aliases[canonical].append(alias)
+            for canonical, aliases in canonical_to_aliases.items():
+                merge_lines.append(
+                    f"  :link: *{canonical}* ← {', '.join(aliases)}"
+                )
+
+        merge_summary = "\n".join(merge_lines) if merge_lines else "  No merges."
+
+        # Show next steps
+        next_elements = []
+        if session.zoom_requests:
+            next_elements.append({
+                "type": "button",
+                "text": {"type": "plain_text", "text": f"Review {len(session.zoom_requests)} 1-on-1 Request(s)"},
+                "style": "primary",
+                "action_id": "sched_review_zoom",
+                "value": session.session_id,
+            })
+        next_elements.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
+            "style": "primary" if not session.zoom_requests else None,
+            "action_id": "sched_open_assignment",
+            "value": session.session_id,
+        })
+        # Remove None style
+        if next_elements[-1].get("style") is None:
+            next_elements[-1].pop("style", None)
+        next_elements.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Re-resolve Names"},
+            "action_id": "sched_resolve_names",
+            "value": session.session_id,
+        })
+
+        client.chat_postMessage(
+            channel=session.dm_channel,
+            text="Name resolution complete",
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            f"*Name Resolution Complete*\n\n"
+                            f"*{len(canonical_names)} unique respondents* "
+                            f"(was {len(old_mapping)} before merges)\n\n"
+                            f"*Merges:*\n{merge_summary}"
+                        ),
+                    },
+                },
+                {
+                    "type": "actions",
+                    "elements": next_elements,
+                },
+            ],
+        )
+
+    # ── Step 3c: Review :zoom: individual meeting requests ──────────────
 
     @app.action("sched_review_zoom")
     def handle_review_zoom(ack, body, client: WebClient, action):
@@ -723,18 +884,52 @@ def register_schedule_handlers(app: App, config: Config):
             session.project_emojis[meeting_name] = ":zoom:"
         save_session(session)
 
+        # Build summary and show "Assign Members" button
+        summary_lines = []
         if accepted_meetings:
-            names = ", ".join(r["name"] for r in accepted_meetings)
-            client.chat_postMessage(
-                channel=session.dm_channel,
-                text=f":zoom: Accepted individual meetings: {names}\n"
-                     f"These will be included in the scheduling algorithm.",
-            )
-        else:
-            client.chat_postMessage(
-                channel=session.dm_channel,
-                text="No individual meetings accepted.",
-            )
+            for req in accepted_meetings:
+                dur = req["duration_blocks"]
+                dur_min = int(dur) * 15 if dur == int(dur) else int(dur) * 15
+                freq = "biweekly" if dur != int(dur) else "weekly"
+                summary_lines.append(f"  :white_check_mark: {req['name']} — {dur_min}min {freq}")
+        denied = [r for r in session.zoom_requests if not r.get("accepted")]
+        for req in denied:
+            summary_lines.append(f"  :x: {req['name']} — denied")
+
+        summary_text = "\n".join(summary_lines) if summary_lines else "No requests."
+
+        client.chat_postMessage(
+            channel=session.dm_channel,
+            text=f":zoom: 1-on-1 meeting decisions",
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f":zoom: *1-on-1 Meeting Decisions:*\n{summary_text}\n\n"
+                                f"Now assign members to projects.",
+                    },
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "Assign Members to Projects"},
+                            "style": "primary",
+                            "action_id": "sched_open_assignment",
+                            "value": session.session_id,
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "Re-review 1-on-1s"},
+                            "action_id": "sched_review_zoom",
+                            "value": session.session_id,
+                        },
+                    ],
+                },
+            ],
+        )
 
     # ── Step 4: Assignment modal ─────────────────────────────────────────
 
@@ -778,12 +973,18 @@ def register_schedule_handlers(app: App, config: Config):
 
         respondent_names = list(session.name_mapping.keys())
 
-        # Parse project assignments
+        # Parse project assignments (deduplicate to prevent double-entries)
         for project_name in list(session.groups.keys()):
             block_id = f"proj_{_safe_id(project_name)}"
             action_id = f"assign_{_safe_id(project_name)}"
             selected = values.get(block_id, {}).get(action_id, {}).get("selected_options", [])
-            session.groups[project_name] = [opt["value"] for opt in selected]
+            seen = set()
+            deduped = []
+            for opt in selected:
+                if opt["value"] not in seen:
+                    seen.add(opt["value"])
+                    deduped.append(opt["value"])
+            session.groups[project_name] = deduped
 
         # Parse senior members
         senior_selected = values.get("senior_block", {}).get("senior_select", {}).get("selected_options", [])
@@ -800,6 +1001,17 @@ def register_schedule_handlers(app: App, config: Config):
             session.external.extend(extra_names)
             # Add extra externals to their assigned projects (they won't be in availability
             # but the algorithm handles missing names gracefully)
+
+        # Parse required external PIs per project
+        session.required_members = {}
+        for project_name in list(session.groups.keys()):
+            if project_name == "Lab Meeting":
+                continue
+            block_id = f"reqpi_{_safe_id(project_name)}"
+            action_id = f"reqpi_assign_{_safe_id(project_name)}"
+            selected = values.get(block_id, {}).get(action_id, {}).get("selected_options", [])
+            if selected:
+                session.required_members[project_name] = [opt["value"] for opt in selected]
 
         # Lab Meeting gets everyone not external
         all_assigned = set()
@@ -822,6 +1034,12 @@ def register_schedule_handlers(app: App, config: Config):
                 text=f"Error scraping When2Meet: {e}",
             )
             return
+
+        # Apply name merges (duplicate respondents → union of availability)
+        if session.name_merges:
+            availability = _apply_name_merges_to_availability(
+                availability, session.name_merges
+            )
 
         _run_scheduling(client, session, availability)
 
@@ -915,6 +1133,146 @@ def register_schedule_handlers(app: App, config: Config):
         except SlackApiError as e:
             logger.error(f"Error opening assignment modal: {e}")
 
+    # ── Step 5b: Edit schedule ──────────────────────────────────────────
+
+    @app.action("sched_edit_schedule")
+    def handle_edit_schedule(ack, body, client: WebClient, action):
+        """Open a modal to manually edit the proposed schedule."""
+        ack()
+
+        session_id = action["value"]
+        session = get_session(session_id)
+        if not session:
+            return
+
+        try:
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=_build_schedule_edit_modal(session),
+            )
+        except SlackApiError as e:
+            logger.error(f"Error opening schedule edit modal: {e}")
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Error opening schedule editor: {e}",
+            )
+
+    @app.view("sched_edit_schedule_submit")
+    def handle_edit_schedule_submit(ack, body, client: WebClient, view):
+        """Process the edited schedule and show updated review."""
+        ack()
+
+        metadata = json.loads(view["private_metadata"])
+        session_id = metadata["session_id"]
+        session = get_session(session_id)
+        if not session:
+            return
+
+        values = view["state"]["values"]
+        schedule_text = values["schedule_edit_block"]["schedule_edit_input"]["value"]
+
+        # Parse the edited text back into scheduled data
+        new_scheduled, parse_errors = _parse_edited_schedule(schedule_text, session)
+
+        if parse_errors:
+            error_text = "\n".join(f"  :warning: {e}" for e in parse_errors)
+            client.chat_postMessage(
+                channel=session.dm_channel,
+                text=f"Some lines could not be parsed:\n{error_text}\n\n"
+                     f"Valid changes were applied.",
+            )
+
+        # Rebuild the schedule_df_data from the new schedule
+        import pandas as pd
+        if new_scheduled:
+            # Keep _schedule_df_data key for the approve step
+            df_data = []
+            day_order = {d: i for i, d in enumerate(
+                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            )}
+            for meeting_name, details in new_scheduled.items():
+                if meeting_name.startswith("_"):
+                    continue
+                times = details["times"]
+                last_time = times[-1] if times else "00:00"
+                # Calculate end time
+                try:
+                    from datetime import datetime as dt, timedelta
+                    t = dt.strptime(str(last_time)[:5], "%H:%M")
+                    end_t = (t + timedelta(minutes=15)).strftime("%H:%M:%S")
+                except Exception:
+                    end_t = last_time
+
+                freq = "Biweekly" if details.get("is_biweekly") else "Weekly"
+                df_data.append({
+                    "Meeting": meeting_name,
+                    "Day": details["day"],
+                    "Start Time": str(times[0]) if times else "",
+                    "End Time": str(end_t),
+                    "Duration (min)": len(times) * 15,
+                    "Frequency": freq,
+                    "Senior Availability": "—",
+                    "Total Available": "—",
+                })
+            df_data.sort(key=lambda r: (day_order.get(r["Day"], 99), r["Start Time"]))
+            new_scheduled["_schedule_df_data"] = df_data
+
+        session.scheduled = new_scheduled
+
+        # Rebuild slack summary
+        schedule_df = pd.DataFrame(new_scheduled.get("_schedule_df_data", []))
+        if not schedule_df.empty and "Meeting" in schedule_df.columns:
+            schedule_df = schedule_df.set_index("Meeting")
+
+        slack_summary = format_schedule_for_slack(
+            new_scheduled, schedule_df, session.project_emojis,
+        )
+        session.schedule_summary = slack_summary
+        save_session(session)
+
+        # Show updated review
+        blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": f"Edited Schedule: {session.term}"},
+            },
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": slack_summary},
+            },
+            {"type": "divider"},
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit Schedule"},
+                        "style": "primary",
+                        "action_id": "sched_edit_schedule",
+                        "value": session.session_id,
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Approve & Post"},
+                        "action_id": "sched_approve_schedule",
+                        "value": session.session_id,
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Re-assign Members"},
+                        "action_id": "sched_reassign",
+                        "value": session.session_id,
+                    },
+                ],
+            },
+        ]
+
+        client.chat_postMessage(
+            channel=session.dm_channel,
+            text=f"Updated schedule for {session.term}",
+            blocks=blocks,
+        )
+
     @app.action("sched_cancel")
     def handle_cancel(ack, body, client: WebClient, action):
         """Cancel the scheduling session."""
@@ -952,14 +1310,35 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
     # since the director assigned people using those same names.
     # No renaming needed — the group members ARE the When2Meet names.
 
+    # Filter out projects with 0 members (no point scheduling them)
+    active_groups = {
+        name: members for name, members in session.groups.items()
+        if members
+    }
+    empty_projects = [name for name in session.groups if name not in active_groups]
+    if empty_projects:
+        logger.info(f"Skipping empty projects: {empty_projects}")
+
+    active_durations = {
+        name: dur for name, dur in session.preferred_durations.items()
+        if name in active_groups
+    }
+
     try:
+        # Build required_members for active groups only
+        active_required = {
+            name: members for name, members in session.required_members.items()
+            if name in active_groups
+        }
+
         scheduled, schedule_df = find_best_meeting_times(
             availability=availability,
             PI=session.pi,
             senior=session.senior,
             external=session.external,
-            groups=session.groups,
-            preferred_durations=session.preferred_durations,
+            groups=active_groups,
+            preferred_durations=active_durations,
+            required_members=active_required,
         )
     except Exception as e:
         logger.error(f"Scheduling algorithm error: {e}")
@@ -999,7 +1378,7 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
     session.schedule_summary = slack_summary
     save_session(session)
 
-    unscheduled = [name for name in session.groups if name not in scheduled]
+    unscheduled = [name for name in active_groups if name not in scheduled]
 
     blocks = [
         {
@@ -1011,6 +1390,15 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
             "text": {"type": "mrkdwn", "text": slack_summary},
         },
     ]
+
+    if empty_projects:
+        blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f":wastebasket: *Removed (0 members):* {', '.join(empty_projects)}",
+            },
+        })
 
     if unscheduled:
         blocks.append({
@@ -1028,8 +1416,14 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
             "elements": [
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "Approve & Post"},
+                    "text": {"type": "plain_text", "text": "Edit Schedule"},
                     "style": "primary",
+                    "action_id": "sched_edit_schedule",
+                    "value": session.session_id,
+                },
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Approve & Post"},
                     "action_id": "sched_approve_schedule",
                     "value": session.session_id,
                 },
@@ -1264,6 +1658,54 @@ def _build_assignment_modal(session: SchedulingSession,
         "label": {"type": "plain_text", "text": "Additional External Members (not in survey, comma-separated)"},
     })
 
+    blocks.append({"type": "divider"})
+
+    # Required external PIs — their availability is a hard constraint
+    # One multi-select per project to mark which external members are required
+    blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": (
+                "*Required External PIs*\n"
+                "_Select external collaborators who MUST be available at their "
+                "assigned meeting times (their availability filters the schedule "
+                "like the PI's does). Only select people for meetings they attend._"
+            ),
+        },
+    })
+
+    for project_name in session.groups:
+        if project_name == "Lab Meeting":
+            continue  # External PIs skip lab meeting anyway
+        block_id = f"reqpi_{_safe_id(project_name)}"
+        action_id = f"reqpi_assign_{_safe_id(project_name)}"
+        emoji = session.project_emojis.get(project_name, "")
+        label = f"{emoji} {project_name}" if emoji else project_name
+
+        # Pre-select from existing required_members
+        initial = None
+        existing_req = session.required_members.get(project_name, [])
+        if existing_req:
+            initial = [opt for opt in member_options if opt["value"] in existing_req]
+
+        element = {
+            "type": "multi_static_select",
+            "action_id": action_id,
+            "placeholder": {"type": "plain_text", "text": "None (optional)"},
+            "options": member_options,
+        }
+        if initial:
+            element["initial_options"] = initial
+
+        blocks.append({
+            "type": "input",
+            "block_id": block_id,
+            "optional": True,
+            "element": element,
+            "label": {"type": "plain_text", "text": f"Required for: {label}"[:75]},
+        })
+
     return {
         "type": "modal",
         "callback_id": "scheduling_assignment_form",
@@ -1322,8 +1764,6 @@ def _parse_projects(text: str) -> tuple[list, dict, dict, dict, dict]:
             channels[name] = [c.strip() for c in parts[4].split(",") if c.strip()]
 
     return project_names, durations, emojis, descriptions, channels
-
-    return project_names, durations, emojis
 
 
 def _format_config_summary(session: SchedulingSession) -> str:
@@ -1647,6 +2087,372 @@ def _build_zoom_review_modal(session) -> dict:
     }
 
 
+def _detect_potential_duplicates(names: list) -> list[list[str]]:
+    """
+    Detect groups of respondent names that might be the same person.
+    Groups by shared first name (case-insensitive).
+    Returns list of groups (each group is a list of 2+ names).
+    """
+    from collections import defaultdict
+    first_name_groups = defaultdict(list)
+    for name in names:
+        first = name.strip().split()[0].lower() if name.strip() else name.lower()
+        first_name_groups[first].append(name)
+
+    # Also check for prefix matches (e.g., "Dan" / "Daniel")
+    firsts = list(first_name_groups.keys())
+    merged_groups = {}
+    for first in firsts:
+        merged_groups[first] = set(first_name_groups[first])
+
+    for i, f1 in enumerate(firsts):
+        for f2 in firsts[i + 1:]:
+            if f1.startswith(f2) or f2.startswith(f1):
+                # Merge these groups
+                shorter = min(f1, f2, key=len)
+                longer = max(f1, f2, key=len)
+                if shorter in merged_groups and longer in merged_groups:
+                    merged_groups[shorter] |= merged_groups[longer]
+                    del merged_groups[longer]
+
+    return [sorted(group) for group in merged_groups.values() if len(group) > 1]
+
+
+def _build_name_resolution_modal(session) -> dict:
+    """
+    Build a modal for resolving duplicate respondent names.
+
+    Format per line:
+    - Plain name = keep as-is
+    - "AliasName → CanonicalName" = merge alias into canonical
+    - Lines starting with # are comments
+
+    Auto-populates with detected duplicates as merge suggestions.
+    """
+    respondent_names = sorted(session.name_mapping.keys())
+    potential_dupes = _detect_potential_duplicates(respondent_names)
+
+    # Build existing merges (for re-resolution)
+    existing_merges = session.name_merges or {}
+
+    lines = []
+    already_listed = set()
+
+    # Show potential duplicate groups first with merge suggestions
+    if potential_dupes:
+        lines.append("# Potential duplicates — use → to merge (or leave separate):")
+        for group in potential_dupes:
+            canonical = group[0]  # Default: first alphabetically is canonical
+            # Check if there's an existing merge for this group
+            for name in group:
+                if name in existing_merges:
+                    canonical = existing_merges[name]
+                    break
+            for name in group:
+                if name in existing_merges:
+                    lines.append(f"{name} → {existing_merges[name]}")
+                elif name == canonical and len(group) > 1:
+                    lines.append(f"{name}")
+                else:
+                    lines.append(f"{name}")
+                already_listed.add(name)
+            lines.append("")  # Blank line between groups
+
+    # List remaining names
+    if already_listed:
+        lines.append("# Other respondents:")
+    for name in respondent_names:
+        if name not in already_listed:
+            if name in existing_merges:
+                lines.append(f"{name} → {existing_merges[name]}")
+            else:
+                lines.append(name)
+            already_listed.add(name)
+
+    merge_text = "\n".join(lines)
+
+    return {
+        "type": "modal",
+        "callback_id": "sched_resolve_names_submit",
+        "private_metadata": json.dumps({"session_id": session.session_id}),
+        "title": {"type": "plain_text", "text": "Resolve Names"},
+        "submit": {"type": "plain_text", "text": "Apply"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        "*Resolve duplicate or ambiguous respondent names.*\n\n"
+                        "• To merge duplicates: `Paxton → Paxton F`\n"
+                        "  _(merges Paxton's availability into Paxton F)_\n"
+                        "• To keep names separate: leave them on their own lines\n"
+                        "• To remove someone: delete their line\n"
+                        "• Lines starting with `#` are comments"
+                    ),
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "name_merge_block",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "name_merge_input",
+                    "multiline": True,
+                    "initial_value": merge_text,
+                },
+                "label": {"type": "plain_text", "text": "Respondent Names"},
+            },
+        ],
+    }
+
+
+def _parse_name_merges(text: str, original_names: list) -> tuple[dict, list, list]:
+    """
+    Parse the name resolution text.
+
+    Returns (merges_dict, canonical_names_list, errors_list).
+    merges_dict: alias_name -> canonical_name
+    canonical_names_list: all unique canonical names (in order)
+    """
+    merges = {}
+    canonical_names = []
+    errors = []
+    original_set = {n.lower(): n for n in original_names}
+
+    for line_num, line in enumerate(text.strip().split("\n"), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Check for merge syntax: "Alias → Canonical" or "Alias -> Canonical"
+        merge_match = re.split(r'\s*(?:→|->)\s*', line, maxsplit=1)
+        if len(merge_match) == 2:
+            alias = merge_match[0].strip()
+            canonical = merge_match[1].strip()
+            if not alias or not canonical:
+                errors.append(f"Line {line_num}: empty name in merge")
+                continue
+            if alias == canonical:
+                # Not a merge, just a name
+                if canonical not in canonical_names:
+                    canonical_names.append(canonical)
+                continue
+            merges[alias] = canonical
+            # Ensure canonical is in the list
+            if canonical not in canonical_names:
+                canonical_names.append(canonical)
+        else:
+            # Plain name — keep as canonical
+            name = line.strip()
+            if name and name not in canonical_names:
+                canonical_names.append(name)
+
+    return merges, canonical_names, errors
+
+
+def _apply_name_merges_to_availability(availability, merges: dict):
+    """
+    Apply name merges to an availability DataFrame.
+    For each alias → canonical merge, OR the alias column into the canonical
+    column, then drop the alias column.
+
+    Parameters
+    ----------
+    availability : pd.DataFrame
+        MultiIndex (Day, Time) -> one column per person.
+    merges : dict
+        alias_name -> canonical_name
+
+    Returns
+    -------
+    pd.DataFrame with merged columns.
+    """
+    import pandas as pd
+
+    if not merges:
+        return availability
+
+    df = availability.copy()
+
+    for alias, canonical in merges.items():
+        if alias not in df.columns:
+            continue
+        if canonical in df.columns:
+            # OR: available if either entry says available
+            df[canonical] = df[[canonical, alias]].max(axis=1)
+        else:
+            # Canonical not present yet — just rename
+            df = df.rename(columns={alias: canonical})
+
+    # Drop alias columns that were merged (not renamed)
+    cols_to_drop = [alias for alias in merges if alias in df.columns and merges[alias] in df.columns]
+    df = df.drop(columns=cols_to_drop, errors="ignore")
+
+    return df
+
+
+def _build_schedule_edit_modal(session) -> dict:
+    """
+    Build a modal with the current schedule as editable text.
+    One meeting per line: "Meeting Name | Day | HH:MM | HH:MM | weekly/biweekly"
+    """
+    lines = []
+    scheduled = session.scheduled or {}
+
+    day_order = {d: i for i, d in enumerate(
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    )}
+
+    # Build from _schedule_df_data for consistent display
+    df_data = scheduled.get("_schedule_df_data", [])
+    if df_data:
+        sorted_data = sorted(df_data, key=lambda r: (day_order.get(r.get("Day", ""), 99), r.get("Start Time", "")))
+        for row in sorted_data:
+            name = row.get("Meeting", "")
+            day = row.get("Day", "")
+            start = str(row.get("Start Time", ""))[:5]
+            end = str(row.get("End Time", ""))[:5]
+            freq = "biweekly" if "Biweekly" in str(row.get("Frequency", "")) else "weekly"
+            lines.append(f"{name} | {day} | {start} | {end} | {freq}")
+    else:
+        # Fallback: build from scheduled dict
+        entries = []
+        for meeting_name, details in scheduled.items():
+            if meeting_name.startswith("_"):
+                continue
+            times = details.get("times", [])
+            if not times:
+                continue
+            day = details.get("day", "")
+            start = str(times[0])[:5]
+            from datetime import datetime as dt, timedelta
+            try:
+                t = dt.strptime(str(times[-1])[:5], "%H:%M")
+                end = (t + timedelta(minutes=15)).strftime("%H:%M")
+            except Exception:
+                end = str(times[-1])[:5]
+            freq = "biweekly" if details.get("is_biweekly") else "weekly"
+            entries.append((day_order.get(day, 99), start, f"{meeting_name} | {day} | {start} | {end} | {freq}"))
+        entries.sort()
+        lines = [e[2] for e in entries]
+
+    schedule_text = "\n".join(lines)
+
+    return {
+        "type": "modal",
+        "callback_id": "sched_edit_schedule_submit",
+        "private_metadata": json.dumps({"session_id": session.session_id}),
+        "title": {"type": "plain_text", "text": "Edit Schedule"},
+        "submit": {"type": "plain_text", "text": "Update Schedule"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        "*Edit the schedule below.*\n"
+                        "One meeting per line:\n"
+                        "`Meeting Name | Day | Start | End | weekly/biweekly`\n\n"
+                        "• Change times or days by editing the line\n"
+                        "• Delete a line to remove a meeting\n"
+                        "• Add a new line to add a meeting"
+                    ),
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "schedule_edit_block",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "schedule_edit_input",
+                    "multiline": True,
+                    "initial_value": schedule_text,
+                },
+                "label": {"type": "plain_text", "text": "Schedule"},
+            },
+        ],
+    }
+
+
+def _parse_edited_schedule(text: str, session) -> tuple[dict, list]:
+    """
+    Parse user-edited schedule text back into a scheduled dict.
+
+    Each line: "Meeting Name | Day | HH:MM | HH:MM | weekly/biweekly"
+    Returns (scheduled_dict, list_of_errors).
+    """
+    scheduled = {}
+    errors = []
+
+    valid_days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+
+    for line_num, line in enumerate(text.strip().split("\n"), 1):
+        line = line.strip()
+        if not line:
+            continue
+
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 4:
+            errors.append(f"Line {line_num}: expected at least 4 fields (name|day|start|end), got {len(parts)}")
+            continue
+
+        meeting_name = parts[0]
+        day = parts[1]
+        start_str = parts[2]
+        end_str = parts[3]
+        freq = parts[4].lower().strip() if len(parts) > 4 else "weekly"
+
+        if not meeting_name:
+            errors.append(f"Line {line_num}: empty meeting name")
+            continue
+
+        # Validate day
+        day_match = [d for d in valid_days if d.lower() == day.lower()]
+        if not day_match:
+            errors.append(f"Line {line_num}: invalid day '{day}'")
+            continue
+        day = day_match[0]
+
+        # Validate times
+        from datetime import datetime as dt, timedelta
+        try:
+            start_time = dt.strptime(start_str[:5], "%H:%M")
+            end_time = dt.strptime(end_str[:5], "%H:%M")
+        except ValueError:
+            errors.append(f"Line {line_num}: invalid time format (use HH:MM)")
+            continue
+
+        if end_time <= start_time:
+            errors.append(f"Line {line_num}: end time must be after start time")
+            continue
+
+        # Build time slots (15-min blocks)
+        times = []
+        current = start_time
+        while current < end_time:
+            times.append(current.strftime("%H:%M:%S"))
+            current += timedelta(minutes=15)
+
+        is_biweekly = "biweekly" in freq or "bi-weekly" in freq
+
+        scheduled[meeting_name] = {
+            "day": day,
+            "times": times,
+            "pi_available": len(session.pi),
+            "senior_available": 0,
+            "other_available": 0,
+            "total_group_size": len(session.groups.get(meeting_name, [])),
+            "is_biweekly": is_biweekly,
+            "shares_slot": False,
+            "shares_with": None,
+        }
+
+    return scheduled, errors
+
+
 def _auto_populate_from_reactions(client: WebClient, session, respondent_names: list):
     """
     Fetch emoji reactions from the survey message and use them to auto-populate
@@ -1679,8 +2485,11 @@ def _auto_populate_from_reactions(client: WebClient, session, respondent_names: 
         if clean_emoji:
             emoji_to_project[clean_emoji] = project_name
 
-    # Build a user ID -> respondent name map by resolving reactor profiles
+    # Build a user ID -> respondent name map by resolving reactor profiles.
+    # Track which respondent names have already been claimed to prevent
+    # multiple Slack users from fuzzy-matching to the same respondent.
     uid_to_respondent = {}
+    claimed_respondents = set()
 
     for reaction in reactions:
         emoji_name = reaction["name"]
@@ -1697,9 +2506,12 @@ def _auto_populate_from_reactions(client: WebClient, session, respondent_names: 
                     user_info = client.users_info(user=uid)
                     profile = user_info["user"]["profile"]
                     display = profile.get("real_name") or profile.get("display_name") or ""
-                    # Fuzzy match to respondent names
-                    matched = _match_display_to_respondent(display, respondent_names)
+                    # Fuzzy match to respondent names, excluding already-claimed ones
+                    available = [n for n in respondent_names if n not in claimed_respondents]
+                    matched = _match_display_to_respondent(display, available)
                     uid_to_respondent[uid] = matched  # None if no match
+                    if matched:
+                        claimed_respondents.add(matched)
                 except SlackApiError:
                     uid_to_respondent[uid] = None
 
@@ -1707,6 +2519,14 @@ def _auto_populate_from_reactions(client: WebClient, session, respondent_names: 
             if matched_name and matched_name not in session.groups.get(project_name, []):
                 if project_name in session.groups:
                     session.groups[project_name].append(matched_name)
+
+    # Final deduplication pass on all groups
+    for project_name in session.groups:
+        seen = []
+        for member in session.groups[project_name]:
+            if member not in seen:
+                seen.append(member)
+        session.groups[project_name] = seen
 
 
 def _match_display_to_respondent(display_name: str, respondent_names: list):

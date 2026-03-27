@@ -63,6 +63,10 @@ class SchedulingSession:
     senior: list = field(default_factory=list)  # Senior member names
     external: list = field(default_factory=list)  # External members (skip lab meeting)
 
+    # Required members per meeting: external PIs whose availability is a hard constraint.
+    # Dict of meeting_name -> list of member names that MUST be available.
+    required_members: dict = field(default_factory=dict)
+
     # When2meet
     when2meet_url: str = ""
     survey_message_ts: str = ""  # Timestamp of the #general message with survey link
@@ -73,6 +77,9 @@ class SchedulingSession:
     name_mapping: dict = field(default_factory=dict)
     # unmatched_names: list of when2meet names that couldn't be auto-matched
     unmatched_names: list = field(default_factory=list)
+    # name_merges: dict of alias_name -> canonical_name for duplicate respondents.
+    # When merging, the alias's availability is OR'd into the canonical's.
+    name_merges: dict = field(default_factory=dict)
 
     # Schedule results
     # scheduled: dict of meeting_name -> {day, times, scores, etc.}
@@ -122,11 +129,13 @@ class SchedulingSession:
             "pi": self.pi,
             "senior": self.senior,
             "external": self.external,
+            "required_members": self.required_members,
             "when2meet_url": self.when2meet_url,
             "survey_message_ts": self.survey_message_ts,
             "survey_channel": self.survey_channel,
             "name_mapping": self.name_mapping,
             "unmatched_names": self.unmatched_names,
+            "name_merges": self.name_merges,
             "scheduled": self.scheduled,
             "schedule_summary": self.schedule_summary,
             "calendar_event_ids": self.calendar_event_ids,
@@ -156,11 +165,13 @@ class SchedulingSession:
             pi=data.get("pi", []),
             senior=data.get("senior", []),
             external=data.get("external", []),
+            required_members=data.get("required_members", {}),
             when2meet_url=data.get("when2meet_url", ""),
             survey_message_ts=data.get("survey_message_ts", ""),
             survey_channel=data.get("survey_channel", ""),
             name_mapping=data.get("name_mapping", {}),
             unmatched_names=data.get("unmatched_names", []),
+            name_merges=data.get("name_merges", {}),
             scheduled=data.get("scheduled", {}),
             schedule_summary=data.get("schedule_summary", ""),
             calendar_event_ids=data.get("calendar_event_ids", []),
@@ -174,9 +185,11 @@ class SchedulingSession:
         )
 
     def get_all_members(self) -> list:
-        """Get a deduplicated list of all members across all groups."""
+        """Get a deduplicated list of all members across all groups (canonical names only)."""
+        aliases = set(self.name_merges.keys())
         members = set()
         for group_members in self.groups.values():
             members.update(group_members)
         members.update(self.pi)
+        members -= aliases  # Exclude merged aliases
         return sorted(members)
