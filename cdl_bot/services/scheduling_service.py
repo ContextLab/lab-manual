@@ -100,7 +100,8 @@ def find_best_meeting_times(
     # Tracking state
     scheduled = {}
     used_times = set()
-    biweekly_times = {}
+    biweekly_times = {}  # (day, time) -> first meeting name
+    biweekly_full = set()  # (day, time) slots that already have 2 biweekly meetings
     meeting_end_times = {}
     days_with_meetings = set()
     day_meeting_blocks = defaultdict(list)
@@ -164,6 +165,9 @@ def find_best_meeting_times(
                         continue
                 else:
                     if any(t in used_times for t in block_index):
+                        continue
+                    # Slot already has 2 biweekly meetings — full
+                    if any(t in biweekly_full for t in block_index):
                         continue
                     overlapping = [biweekly_times[t] for t in block_index if t in biweekly_times]
                     if overlapping:
@@ -263,7 +267,15 @@ def find_best_meeting_times(
 
         if is_biweekly_meeting:
             for t in best["times"]:
-                biweekly_times[(best["day"], t)] = meeting_name
+                slot = (best["day"], t)
+                if slot in biweekly_times:
+                    # 2nd biweekly meeting — slot is now full (2 alternating weeks used)
+                    biweekly_full.add(slot)
+                    # Also add to used_times so no further meetings (weekly OR biweekly)
+                    # can be placed here
+                    used_times.add(slot)
+                else:
+                    biweekly_times[slot] = meeting_name
         else:
             for t in best["times"]:
                 used_times.add((best["day"], t))

@@ -254,6 +254,7 @@ class CalendarService:
         term_end: str,
         location: str = PROJECT_LOCATION,
         is_biweekly: bool = False,
+        week_offset: int = 0,
         attendee_emails: Optional[list] = None,
         description: str = "",
     ) -> tuple[bool, Optional[str], Optional[str]]:
@@ -270,6 +271,8 @@ class CalendarService:
             term_end: Term end date "YYYY-MM-DD"
             location: Event location string
             is_biweekly: If True, event repeats every 2 weeks
+            week_offset: Number of weeks to offset the start (for alternating
+                         biweekly meetings sharing the same slot)
             attendee_emails: Optional list of attendee email addresses
             description: Optional event description
 
@@ -287,6 +290,10 @@ class CalendarService:
         if days_ahead < 0:
             days_ahead += 7
         first_date = start_date + timedelta(days=days_ahead)
+
+        # Offset for alternating biweekly meetings sharing the same slot
+        if week_offset:
+            first_date += timedelta(weeks=week_offset)
 
         # Build RRULE
         end_date = date.fromisoformat(term_end)
@@ -356,6 +363,10 @@ class CalendarService:
         if schedule_df is None or schedule_df.empty:
             return results
 
+        # Track biweekly slots to offset alternating meetings
+        # Key: (day, start_time) -> count of biweekly meetings already placed
+        biweekly_slot_count = {}
+
         for meeting_name, row in schedule_df.iterrows():
             day = row["Day"]
             start = row["Start Time"][:5]
@@ -365,6 +376,15 @@ class CalendarService:
             # Determine location
             is_individual = meeting_name.endswith(" one-on-one")
             location = INDIVIDUAL_LOCATION if is_individual else PROJECT_LOCATION
+
+            # For biweekly meetings, check if another biweekly already occupies
+            # this slot and offset by 1 week so they alternate
+            week_offset = 0
+            if is_biweekly:
+                slot_key = (day, start)
+                count = biweekly_slot_count.get(slot_key, 0)
+                week_offset = count  # 0 for first, 1 for second
+                biweekly_slot_count[slot_key] = count + 1
 
             success, error, event_id = self.create_recurring_event(
                 calendar_id=calendar_id,
@@ -376,6 +396,7 @@ class CalendarService:
                 term_end=term_end,
                 location=location,
                 is_biweekly=is_biweekly,
+                week_offset=week_offset,
             )
 
             results.append({
