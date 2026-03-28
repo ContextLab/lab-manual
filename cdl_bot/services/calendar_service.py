@@ -255,6 +255,7 @@ class CalendarService:
         location: str = PROJECT_LOCATION,
         is_biweekly: bool = False,
         week_offset: int = 0,
+        free: bool = False,
         attendee_emails: Optional[list] = None,
         description: str = "",
     ) -> tuple[bool, Optional[str], Optional[str]]:
@@ -312,6 +313,9 @@ class CalendarService:
             "end": {"dateTime": end_dt, "timeZone": "America/New_York"},
             "recurrence": [rrule],
         }
+
+        if free:
+            event_body["transparency"] = "transparent"
 
         if description:
             event_body["description"] = description
@@ -373,9 +377,17 @@ class CalendarService:
             end = row["End Time"][:5]
             is_biweekly = "Biweekly" in row["Frequency"]
 
-            # Determine location
+            # Determine location and special flags
             is_individual = meeting_name.endswith(" one-on-one")
+            is_office_hours = "office hours" in meeting_name.lower()
             location = INDIVIDUAL_LOCATION if is_individual else PROJECT_LOCATION
+
+            # Office hours: use lowercase name and mark as free
+            summary = meeting_name
+            if is_office_hours:
+                # Normalize to "Jeremy office hours" style
+                parts = meeting_name.split()
+                summary = parts[0] + " office hours" if parts else meeting_name
 
             # For biweekly meetings, check if another biweekly already occupies
             # this slot and offset by 1 week so they alternate
@@ -388,7 +400,7 @@ class CalendarService:
 
             success, error, event_id = self.create_recurring_event(
                 calendar_id=calendar_id,
-                summary=meeting_name,
+                summary=summary,
                 day=day,
                 start_time=start,
                 end_time=end,
@@ -397,6 +409,7 @@ class CalendarService:
                 location=location,
                 is_biweekly=is_biweekly,
                 week_offset=week_offset,
+                free=is_office_hours,
             )
 
             results.append({
