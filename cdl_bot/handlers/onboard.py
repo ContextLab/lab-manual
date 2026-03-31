@@ -322,6 +322,36 @@ def register_onboard_handlers(app: App, config: Config):
                 request.bio_edited = edited_bio
                 save_request(request)
 
+        # Check if a photo already exists in the website repo
+        existing_photo = image_service.find_existing_photo(request.name)
+        has_bordered_photo = existing_photo and image_service.is_photo_bordered(existing_photo)
+
+        if has_bordered_photo:
+            request.photo_processed_path = existing_photo
+            save_request(request)
+            photo_status = ":white_check_mark: *Photo:* Found your existing photo — looks great!"
+        elif existing_photo:
+            # Photo exists but needs border processing
+            try:
+                output_path = config.output_dir / f"{request.slack_user_id}_photo.png"
+                processed = image_service.add_hand_drawn_border(existing_photo, output_path)
+                request.photo_processed_path = processed
+                save_request(request)
+                photo_status = ":white_check_mark: *Photo:* Found and processed your photo!"
+            except Exception as e:
+                logger.error(f"Error processing existing photo: {e}")
+                photo_status = (
+                    ":camera: *Photo:* Please upload a profile photo by sending it "
+                    "as a message in this conversation. It will be automatically "
+                    "cropped and styled to match the lab website."
+                )
+        else:
+            photo_status = (
+                ":camera: *Photo:* Please upload a profile photo by sending it "
+                "as a message in this conversation. It will be automatically "
+                "cropped and styled to match the lab website."
+            )
+
         # Send confirmation to the new member
         try:
             client.chat_postMessage(
@@ -339,7 +369,13 @@ def register_onboard_handlers(app: App, config: Config):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"*What's next:*\n• GitHub: Invitation to ContextLab organization\n• Calendar: Access to lab calendars\n• Website: Your photo and bio will be added",
+                            "text": (
+                                f"*What's next:*\n"
+                                f"• GitHub: Invitation to ContextLab organization\n"
+                                f"• Calendar: Access to lab calendars\n"
+                                f"• Website: Your bio will be added to the people page\n\n"
+                                f"{photo_status}"
+                            ),
                         },
                     },
                 ],
@@ -727,6 +763,24 @@ def _send_approval_request(
             "text": {
                 "type": "mrkdwn",
                 "text": f"*Edited Bio (for website):*\n>{request.bio_edited}",
+            },
+        })
+
+    # Photo status
+    if request.photo_processed_path and Path(request.photo_processed_path).exists():
+        blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":white_check_mark: *Photo:* Processed and ready",
+            },
+        })
+    else:
+        blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":warning: *Photo:* Not yet received — member has been prompted to upload",
             },
         })
 
