@@ -146,6 +146,9 @@ class Config:
     border_color: tuple = (0, 105, 62)  # Dartmouth green RGB
     border_width: int = 8
 
+    # Path to the website repo (contextlab.github.io) for add_borders.py and templates
+    website_repo_path: Optional[Path] = None
+
     # Local storage for processed files
     output_dir: Path = Path(__file__).parent / "output"
 
@@ -167,11 +170,16 @@ class Config:
         except ValueError:
             anthropic = None
 
+        # Optional: website repo path for add_borders.py
+        website_repo_path = os.environ.get("WEBSITE_REPO_PATH")
+        website_path = Path(website_repo_path) if website_repo_path else None
+
         config = cls(
             slack=slack,
             github=github,
             google_calendar=google_calendar,
             anthropic=anthropic,
+            website_repo_path=website_path,
         )
 
         # Ensure output directory exists

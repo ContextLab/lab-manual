@@ -34,7 +34,10 @@ def register_onboard_handlers(app: App, config: Config):
     """Register all onboarding-related handlers with the Slack app."""
 
     github_service = GitHubService(config.github.token, config.github.org_name)
-    image_service = ImageService(config.border_color, config.border_width)
+    image_service = ImageService(
+        config.border_color, config.border_width,
+        website_repo_path=config.website_repo_path,
+    )
     bio_service = None
     if config.anthropic:
         bio_service = BioService(config.anthropic.api_key, config.anthropic.model)
