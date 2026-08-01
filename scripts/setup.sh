@@ -446,6 +446,8 @@ verify_installation() {
         python -c "import pandas; print(f'  pandas: {pandas.__version__}')" 2>/dev/null && log_success "  pandas: OK" || log_warning "  pandas: FAILED"
         python -c "import torch; print(f'  pytorch: {torch.__version__}')" 2>/dev/null && log_success "  pytorch: OK" || log_warning "  pytorch: FAILED"
         python -c "import sklearn; print(f'  scikit-learn: {sklearn.__version__}')" 2>/dev/null && log_success "  scikit-learn: OK" || log_warning "  scikit-learn: FAILED"
+        python -c "import numba; print(f'  numba: {numba.__version__}')" 2>/dev/null && log_success "  numba: OK" || log_warning "  numba: FAILED"
+        python -c "import umap; print(f'  umap-learn: {umap.__version__}')" 2>/dev/null && log_success "  umap-learn: OK" || log_warning "  umap-learn: FAILED"
         python -c "import hypertools; print(f'  hypertools: {hypertools.__version__}')" 2>/dev/null && log_success "  hypertools: OK" || log_warning "  hypertools: FAILED"
 
         conda deactivate

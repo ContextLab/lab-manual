@@ -12,12 +12,24 @@
 # To activate:
 #   conda activate cdl
 #
+# MAINTENANCE NOTE: anything that ships compiled extension modules (numba,
+# llvmlite, umap-learn, pytorch, ...) belongs in the `dependencies:` list
+# below, NOT in the `pip:` section. conda-forge builds those for every
+# platform we support, including Intel Macs; PyPI no longer does, so pip
+# falls back to compiling from source and the install fails. Only
+# pure-Python or PyPI-only packages belong under `pip:`.
+#
 
 name: cdl
 channels:
   - conda-forge
-  - pytorch
-  - defaults
+  # `defaults` is deliberately omitted: it requires interactively accepting
+  # Anaconda's Terms of Service, which breaks the non-interactive
+  # `conda env create` run by scripts/setup.sh. The `pytorch` channel is
+  # omitted for the same reason it is no longer needed -- it stopped
+  # publishing new builds after 2.5.1, and conda-forge now ships newer
+  # pytorch/torchvision/torchaudio for both macOS architectures.
+  - nodefaults
 
 dependencies:
   # Python version
@@ -35,6 +47,17 @@ dependencies:
 
   # Machine learning
   - scikit-learn>=1.3
+
+  # JIT compilation and dimensionality reduction.
+  # These MUST come from conda-forge rather than pip: PyPI stopped shipping
+  # macOS x86_64 wheels at llvmlite 0.46 / numba 0.63, so on an Intel Mac pip
+  # falls back to building llvmlite from source and fails with
+  # "Failed building wheel for llvmlite" (issue #190). umap-learn is listed
+  # here (rather than under pip) so that pip never tries to resolve numba or
+  # llvmlite itself; pynndescent comes along with it.
+  - numba>=0.61
+  - llvmlite>=0.44
+  - umap-learn>=0.5
 
   # PyTorch - will install appropriate version for platform (CPU/CUDA/MPS)
   - pytorch>=2.0
@@ -66,11 +89,10 @@ dependencies:
   - nilearn
 
   # pip-installed packages
+  # (pure-Python or not available on conda-forge -- see the maintenance note
+  # at the top of this file before adding anything that compiles)
   - pip
   - pip:
-    # Dimensionality reduction
-    - umap-learn>=0.5
-
     # Transformers and HuggingFace
     - transformers>=4.30
     - diffusers>=0.21

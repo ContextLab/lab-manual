@@ -363,7 +363,7 @@ function Test-Installation {
 
         conda activate cdl
 
-        $packages = @("numpy", "pandas", "torch", "sklearn", "hypertools")
+        $packages = @("numpy", "pandas", "torch", "sklearn", "numba", "umap", "hypertools")
         foreach ($pkg in $packages) {
             try {
                 $result = python -c "import $pkg; print(f'  $pkg: {$pkg.__version__}')" 2>&1
