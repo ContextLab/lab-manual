@@ -56,119 +56,81 @@ def _derive_term() -> tuple[str, str, str]:
 
 def _scrape_dartmouth_calendar() -> list[dict]:
     """
-    Scrape Dartmouth registrar for term dates.
+    Scrape the Dartmouth registrar for term start/end dates.
 
-    1. Fetch index page to discover term calendar page URLs
-    2. Fetch each calendar page and parse <dl> structure for dates
+    The registrar site (registrar.dartmouth.edu) lists each term on its own
+    page (e.g. .../2026-2027/summer-term-2026), linked from the academic
+    calendars index. Each term page has a table whose "<season> term classes
+    begin" / "classes end" rows give the span.
 
     Returns list of {name, start, end} dicts sorted by start date.
     """
     import requests
     from bs4 import BeautifulSoup
 
-    base_url = "https://www.dartmouth.edu/reg/calendar/term/"
-    index_resp = requests.get(base_url, timeout=10)
+    index_url = ("https://registrar.dartmouth.edu/calendars/"
+                 "academic-institutional-calendars")
+    headers = {"User-Agent": "Mozilla/5.0 (CDL scheduling bot)"}
+    index_resp = requests.get(index_url, timeout=15, headers=headers)
     index_resp.raise_for_status()
     index_soup = BeautifulSoup(index_resp.text, "html.parser")
 
-    # Find links to term calendar pages (e.g., "25_26_term_calendar.html")
-    calendar_links = set()
+    # Find links to individual term pages: .../<season>-term-<year>
+    term_re = re.compile(r"/(summer|fall|winter|spring)-term-(\d{4})\b", re.IGNORECASE)
+    term_pages = {}  # term name -> absolute URL (deduped)
     for a in index_soup.find_all("a", href=True):
-        href = a["href"]
-        if "term_calendar" not in href:
+        href = a["href"].split("#")[0].split("?")[0]
+        match = term_re.search(href)
+        if not match:
             continue
-        # Strip anchor fragments (#a, #b, etc.)
-        href = href.split("#")[0]
-        if not href.endswith(".html"):
-            continue
-        # Normalize to absolute URL
+        name = f"{match.group(1).capitalize()} {match.group(2)}"
         if href.startswith("/"):
-            calendar_links.add("https://www.dartmouth.edu" + href)
+            href = "https://registrar.dartmouth.edu" + href
         elif not href.startswith("http"):
-            calendar_links.add(base_url + href)
-        else:
-            calendar_links.add(href)
+            continue
+        term_pages.setdefault(name, href)
 
     all_terms = []
-    for url in sorted(calendar_links):
+    for name, url in term_pages.items():
         try:
-            resp = requests.get(url, timeout=10)
+            resp = requests.get(url, timeout=15, headers=headers)
             resp.raise_for_status()
-            terms = _parse_term_calendar_page(resp.text)
-            all_terms.extend(terms)
+            dates = _parse_term_calendar_page(resp.text)
+            if dates["start"] and dates["end"]:
+                all_terms.append({"name": name, "start": dates["start"], "end": dates["end"]})
         except Exception as e:
             logger.warning(f"Failed to parse {url}: {e}")
 
     return sorted(all_terms, key=lambda t: t["start"])
 
 
-def _parse_term_calendar_page(html: str) -> list[dict]:
+def _parse_term_calendar_page(html: str) -> dict:
     """
-    Parse a Dartmouth term calendar page for term dates.
+    Parse a single Dartmouth term calendar page for its start/end dates.
 
-    Structure: <table class="tableizer-table"> with:
-    - Term headers in <tr class="tableizer-firstrow"><th>Summer Term 2025</th></tr>
-    - Date entries in <tr><td>description</td><td>date</td></tr>
+    Each term page has a table of (event, date) rows; the term span comes from
+    the "<season> term classes begin" and "classes end" rows.
+
+    Returns {"start": ISO-date-or-None, "end": ISO-date-or-None}.
     """
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
-    # Look in the main content area
-    content = soup.find("div", id="b-content") or soup
+    start = end = None
 
-    terms = []
-    current_term = None
-    classes_begin = None
-    classes_end = None
+    for row in soup.find_all("tr"):
+        cells = row.find_all(["td", "th"])
+        if len(cells) < 2:
+            continue
+        desc = cells[0].get_text(" ", strip=True).lower()
+        date_text = cells[1].get_text(" ", strip=True)
 
-    for table in content.find_all("table"):
-        for row in table.find_all("tr"):
-            # Check for term header row
-            th = row.find("th")
-            if th:
-                # Save previous term if complete
-                if current_term and classes_begin and classes_end:
-                    terms.append({
-                        "name": current_term,
-                        "start": classes_begin,
-                        "end": classes_end,
-                    })
-                term_match = re.search(
-                    r"(Summer|Fall|Winter|Spring)\s+Term\s+(\d{4})",
-                    th.get_text(strip=True), re.IGNORECASE,
-                )
-                if term_match:
-                    season = term_match.group(1).capitalize()
-                    year = term_match.group(2)
-                    current_term = f"{season} {year}"
-                    classes_begin = None
-                    classes_end = None
-                continue
+        if "classes begin" in desc and not start:
+            start = _parse_calendar_date(date_text)
+        elif "classes end" in desc and not end:
+            end = _parse_calendar_date(date_text)
 
-            # Parse data rows
-            cells = row.find_all("td")
-            if len(cells) >= 2 and current_term:
-                desc = cells[0].get_text(strip=True).lower()
-                date_text = cells[1].get_text(strip=True)
-
-                if "classes begin" in desc and not classes_begin:
-                    parsed = _parse_calendar_date(date_text)
-                    if parsed:
-                        classes_begin = parsed
-                elif "classes end" in desc and not classes_end:
-                    parsed = _parse_calendar_date(date_text)
-                    if parsed:
-                        classes_end = parsed
-
-    # Don't forget the last term
-    if current_term and classes_begin and classes_end:
-        terms.append({
-            "name": current_term,
-            "start": classes_begin,
-            "end": classes_end,
-        })
-
-    return terms
+    return {"start": start, "end": end}
 
 
 def _parse_calendar_date(text: str) -> str:
@@ -1329,6 +1291,34 @@ def register_schedule_handlers(app: App, config: Config):
 
 # ── Run scheduling algorithm ─────────────────────────────────────────────
 
+def _filter_active_groups(groups: dict, pi: list, required_members: dict = None):
+    """Split projects into active vs. empty (PI-only) groups.
+
+    A project is active if it has at least one non-PI group member, OR is an
+    office-hours-style block (PI-only free time), OR has required members.
+    The last case matters for meetings like Kraken whose only non-PI attendees
+    are external collaborators — those names live in ``required_members``, not
+    ``groups``, so checking ``groups`` alone would wrongly drop the meeting.
+
+    Returns
+    -------
+    (active_groups, empty_projects) : tuple[dict, list]
+    """
+    pi_set = set(pi)
+    required_members = required_members or {}
+    active_groups = {}
+    empty_projects = []
+    for name, members in groups.items():
+        non_pi_members = [m for m in members if m not in pi_set]
+        is_office_hours = "office hours" in name.lower()
+        has_required = bool(required_members.get(name))
+        if non_pi_members or is_office_hours or has_required:
+            active_groups[name] = members
+        else:
+            empty_projects.append(name)
+    return active_groups, empty_projects
+
+
 def _run_scheduling(client: WebClient, session: SchedulingSession, availability):
     """Run the scheduling algorithm and present results to director."""
     import pandas as pd
@@ -1345,18 +1335,12 @@ def _run_scheduling(client: WebClient, session: SchedulingSession, availability)
     # since the director assigned people using those same names.
     # No renaming needed — the group members ARE the When2Meet names.
 
-    # Filter out projects with 0 non-PI members.
-    # "Office hours" style meetings (only the PI) are kept as free blocks.
-    pi_set = set(session.pi)
-    active_groups = {}
-    empty_projects = []
-    for name, members in session.groups.items():
-        non_pi_members = [m for m in members if m not in pi_set]
-        is_office_hours = "office hours" in name.lower()
-        if non_pi_members or is_office_hours:
-            active_groups[name] = members
-        else:
-            empty_projects.append(name)
+    # Filter out projects with no attendees. Projects whose only non-PI members
+    # are external/required collaborators (e.g. Kraken) are kept — their names
+    # live in required_members, not groups.
+    active_groups, empty_projects = _filter_active_groups(
+        session.groups, session.pi, session.required_members
+    )
     if empty_projects:
         logger.info(f"Skipping PI-only projects: {empty_projects}")
 

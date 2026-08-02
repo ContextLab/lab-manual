@@ -15,6 +15,80 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _time_to_minutes(time_str) -> int:
+    """Convert a slot start-time (str "HH:MM[:SS]", pandas Timestamp, or
+    datetime.time) into minutes since midnight."""
+    if isinstance(time_str, str):
+        parts = time_str.split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+    if hasattr(time_str, "hour"):
+        return time_str.hour * 60 + time_str.minute
+    return 0
+
+
+def _contiguous_runs(times: list) -> list:
+    """Group a chronological list of 15-min slot start-times into contiguous
+    runs. A meeting with a lunch gap yields more than one run."""
+    runs = []
+    for t in times:
+        if runs and _time_to_minutes(t) - _time_to_minutes(runs[-1][-1]) == 15:
+            runs[-1].append(t)
+        else:
+            runs.append([t])
+    return runs
+
+
+def _apply_pi_lunch_break(scheduled: dict, availability,
+                          lunch_window=("11:30", "13:30")) -> None:
+    """Guarantee the PI a free 15-minute lunch slot.
+
+    Every meeting requires the PI, so a slot with no meeting is a slot the PI
+    is free. On any day whose entire ``lunch_window`` is booked, remove one
+    15-min block from an overlapping office-hours meeting — splitting it into
+    two segments around the gap. Office hours keeps its overall span but loses
+    15 minutes. Mutates ``scheduled`` in place.
+    """
+    if not scheduled or availability is None or lunch_window is None:
+        return
+
+    lo = _time_to_minutes(lunch_window[0])
+    hi = _time_to_minutes(lunch_window[1])
+    days = {d["day"] for d in scheduled.values()}
+
+    for day in days:
+        try:
+            day_slots = list(availability.loc[day].index)
+        except (KeyError, AttributeError):
+            continue
+        window_slots = [t for t in day_slots if lo <= _time_to_minutes(t) < hi]
+        if not window_slots:
+            continue  # lunch window not offered in the survey — nothing to protect
+
+        busy = {t for d in scheduled.values() if d["day"] == day for t in d["times"]}
+        if any(t not in busy for t in window_slots):
+            continue  # PI already has a free lunch slot
+
+        # Window fully booked — carve a gap out of an overlapping office-hours block
+        for name, details in scheduled.items():
+            if details["day"] != day or "office hours" not in name.lower():
+                continue
+            oh_window = [t for t in details["times"] if lo <= _time_to_minutes(t) < hi]
+            if not oh_window:
+                continue
+            lunch_slot = oh_window[len(oh_window) // 2]  # middle slot → even-ish split
+            details["times"] = [t for t in details["times"] if t != lunch_slot]
+            logger.info(
+                f"Reserved PI lunch on {day} at {lunch_slot} "
+                f"(split '{name}' around the break)"
+            )
+            break
+        else:
+            logger.warning(
+                f"PI lunch window {lunch_window[0]}-{lunch_window[1]} on {day} is "
+                f"fully booked with no office-hours block to split — no lunch reserved"
+            )
+
+
 def find_best_meeting_times(
     availability: pd.DataFrame,
     PI: list,
@@ -26,6 +100,7 @@ def find_best_meeting_times(
     pi_unencumbered_weight: float = 2.0,
     day_concentration_weight: float = 3.0,
     contiguity_weight: float = 1.5,
+    pi_lunch_window: tuple = ("11:30", "13:30"),
 ) -> tuple[dict, pd.DataFrame]:
     """
     Find optimal meeting times that maximize attendance with priority weighting.
@@ -317,6 +392,9 @@ def find_best_meeting_times(
     for meeting_name, group_members in biweekly_meetings:
         schedule_meeting(meeting_name, group_members, True)
 
+    # Reserve the PI a lunch break — may split office hours around a 15-min gap
+    _apply_pi_lunch_break(scheduled, availability, pi_lunch_window)
+
     # Build summary DataFrame
     schedule_df = _build_schedule_df(scheduled, groups, PI, senior, external,
                                      preferred_durations, required_members)
@@ -329,15 +407,14 @@ def _build_schedule_df(scheduled, groups, PI, senior, external,
     """Build a summary DataFrame from scheduled meetings."""
     schedule_data = []
 
-    for meeting_name, details in scheduled.items():
-        last_time = details["times"][-1]
+    def _slot_end(last_time):
         if isinstance(last_time, pd.Timestamp):
-            actual_end = last_time + pd.Timedelta(minutes=15)
-        else:
-            time_obj = pd.to_datetime(str(last_time), format="%H:%M:%S").time()
-            end_dt = datetime.combine(datetime.today(), time_obj) + timedelta(minutes=15)
-            actual_end = end_dt.time()
+            return last_time + pd.Timedelta(minutes=15)
+        time_obj = pd.to_datetime(str(last_time), format="%H:%M:%S").time()
+        end_dt = datetime.combine(datetime.today(), time_obj) + timedelta(minutes=15)
+        return end_dt.time()
 
+    for meeting_name, details in scheduled.items():
         if meeting_name == "Lab Meeting":
             group_for_count = [m for m in groups[meeting_name] if m not in external]
         else:
@@ -350,16 +427,24 @@ def _build_schedule_df(scheduled, groups, PI, senior, external,
         if details.get("shares_slot"):
             frequency += " *"
 
-        schedule_data.append({
-            "Meeting": meeting_name,
-            "Day": details["day"],
-            "Start Time": str(details["times"][0]),
-            "End Time": str(actual_end),
-            "Duration (min)": len(details["times"]) * 15,
-            "Frequency": frequency,
-            "Senior Availability": f"{total_senior}/{total_possible_senior}",
-            "Total Available": f"{details['pi_available'] + details['senior_available'] + details['other_available']}/{len(PI) + details['total_group_size']}",
-        })
+        senior_avail = f"{total_senior}/{total_possible_senior}"
+        total_available = (
+            f"{details['pi_available'] + details['senior_available'] + details['other_available']}"
+            f"/{len(PI) + details['total_group_size']}"
+        )
+
+        # A meeting split around a lunch break yields multiple contiguous runs.
+        for run in _contiguous_runs(details["times"]):
+            schedule_data.append({
+                "Meeting": meeting_name,
+                "Day": details["day"],
+                "Start Time": str(run[0]),
+                "End Time": str(_slot_end(run[-1])),
+                "Duration (min)": len(run) * 15,
+                "Frequency": frequency,
+                "Senior Availability": senior_avail,
+                "Total Available": total_available,
+            })
 
     schedule_df = pd.DataFrame(schedule_data)
 

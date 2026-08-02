@@ -97,5 +97,26 @@
     "emoji": ":sleeping:",
     "default_duration": 2.5,
     "active": true
+  },
+  "Claudia G one-on-one": {
+    "description": "Claudia G one-on-one",
+    "channels": [],
+    "emoji": ":zoom:",
+    "default_duration": 2.0,
+    "active": true
+  },
+  "Paxton one-on-one": {
+    "description": "Paxton one-on-one",
+    "channels": [],
+    "emoji": ":zoom:",
+    "default_duration": 2.0,
+    "active": true
+  },
+  "Sam Haskel one-on-one": {
+    "description": "Sam Haskel one-on-one",
+    "channels": [],
+    "emoji": ":zoom:",
+    "default_duration": 2.5,
+    "active": true
   }
 }

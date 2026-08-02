@@ -20,6 +20,7 @@ from cdl_bot.models.scheduling_session import (
 from cdl_bot.scheduling_storage import SchedulingStorage
 from cdl_bot.handlers.schedule import (
     _derive_term, _parse_projects, _fuzzy_match_names, _format_config_summary,
+    _filter_active_groups,
 )
 from cdl_bot.services.scheduling_service import (
     find_best_meeting_times, format_schedule_for_slack, format_announcement,
@@ -503,6 +504,109 @@ class TestSchedulingAlgorithm:
 
         # Alice is available Monday only; meeting should prefer Monday
         assert scheduled["Meeting"]["day"] == "Monday"
+
+
+class TestFilterActiveGroups:
+    """The 0-member filter must not drop projects whose only non-PI attendees
+    are external/required members (e.g. Kraken's collaborators MJ and dan,
+    which live in required_members, not groups)."""
+
+    def test_keeps_project_with_required_members(self):
+        groups = {
+            "Lab Meeting": ["Jeremy", "Alice"],
+            "Kraken": ["Jeremy"],          # real attendees are external (required)
+            "Brain Dynamics": ["Jeremy"],  # genuinely empty
+        }
+        required = {"Kraken": ["MJ", "dan"]}
+        active, empty = _filter_active_groups(groups, ["Jeremy"], required)
+        assert "Kraken" in active          # rescued by required_members
+        assert "Lab Meeting" in active
+        assert "Brain Dynamics" in empty   # correctly dropped
+        assert "Kraken" not in empty
+
+    def test_keeps_office_hours(self):
+        active, empty = _filter_active_groups(
+            {"Jeremy Office Hours": ["Jeremy"]}, ["Jeremy"], {}
+        )
+        assert "Jeremy Office Hours" in active
+        assert empty == []
+
+    def test_drops_pi_only_project(self):
+        active, empty = _filter_active_groups(
+            {"Solo": ["Jeremy"]}, ["Jeremy"], {}
+        )
+        assert "Solo" in empty
+        assert active == {}
+
+    def test_none_required_members(self):
+        active, empty = _filter_active_groups(
+            {"Real": ["Jeremy", "Alice"]}, ["Jeremy"], None
+        )
+        assert "Real" in active
+
+
+class TestPILunchBreak:
+    """The PI must retain a free 15-min slot in the 11:30-13:30 window on any
+    day with meetings. When office hours fills that window, it gets split
+    around a 15-min lunch gap (same span, 15 min shorter)."""
+
+    @staticmethod
+    def _midday_availability():
+        # Monday 11:30-14:00, everyone available (10 fifteen-min slots)
+        times = []
+        for h in (11, 12, 13):
+            for m in (0, 15, 30, 45):
+                if h == 11 and m < 30:
+                    continue
+                times.append(f"{h}:{m:02d}:00")
+        return pd.DataFrame({
+            "Day": ["Monday"] * len(times),
+            "Time": times,
+            "Jeremy": [1] * len(times),
+            "Alice": [1] * len(times),
+        }).set_index(["Day", "Time"]), times
+
+    def test_office_hours_split_for_lunch(self):
+        df, times = self._midday_availability()
+        groups = {"Asymmetries": ["Alice"], "Jeremy Office Hours": ["Jeremy"]}
+        durations = {"Asymmetries": 2, "Jeremy Office Hours": 6}
+
+        scheduled, sdf = find_best_meeting_times(
+            df, ["Jeremy"], [], [], groups, durations,
+        )
+
+        assert "Jeremy Office Hours" in scheduled
+        oh_times = [str(t) for t in scheduled["Jeremy Office Hours"]["times"]]
+
+        # Office hours should now contain a >15-min gap (the lunch break)
+        mins = [int(t[:2]) * 60 + int(t[3:5]) for t in oh_times]
+        gaps = [b - a for a, b in zip(mins, mins[1:])]
+        assert any(g > 15 for g in gaps), f"expected a lunch gap, got {oh_times}"
+
+        # The PI must have a free slot somewhere in 11:30-13:30
+        busy = {str(t) for d in scheduled.values() for t in d["times"]}
+        window = [t for t in times if 690 <= int(t[:2]) * 60 + int(t[3:5]) < 810]
+        free = [t for t in window if t not in busy]
+        assert free, "PI has no free lunch slot in 11:30-13:30"
+
+        # Office hours renders as two contiguous segments in the schedule df
+        oh_rows = sdf[sdf.index == "Jeremy Office Hours"]
+        assert len(oh_rows) == 2
+
+    def test_no_split_when_lunch_already_free(self):
+        # Only a short meeting; the window keeps free slots, so no split.
+        df, times = self._midday_availability()
+        groups = {"Jeremy Office Hours": ["Jeremy"]}
+        durations = {"Jeremy Office Hours": 4}  # 60 min, leaves window slots free
+
+        scheduled, sdf = find_best_meeting_times(
+            df, ["Jeremy"], [], [], groups, durations,
+        )
+        oh_times = [str(t) for t in scheduled["Jeremy Office Hours"]["times"]]
+        mins = [int(t[:2]) * 60 + int(t[3:5]) for t in oh_times]
+        gaps = [b - a for a, b in zip(mins, mins[1:])]
+        assert all(g == 15 for g in gaps), "office hours should stay contiguous"
+        assert len(sdf[sdf.index == "Jeremy Office Hours"]) == 1
 
 
 class TestFormatScheduleForSlack:
