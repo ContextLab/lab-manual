@@ -7,8 +7,11 @@ wobble border if the website repo is not configured.
 """
 
 import logging
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Optional, Union
 
@@ -28,7 +31,21 @@ class ImageService:
     ):
         self.border_color = border_color
         self.border_width = border_width
-        self.website_repo_path = website_repo_path
+        self.website_repo_path = website_repo_path or self._website_repo_path_from_env()
+
+    @staticmethod
+    def _website_repo_path_from_env() -> Optional[Path]:
+        """Resolve WEBSITE_REPO_PATH from the environment (including .env).
+
+        Callers that thread config through (the onboarding handler) pass the
+        path explicitly. Callers that don't — tests, one-off scripts — would
+        otherwise get a service that always raises, despite WEBSITE_REPO_PATH
+        being set exactly as the error message instructs.
+        """
+        import cdl_bot.config  # noqa: F401 - imported for its .env loading side effect
+
+        path = os.environ.get("WEBSITE_REPO_PATH")
+        return Path(path) if path else None
 
     def _can_use_add_borders(self) -> bool:
         """Check if the website repo's add_borders.py is available."""
@@ -68,33 +85,39 @@ class ImageService:
     ) -> Path:
         """Use the website repo's add_borders.py for real SVG borders."""
         script = self.website_repo_path / "scripts" / "add_borders.py"
-        output_dir = output_path.parent
 
-        cmd = [
-            sys.executable, str(script),
-            str(input_path), str(output_dir),
-        ]
-        if use_face_detection:
-            cmd.append("--face")
+        # add_borders.py always writes "<input stem>.png" into the directory it
+        # is given. Pointing it at output_path.parent makes it clobber the
+        # source photo whenever input and output share a directory (and the
+        # follow-up rename would then move the original away). Stage the run in
+        # a scratch directory so the input is never touched.
+        with tempfile.TemporaryDirectory() as staging:
+            staging_dir = Path(staging)
+            cmd = [
+                sys.executable, str(script),
+                str(input_path), str(staging_dir),
+            ]
+            if use_face_detection:
+                cmd.append("--face")
 
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=120,
-        )
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120,
+            )
 
-        if result.returncode != 0:
-            logger.error(f"add_borders.py failed: {result.stderr}")
-            raise RuntimeError(f"add_borders.py failed: {result.stderr}")
+            if result.returncode != 0:
+                logger.error(f"add_borders.py failed: {result.stderr}")
+                raise RuntimeError(f"add_borders.py failed: {result.stderr}")
 
-        # add_borders.py outputs to output_dir with .png extension
-        processed = output_dir / f"{input_path.stem}.png"
-        if processed.exists():
-            # Rename to desired output path if different
-            if processed != output_path and output_path.name != processed.name:
-                processed.rename(output_path)
-                return output_path
-            return processed
+            processed = staging_dir / f"{input_path.stem}.png"
+            if not processed.exists():
+                raise RuntimeError(
+                    f"add_borders.py did not produce expected output at {processed}"
+                )
 
-        raise RuntimeError(f"add_borders.py did not produce expected output at {processed}")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(processed), str(output_path))
+
+        return output_path
 
     def find_existing_photo(self, member_name: str) -> Optional[Path]:
         """
