@@ -50,15 +50,19 @@ jobs:
             label: PowerShell 7
 
     name: Parse (${{ matrix.label }})
+    # Step-level `shell:` is evaluated before any context exists, so the shell
+    # has to be selected here, where the matrix is available.
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Report host PowerShell version
-        shell: ${{ matrix.shell }}
         run: $PSVersionTable | Format-List
 
       - name: Parse setup.ps1
-        shell: ${{ matrix.shell }}
         run: |
           $tokens = $null
           $errors = $null
@@ -77,7 +81,6 @@ jobs:
           Write-Host "setup.ps1 parses cleanly ($($tokens.Count) tokens)"
 
       - name: Prove the parse check catches issue #14
-        shell: ${{ matrix.shell }}
         run: |
           # A guard that never fails is not a guard. Feed the parser the exact
           # construct from the issue and require it to be rejected -- if this
@@ -107,7 +110,6 @@ jobs:
           }
 
       - name: Simulate the documented 'irm | iex' install path
-        shell: ${{ matrix.shell }}
         env:
           # Load the definitions without installing anything.
           CDL_SETUP_NO_AUTORUN: '1'
@@ -127,7 +129,6 @@ jobs:
           Write-Host "iex path loads all functions"
 
       - name: Run as a script file, the other documented path
-        shell: ${{ matrix.shell }}
         env:
           CDL_SETUP_NO_AUTORUN: '1'
         run: |
@@ -190,20 +191,21 @@ jobs:
         shell: [powershell, pwsh]
 
     name: Functions (${{ matrix.shell }})
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
     env:
       CDL_SETUP_NO_AUTORUN: '1'
     steps:
       - uses: actions/checkout@v4
 
       - name: Put conda on PATH
-        shell: ${{ matrix.shell }}
         run: |
           # windows-latest ships Miniconda; $env:CONDA points at it.
           "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Test-Command finds real and missing executables
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           if (-not (Test-Command 'git')) { throw "Test-Command missed git, which is installed" }
@@ -213,7 +215,6 @@ jobs:
           Write-Host "Test-Command OK"
 
       - name: Invoke-Native survives stderr under ErrorActionPreference=Stop
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           $ErrorActionPreference = 'Stop'
@@ -233,7 +234,6 @@ jobs:
           Write-Host "Invoke-Native OK"
 
       - name: Invoke-Native reports this command's exit code, not a stale one
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           Invoke-Native 'git' @('definitely-not-a-subcommand') | Out-Null
@@ -247,7 +247,6 @@ jobs:
           Write-Host "Exit code isolation OK"
 
       - name: Update-SessionPath keeps process-only entries
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           $marker = 'C:\cdl-test-marker'
@@ -261,7 +260,6 @@ jobs:
           Write-Host "Update-SessionPath OK"
 
       - name: Conda discovery and environment detection
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           $conda = Get-CondaPath
@@ -274,7 +272,6 @@ jobs:
           Write-Host "Conda discovery OK"
 
       - name: Test-Administrator returns a boolean
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           $isAdmin = Test-Administrator
@@ -282,7 +279,6 @@ jobs:
           Write-Host "Test-Administrator returned ${isAdmin}"
 
       - name: Package check source is valid Python
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           # The embedded Python must survive the trip through PowerShell intact.
@@ -300,7 +296,6 @@ jobs:
           Write-Host "Embedded Python is intact and compiles"
 
       - name: Test-CDLPackages reports failure when the environment is absent
-        shell: ${{ matrix.shell }}
         run: |
           Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
           # There is no cdl environment on this runner, so this must return
