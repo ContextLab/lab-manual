@@ -1856,13 +1856,13 @@ feel you need access to RAPPORT then let \director~know.
 \end{multicols}
 
 
-% \newthought{Research Assistants}
-% \begin{multicols}{2}\raggedcolumns
-% \begin{list}{\quad}{}
-
-% \end{list}
-% \end{multicols}
-
+% Roles with no current members (Lab Managers, Research Assistants) have no
+% heading here on purpose. A `list` environment with no \item is a fatal LaTeX
+% error -- "Something's wrong--perhaps a missing \item" -- so an empty
+% placeholder block would stop the manual from building at all. Onboarding
+% creates the heading and its list together, with the new member already in
+% it; offboarding the last member removes the block again. See
+% scripts/parse_lab_manual.py in the website repo.
 
 \newthought{Undergraduate RAs}
 \begin{multicols}{2}\raggedcolumns

@@ -12,14 +12,26 @@
     Run in PowerShell as Administrator:
     irm https://raw.githubusercontent.com/ContextLab/lab-manual/master/scripts/setup.ps1 | iex
 
-    Or locally:
-    .\scripts\setup.ps1
+    Or locally (the default execution policy blocks scripts, so bypass it):
+    powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+
+    Setting CDL_SETUP_NO_AUTORUN=1 loads the functions without running Main.
+    The Windows CI workflow uses this to exercise them individually.
 #>
 
 $ErrorActionPreference = "Stop"
 
+# TLS 1.2 is not the default in Windows PowerShell 5.1, and raw.githubusercontent.com
+# and repo.anaconda.com both refuse anything older, so every download below fails
+# without this.
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # Log file
 $LogFile = "$env:USERPROFILE\.cdl-setup.log"
+
+# Steps that did not complete. Show-Summary reports these instead of claiming
+# an unconditional success.
+$script:FailedSteps = @()
 
 # ============================================================================
 # Utility Functions
@@ -53,9 +65,104 @@ function Write-LogError {
     Add-Content -Path $LogFile -Value "[$timestamp] ERROR: $Message"
 }
 
+function Add-FailedStep {
+    param([string]$Name)
+    $script:FailedSteps += $Name
+}
+
 function Test-Command {
     param([string]$Command)
     return [bool](Get-Command -Name $Command -ErrorAction SilentlyContinue)
+}
+
+function Test-Administrator {
+    <#
+    .SYNOPSIS
+        Is this session elevated?
+    .DESCRIPTION
+        The #Requires -RunAsAdministrator directive at the top of this file is
+        only honoured when PowerShell invokes it as a SCRIPT. The documented
+        install path pipes the file into Invoke-Expression, where the directive
+        is an inert comment, so the requirement has to be re-checked here.
+    #>
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Invoke-Native {
+    <#
+    .SYNOPSIS
+        Run a native executable and capture its merged output and exit code.
+    .DESCRIPTION
+        Two Windows PowerShell behaviours make the naive `$x = foo 2>&1` form
+        unsafe here:
+
+        1. With $ErrorActionPreference = 'Stop', anything a native command
+           writes to stderr becomes a NativeCommandError and TERMINATES the
+           script. winget writes progress to stderr routinely, so a perfectly
+           normal `winget list` would abort the whole setup.
+        2. $LASTEXITCODE is left over from the previous native command if the
+           current one never runs, so checking it without knowing whether the
+           command executed reads a stale value.
+
+        This runs the command with the preference relaxed, then restores it,
+        and always reports the exit code of THIS command.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string[]]$Arguments = @()
+    )
+
+    if (-not (Test-Command $Command)) {
+        return [PSCustomObject]@{ Output = ""; ExitCode = -1; Ran = $false }
+    }
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $global:LASTEXITCODE = 0
+        $output = & $Command @Arguments 2>&1 | Out-String
+        return [PSCustomObject]@{
+            Output   = $output
+            ExitCode = $LASTEXITCODE
+            Ran      = $true
+        }
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+function Update-SessionPath {
+    <#
+    .SYNOPSIS
+        Pick up PATH entries added by an installer in this same session.
+    .DESCRIPTION
+        Rebuilding from Machine + User alone discards process-only additions
+        this script made earlier (the conda directories, for one), so the
+        existing $env:Path is merged in and duplicates dropped.
+    #>
+    $machine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $combined = "$machine;$user;$env:Path" -split ';' |
+        Where-Object { $_ } |
+        Select-Object -Unique
+    $env:Path = $combined -join ';'
+}
+
+function Invoke-Download {
+    <#
+    .SYNOPSIS
+        Download a file. -UseBasicParsing keeps this working on a fresh Windows
+        image where Internet Explorer's first-launch configuration has never
+        been completed, which otherwise makes Invoke-WebRequest throw.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Uri,
+        [Parameter(Mandatory = $true)][string]$OutFile
+    )
+    Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
 }
 
 # ============================================================================
@@ -83,7 +190,47 @@ function Install-Winget {
     catch {
         Write-LogWarning "Could not install winget automatically. Please install 'App Installer' from Microsoft Store."
         Write-LogWarning "URL: https://www.microsoft.com/p/app-installer/9nblggh4nns1"
+        Add-FailedStep "winget"
     }
+}
+
+function Install-WingetPackage {
+    <#
+    .SYNOPSIS
+        Install one winget package, reporting failure instead of aborting.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Id,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if (-not (Test-Command "winget")) {
+        Write-LogWarning "$Name : winget unavailable, skipping"
+        Add-FailedStep $Name
+        return $false
+    }
+
+    $result = Invoke-Native "winget" @(
+        "install", "--id", $Id,
+        "--accept-source-agreements", "--accept-package-agreements"
+    )
+
+    # winget returns 0x8A15002B (-1978335189) when the package is already
+    # installed, which is a success for our purposes.
+    if ($result.ExitCode -eq 0 -or $result.ExitCode -eq -1978335189) {
+        Write-LogSuccess "$Name installed"
+        return $true
+    }
+
+    Write-LogWarning "$Name : winget exited with $($result.ExitCode)"
+    Add-FailedStep $Name
+    return $false
+}
+
+function Test-WingetInstalled {
+    param([Parameter(Mandatory = $true)][string]$Id)
+    $result = Invoke-Native "winget" @("list", "--id", $Id)
+    return $result.Ran -and $result.Output -match [regex]::Escape($Id)
 }
 
 # ============================================================================
@@ -92,17 +239,15 @@ function Install-Winget {
 
 function Install-Git {
     if (Test-Command "git") {
-        $version = git --version
+        $version = (Invoke-Native "git" @("--version")).Output.Trim()
         Write-LogSuccess "Git already installed: $version"
         return
     }
 
     Write-Log "Installing Git..."
-    winget install --id Git.Git --accept-source-agreements --accept-package-agreements
-    Write-LogSuccess "Git installed"
-
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (Install-WingetPackage -Id "Git.Git" -Name "Git") {
+        Update-SessionPath
+    }
 }
 
 function Install-Slack {
@@ -114,16 +259,13 @@ function Install-Slack {
         return
     }
 
-    # Check if installed via winget
-    $installed = winget list --id SlackTechnologies.Slack 2>&1
-    if ($installed -match "SlackTechnologies.Slack") {
+    if (Test-WingetInstalled -Id "SlackTechnologies.Slack") {
         Write-LogSuccess "Slack already installed"
         return
     }
 
     Write-Log "Installing Slack..."
-    winget install --id SlackTechnologies.Slack --accept-source-agreements --accept-package-agreements
-    Write-LogSuccess "Slack installed"
+    Install-WingetPackage -Id "SlackTechnologies.Slack" -Name "Slack" | Out-Null
 }
 
 function Install-VSCode {
@@ -134,19 +276,15 @@ function Install-VSCode {
         return
     }
 
-    # Check if installed via winget
-    $installed = winget list --id Microsoft.VisualStudioCode 2>&1
-    if ($installed -match "Microsoft.VisualStudioCode") {
+    if (Test-WingetInstalled -Id "Microsoft.VisualStudioCode") {
         Write-LogSuccess "VS Code already installed"
         return
     }
 
     Write-Log "Installing VS Code..."
-    winget install --id Microsoft.VisualStudioCode --accept-source-agreements --accept-package-agreements
-    Write-LogSuccess "VS Code installed"
-
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (Install-WingetPackage -Id "Microsoft.VisualStudioCode" -Name "VS Code") {
+        Update-SessionPath
+    }
 }
 
 function Install-LaTeX {
@@ -171,48 +309,45 @@ function Install-LaTeX {
     }
 
     Write-Log "Installing MiKTeX..."
-    winget install --id MiKTeX.MiKTeX --accept-source-agreements --accept-package-agreements
-    Write-LogSuccess "MiKTeX installed"
-
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (Install-WingetPackage -Id "MiKTeX.MiKTeX" -Name "MiKTeX") {
+        Update-SessionPath
+    }
 }
 
 function Install-Dropbox {
     Write-Log "Checking Dropbox installation..."
 
-    $dropboxPath = "$env:LOCALAPPDATA\Dropbox\Dropbox.exe"
-    if (Test-Path $dropboxPath) {
-        Write-LogSuccess "Dropbox already installed"
-        return
-    }
+    $dropboxPaths = @(
+        "$env:LOCALAPPDATA\Dropbox\Dropbox.exe",
+        "${env:ProgramFiles(x86)}\Dropbox\Client\Dropbox.exe",
+        "$env:ProgramFiles\Dropbox\Client\Dropbox.exe"
+    )
 
-    # Also check Program Files
-    if (Test-Path "C:\Program Files (x86)\Dropbox\Client\Dropbox.exe") {
-        Write-LogSuccess "Dropbox already installed"
-        return
+    foreach ($path in $dropboxPaths) {
+        if (Test-Path $path) {
+            Write-LogSuccess "Dropbox already installed"
+            return
+        }
     }
 
     Write-Log "Installing Dropbox..."
-    winget install --id Dropbox.Dropbox --accept-source-agreements --accept-package-agreements
-    Write-LogSuccess "Dropbox installed"
+    Install-WingetPackage -Id "Dropbox.Dropbox" -Name "Dropbox" | Out-Null
 }
 
 # ============================================================================
 # Conda Installation
 # ============================================================================
 
-function Install-Conda {
-    Write-Log "Checking Conda installation..."
-
-    # Check if conda is in PATH
-    if (Test-Command "conda") {
-        $version = conda --version
-        Write-LogSuccess "Conda already installed: $version"
-        return
+function Get-CondaPath {
+    <#
+    .SYNOPSIS
+        Locate conda.exe, whether or not it is on PATH.
+    #>
+    $command = Get-Command -Name "conda" -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
     }
 
-    # Check common conda locations
     $condaPaths = @(
         "$env:USERPROFILE\miniconda3\Scripts\conda.exe",
         "$env:USERPROFILE\anaconda3\Scripts\conda.exe",
@@ -222,35 +357,67 @@ function Install-Conda {
 
     foreach ($path in $condaPaths) {
         if (Test-Path $path) {
-            Write-LogSuccess "Conda found at $path"
-            # Add to PATH for this session
-            $condaDir = Split-Path -Parent (Split-Path -Parent $path)
-            $env:Path = "$condaDir;$condaDir\Scripts;$condaDir\Library\bin;$env:Path"
-            return
+            return $path
         }
+    }
+
+    return $null
+}
+
+function Add-CondaToPath {
+    param([Parameter(Mandatory = $true)][string]$CondaExe)
+    $condaDir = Split-Path -Parent (Split-Path -Parent $CondaExe)
+    $env:Path = "$condaDir;$condaDir\Scripts;$condaDir\Library\bin;$env:Path"
+}
+
+function Install-Conda {
+    Write-Log "Checking Conda installation..."
+
+    $existing = Get-CondaPath
+    if ($existing) {
+        Add-CondaToPath -CondaExe $existing
+        $version = (Invoke-Native "conda" @("--version")).Output.Trim()
+        Write-LogSuccess "Conda already installed: $version"
+        return
     }
 
     Write-Log "Installing Miniconda..."
 
     $installerUrl = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
     $installerPath = "$env:TEMP\Miniconda3-latest-Windows-x86_64.exe"
+    $installDir = "$env:USERPROFILE\miniconda3"
 
-    # Download installer
-    Write-Log "Downloading Miniconda installer..."
-    Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+    try {
+        Write-Log "Downloading Miniconda installer..."
+        Invoke-Download -Uri $installerUrl -OutFile $installerPath
 
-    # Run silent install
-    Write-Log "Running Miniconda installer (this may take a few minutes)..."
-    Start-Process -FilePath $installerPath -ArgumentList "/S", "/D=$env:USERPROFILE\miniconda3" -Wait
+        Write-Log "Running Miniconda installer (this may take a few minutes)..."
+        # The NSIS installer requires /D= to be the LAST argument and to be
+        # unquoted -- it takes the rest of the command line verbatim, which is
+        # also how it copes with a user profile path containing spaces. Passing
+        # the arguments as separate array elements lets PowerShell quote
+        # "/D=C:\Users\Jane Doe\miniconda3", which NSIS then rejects.
+        $process = Start-Process -FilePath $installerPath `
+            -ArgumentList "/S /D=$installDir" -Wait -PassThru
 
-    # Clean up
-    Remove-Item $installerPath -Force
+        if ($process.ExitCode -ne 0) {
+            Write-LogError "Miniconda installer exited with $($process.ExitCode)"
+            Add-FailedStep "Miniconda"
+            return
+        }
+    }
+    finally {
+        # Runs even if the download or install threw, so a half-downloaded
+        # installer is not left in TEMP.
+        if (Test-Path $installerPath) {
+            Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
+        }
+    }
 
-    # Add to PATH for this session
-    $env:Path = "$env:USERPROFILE\miniconda3;$env:USERPROFILE\miniconda3\Scripts;$env:USERPROFILE\miniconda3\Library\bin;$env:Path"
+    Add-CondaToPath -CondaExe "$installDir\Scripts\conda.exe"
 
-    # Initialize conda for PowerShell
-    & "$env:USERPROFILE\miniconda3\Scripts\conda.exe" init powershell
+    # Initialize conda for PowerShell (affects future sessions, not this one)
+    Invoke-Native "$installDir\Scripts\conda.exe" @("init", "powershell") | Out-Null
 
     Write-LogSuccess "Miniconda installed"
 }
@@ -259,25 +426,18 @@ function Install-Conda {
 # CDL Environment Setup
 # ============================================================================
 
-function Setup-CDLEnvironment {
+function Install-CDLEnvironment {
     Write-Log "Setting up CDL conda environment..."
 
-    # Ensure conda is available
-    if (-not (Test-Command "conda")) {
-        # Try to find conda
-        $condaPath = "$env:USERPROFILE\miniconda3\Scripts\conda.exe"
-        if (Test-Path $condaPath) {
-            $env:Path = "$env:USERPROFILE\miniconda3;$env:USERPROFILE\miniconda3\Scripts;$env:USERPROFILE\miniconda3\Library\bin;$env:Path"
-        }
-        else {
-            Write-LogError "Conda not found. Please restart PowerShell and run this script again."
-            return
-        }
+    $condaExe = Get-CondaPath
+    if (-not $condaExe) {
+        Write-LogError "Conda not found. Please restart PowerShell and run this script again."
+        Add-FailedStep "CDL environment"
+        return
     }
+    Add-CondaToPath -CondaExe $condaExe
 
-    # Check if cdl environment exists
-    $envList = conda env list 2>&1
-    if ($envList -match "^cdl\s") {
+    if (Test-CDLEnvironment) {
         Write-Log "CDL environment already exists, updating..."
         $updateEnv = $true
     }
@@ -286,42 +446,149 @@ function Setup-CDLEnvironment {
         $updateEnv = $false
     }
 
-    # Download environment file
     $envFile = "$env:TEMP\cdl-environment.yml"
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ContextLab/lab-manual/master/scripts/cdl-environment.yml" -OutFile $envFile
 
-    if ($updateEnv) {
-        conda env update -n cdl -f $envFile --prune
-    }
-    else {
-        conda env create -f $envFile
-    }
+    try {
+        Invoke-Download `
+            -Uri "https://raw.githubusercontent.com/ContextLab/lab-manual/master/scripts/cdl-environment.yml" `
+            -OutFile $envFile
 
-    # Clean up
-    Remove-Item $envFile -Force
+        if ($updateEnv) {
+            $result = Invoke-Native "conda" @("env", "update", "-n", "cdl", "-f", $envFile, "--prune")
+        }
+        else {
+            $result = Invoke-Native "conda" @("env", "create", "-f", $envFile)
+        }
+
+        if ($result.ExitCode -ne 0) {
+            Write-LogError "conda env setup failed (exit $($result.ExitCode))"
+            Write-Host $result.Output
+            Add-FailedStep "CDL environment"
+            return
+        }
+    }
+    finally {
+        if (Test-Path $envFile) {
+            Remove-Item $envFile -Force -ErrorAction SilentlyContinue
+        }
+    }
 
     Write-LogSuccess "CDL environment configured"
+}
+
+function Test-CDLEnvironment {
+    <#
+    .SYNOPSIS
+        Does a conda environment named exactly 'cdl' exist?
+    #>
+    $result = Invoke-Native "conda" @("env", "list")
+    if (-not $result.Ran) {
+        return $false
+    }
+    foreach ($line in $result.Output -split "`r?`n") {
+        if ($line -match '^\s*cdl\s') {
+            return $true
+        }
+    }
+    return $false
 }
 
 # ============================================================================
 # Verification
 # ============================================================================
 
+# Import every package in one interpreter and report a version for each.
+#
+# This is a single-quoted here-string on purpose: PowerShell performs NO
+# interpolation inside it, so the Python source arrives byte for byte. The
+# previous version built the equivalent command with "import $pkg; print(f'
+# $pkg: {$pkg.__version__}')" inside a DOUBLE-quoted string, where PowerShell
+# reads "$pkg:" as a drive-qualified variable (the $env:PATH form) and refuses
+# to parse the file at all -- which is issue #14. Nothing in this string is a
+# PowerShell variable, so that cannot recur.
+#
+# getattr(..., '__version__', ...) rather than m.__version__ because not every
+# package here exposes one, and a missing attribute would otherwise be reported
+# as an import failure.
+$script:PackageCheckSource = @'
+import importlib
+import sys
+
+PACKAGES = ["numpy", "pandas", "torch", "sklearn", "numba", "umap", "hypertools"]
+
+failed = []
+for name in PACKAGES:
+    try:
+        module = importlib.import_module(name)
+    except Exception as exc:
+        failed.append(name)
+        print("  {}: FAILED ({}: {})".format(name, type(exc).__name__, exc))
+        continue
+    version = getattr(module, "__version__", None)
+    if version is None:
+        try:
+            from importlib.metadata import version as pkg_version
+            version = pkg_version(name)
+        except Exception:
+            version = "installed (version unknown)"
+    print("  {}: {}".format(name, version))
+
+if failed:
+    print("FAILED_PACKAGES=" + ",".join(failed))
+    sys.exit(1)
+sys.exit(0)
+'@
+
+function Test-CDLPackages {
+    <#
+    .SYNOPSIS
+        Import each key package inside the cdl environment.
+    .DESCRIPTION
+        Uses `conda run -n cdl` rather than `conda activate cdl`. Activation is
+        a shell function installed by `conda init powershell` into the user's
+        profile; in a non-interactive run -- and in the very session that just
+        installed conda -- that profile has not been loaded, so `conda activate`
+        fails and the `python` that follows is whichever one happens to be on
+        PATH. Every package check after it would then be reporting on the wrong
+        interpreter. `conda run` needs no profile and targets the environment
+        explicitly.
+    #>
+    $result = Invoke-Native "conda" @(
+        "run", "-n", "cdl", "--no-capture-output", "python", "-c", $script:PackageCheckSource
+    )
+
+    if (-not $result.Ran) {
+        Write-LogWarning "conda not available, cannot verify packages"
+        return $false
+    }
+
+    Write-Host $result.Output.TrimEnd()
+
+    if ($result.ExitCode -eq 0) {
+        Write-LogSuccess "All key packages import correctly"
+        return $true
+    }
+
+    Write-LogWarning "Some packages failed to import (exit $($result.ExitCode))"
+    return $false
+}
+
 function Test-Installation {
     Write-Log "Verifying installation..."
 
     # Check Git
     if (Test-Command "git") {
-        $version = git --version
+        $version = (Invoke-Native "git" @("--version")).Output.Trim()
         Write-LogSuccess "Git: $version"
     }
     else {
         Write-LogError "Git: NOT INSTALLED"
+        Add-FailedStep "Git"
     }
 
     # Check Slack
     $slackPath = "$env:LOCALAPPDATA\slack\slack.exe"
-    if ((Test-Path $slackPath) -or (Test-Path "C:\Program Files\Slack\Slack.exe")) {
+    if ((Test-Path $slackPath) -or (Test-Path "$env:ProgramFiles\Slack\Slack.exe")) {
         Write-LogSuccess "Slack: Installed"
     }
     else {
@@ -345,44 +612,26 @@ function Test-Installation {
     }
 
     # Check Conda
-    if (Test-Command "conda") {
-        $version = conda --version
-        Write-LogSuccess "Conda: $version"
-    }
-    else {
+    if (-not (Test-Command "conda")) {
         Write-LogWarning "Conda: Not in PATH (restart PowerShell to activate)"
+        Write-LogWarning "CDL environment: Cannot check without conda"
+        return
     }
+
+    $version = (Invoke-Native "conda" @("--version")).Output.Trim()
+    Write-LogSuccess "Conda: $version"
 
     # Check CDL environment
-    $envList = conda env list 2>&1
-    if ($envList -match "^cdl\s") {
-        Write-LogSuccess "CDL environment: Created"
-
-        # Test key packages
-        Write-Log "Testing Python packages in CDL environment..."
-
-        conda activate cdl
-
-        $packages = @("numpy", "pandas", "torch", "sklearn", "numba", "umap", "hypertools")
-        foreach ($pkg in $packages) {
-            try {
-                $result = python -c "import $pkg; print(f'  $pkg: {$pkg.__version__}')" 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    Write-LogSuccess "  $pkg: OK"
-                }
-                else {
-                    Write-LogWarning "  $pkg: FAILED"
-                }
-            }
-            catch {
-                Write-LogWarning "  $pkg: FAILED"
-            }
-        }
-
-        conda deactivate
-    }
-    else {
+    if (-not (Test-CDLEnvironment)) {
         Write-LogWarning "CDL environment: Not found"
+        Add-FailedStep "CDL environment"
+        return
+    }
+
+    Write-LogSuccess "CDL environment: Created"
+    Write-Log "Testing Python packages in CDL environment..."
+    if (-not (Test-CDLPackages)) {
+        Add-FailedStep "CDL packages"
     }
 }
 
@@ -391,12 +640,31 @@ function Test-Installation {
 # ============================================================================
 
 function Show-Summary {
+    $failed = $script:FailedSteps | Select-Object -Unique
+    $ok = $failed.Count -eq 0
+
     Write-Host ""
-    Write-Host "============================================================" -ForegroundColor Green
-    Write-Host "CDL Development Environment Setup Complete!" -ForegroundColor Green
-    Write-Host "============================================================" -ForegroundColor Green
+    Write-Host "============================================================" -ForegroundColor $(if ($ok) { "Green" } else { "Yellow" })
+    if ($ok) {
+        Write-Host "CDL Development Environment Setup Complete!" -ForegroundColor Green
+    }
+    else {
+        Write-Host "CDL Development Environment Setup INCOMPLETE" -ForegroundColor Yellow
+    }
+    Write-Host "============================================================" -ForegroundColor $(if ($ok) { "Green" } else { "Yellow" })
     Write-Host ""
-    Write-Host "Installed components:"
+
+    if (-not $ok) {
+        Write-Host "These steps did not complete:" -ForegroundColor Yellow
+        foreach ($step in $failed) {
+            Write-Host "  - $step" -ForegroundColor Yellow
+        }
+        Write-Host ""
+        Write-Host "Re-running this script is safe and will retry them." -ForegroundColor Yellow
+        Write-Host ""
+    }
+
+    Write-Host "Components handled by this script:"
     Write-Host "  - Git"
     Write-Host "  - Slack"
     Write-Host "  - VS Code"
@@ -417,6 +685,8 @@ function Show-Summary {
     Write-Host ""
     Write-Host "NOTE: You may need to restart PowerShell for all changes to take effect." -ForegroundColor Yellow
     Write-Host ""
+
+    return $ok
 }
 
 # ============================================================================
@@ -430,6 +700,14 @@ function Main {
     Write-Host "Contextual Dynamics Laboratory, Dartmouth College"
     Write-Host "============================================================"
     Write-Host ""
+
+    if (-not (Test-Administrator)) {
+        Write-Host "This script needs an elevated PowerShell session." -ForegroundColor Red
+        Write-Host "Close this window, right-click PowerShell, choose" -ForegroundColor Red
+        Write-Host "'Run as administrator', and run the command again." -ForegroundColor Red
+        Write-Host ""
+        return $false
+    }
 
     # Initialize log file
     Set-Content -Path $LogFile -Value "CDL Setup Log - $(Get-Date)"
@@ -449,14 +727,17 @@ function Main {
 
     # Install Conda and set up environment
     Install-Conda
-    Setup-CDLEnvironment
+    Install-CDLEnvironment
 
     # Verify installation
     Test-Installation
 
     # Print summary
-    Show-Summary
+    return Show-Summary
 }
 
-# Run main
-Main
+# Run main. CDL_SETUP_NO_AUTORUN lets the Windows CI workflow load these
+# functions and exercise them one at a time without installing anything.
+if (-not $env:CDL_SETUP_NO_AUTORUN) {
+    Main | Out-Null
+}

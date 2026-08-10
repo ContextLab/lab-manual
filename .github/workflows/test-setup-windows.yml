@@ -1,0 +1,348 @@
+name: Test Windows setup script
+
+# scripts/setup.ps1 is the documented onboarding entry point for Windows lab
+# members, and nobody here runs Windows day to day. Issue #14 was a PARSE
+# error: `"$pkg:"` reads as a drive-qualified variable, so PowerShell rejected
+# the file before executing a single line and new members got a wall of
+# ParserError text instead of a dev environment. A Windows runner is the only
+# way to catch that class of bug before a student does.
+#
+# Note for anyone editing this file: the same trap applies HERE. Write
+# "${var}:" and never "$var:" inside a double-quoted PowerShell string.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'scripts/setup.ps1'
+      - 'scripts/cdl-environment.yml'
+      - '.github/workflows/test-setup-windows.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'scripts/setup.ps1'
+      - 'scripts/cdl-environment.yml'
+      - '.github/workflows/test-setup-windows.yml'
+  workflow_dispatch:
+    inputs:
+      run_full_environment:
+        description: 'Also build the real cdl conda environment (slow)'
+        type: boolean
+        default: false
+
+jobs:
+  # ==========================================================================
+  # Does the script parse at all? This is the exact failure from issue #14.
+  # ==========================================================================
+  parse:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # powershell = Windows PowerShell 5.1, the default shell on Windows
+          # and the one the issue reporter used. pwsh = PowerShell 7.
+          - shell: powershell
+            label: Windows PowerShell 5.1
+          - shell: pwsh
+            label: PowerShell 7
+
+    name: Parse (${{ matrix.label }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report host PowerShell version
+        shell: ${{ matrix.shell }}
+        run: $PSVersionTable | Format-List
+
+      - name: Parse setup.ps1
+        shell: ${{ matrix.shell }}
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path scripts/setup.ps1).Path, [ref]$tokens, [ref]$errors) | Out-Null
+
+          if ($errors.Count -gt 0) {
+            Write-Host "::error::setup.ps1 has $($errors.Count) parse error(s)"
+            foreach ($e in $errors) {
+              $line = $e.Extent.StartLineNumber
+              $col = $e.Extent.StartColumnNumber
+              Write-Host "::error file=scripts/setup.ps1,line=${line}::line ${line} col ${col}: $($e.Message)"
+            }
+            exit 1
+          }
+          Write-Host "setup.ps1 parses cleanly ($($tokens.Count) tokens)"
+
+      - name: Prove the parse check catches issue #14
+        shell: ${{ matrix.shell }}
+        run: |
+          # A guard that never fails is not a guard. Feed the parser the exact
+          # construct from the issue and require it to be rejected -- if this
+          # step ever passes silently, the step above is worthless.
+          $regression = @'
+          function Test-Installation {
+              $packages = @("numpy", "pandas")
+              foreach ($pkg in $packages) {
+                  Write-Host "  $pkg: OK"
+              }
+          }
+          '@
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseInput(
+            $regression, [ref]$null, [ref]$errors) | Out-Null
+
+          if ($errors.Count -eq 0) {
+            Write-Host "::error::The parser accepted the known-bad form."
+            Write-Host "::error::This host cannot detect issue #14, so the parse job proves nothing."
+            exit 1
+          }
+
+          $message = $errors[0].Message
+          Write-Host "Known-bad form correctly rejected: ${message}"
+          if ($message -notmatch 'Variable reference is not valid') {
+            Write-Host "::warning::Rejected, but not with the message issue #14 reported."
+          }
+
+      - name: Simulate the documented 'irm | iex' install path
+        shell: ${{ matrix.shell }}
+        env:
+          # Load the definitions without installing anything.
+          CDL_SETUP_NO_AUTORUN: '1'
+        run: |
+          # This is how the lab manual tells people to run it, and it is where
+          # the reporter saw the failure. Invoke-Expression parses the whole
+          # file as one unit, so any parse error anywhere aborts everything.
+          $source = Get-Content -Raw scripts/setup.ps1
+          Invoke-Expression $source
+
+          foreach ($fn in 'Main', 'Test-Installation', 'Test-CDLPackages', 'Invoke-Native') {
+            if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) {
+              Write-Host "::error::${fn} was not defined after iex"
+              exit 1
+            }
+          }
+          Write-Host "iex path loads all functions"
+
+      - name: Run as a script file, the other documented path
+        shell: ${{ matrix.shell }}
+        env:
+          CDL_SETUP_NO_AUTORUN: '1'
+        run: |
+          # Exercises what iex cannot: the #Requires -RunAsAdministrator
+          # directive and the execution policy. Both are only honoured when
+          # PowerShell invokes the file as a script.
+          & powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Write-Host "::error::Running setup.ps1 as a file exited with ${code}"
+            exit 1
+          }
+          Write-Host "File execution path OK"
+
+  # ==========================================================================
+  # Lint. PSScriptAnalyzer catches the next class of problem, not this one.
+  # ==========================================================================
+  lint:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path scripts/setup.ps1 -Severity Error, Warning
+
+          if ($results) {
+            $results | Format-Table -AutoSize | Out-String | Write-Host
+          }
+
+          $errors = @($results | Where-Object Severity -eq 'Error')
+          if ($errors.Count -gt 0) {
+            foreach ($e in $errors) {
+              Write-Host "::error file=scripts/setup.ps1,line=$($e.Line)::$($e.RuleName) - $($e.Message)"
+            }
+            exit 1
+          }
+
+          $warnings = @($results | Where-Object Severity -eq 'Warning')
+          foreach ($w in $warnings) {
+            Write-Host "::warning file=scripts/setup.ps1,line=$($w.Line)::$($w.RuleName) - $($w.Message)"
+          }
+          Write-Host "PSScriptAnalyzer: 0 errors, $($warnings.Count) warning(s)"
+
+  # ==========================================================================
+  # Run the real helper functions against the real runner. No stubs: the
+  # runner genuinely has git and conda, so these call the real executables.
+  # The script is loaded the way the lab manual tells people to load it.
+  # ==========================================================================
+  functions:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+
+    name: Functions (${{ matrix.shell }})
+    env:
+      CDL_SETUP_NO_AUTORUN: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put conda on PATH
+        shell: ${{ matrix.shell }}
+        run: |
+          # windows-latest ships Miniconda; $env:CONDA points at it.
+          "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Test-Command finds real and missing executables
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          if (-not (Test-Command 'git')) { throw "Test-Command missed git, which is installed" }
+          if (Test-Command 'definitely-not-a-real-command-xyz') {
+            throw "Test-Command found a command that does not exist"
+          }
+          Write-Host "Test-Command OK"
+
+      - name: Invoke-Native survives stderr under ErrorActionPreference=Stop
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          $ErrorActionPreference = 'Stop'
+
+          # The original code did `$x = winget list --id Foo 2>&1`, which turns
+          # any stderr output into a terminating NativeCommandError under Stop.
+          # git writes to stderr on an unknown subcommand, so this reproduces
+          # that shape for real.
+          $result = Invoke-Native 'git' @('definitely-not-a-subcommand')
+          if (-not $result.Ran) { throw "Invoke-Native claimed git did not run" }
+          if ($result.ExitCode -eq 0) { throw "Expected a nonzero exit code" }
+          Write-Host "Survived stderr; exit code was $($result.ExitCode)"
+
+          # A command that does not exist must be reported, not thrown.
+          $missing = Invoke-Native 'definitely-not-a-real-command-xyz'
+          if ($missing.Ran) { throw "Invoke-Native claimed a missing command ran" }
+          Write-Host "Invoke-Native OK"
+
+      - name: Invoke-Native reports this command's exit code, not a stale one
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          Invoke-Native 'git' @('definitely-not-a-subcommand') | Out-Null
+          $good = Invoke-Native 'git' @('--version')
+          if ($good.ExitCode -ne 0) {
+            throw "git --version reported $($good.ExitCode); a stale exit code leaked through"
+          }
+          if ($good.Output -notmatch 'git version') {
+            throw "Unexpected output: $($good.Output)"
+          }
+          Write-Host "Exit code isolation OK"
+
+      - name: Update-SessionPath keeps process-only entries
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          $marker = 'C:\cdl-test-marker'
+          $env:Path = "${marker};$env:Path"
+          Update-SessionPath
+          if ($env:Path -notlike "*${marker}*") {
+            throw "Update-SessionPath discarded a process-only PATH entry"
+          }
+          $duplicates = @($env:Path -split ';' | Where-Object { $_ -eq $marker }).Count
+          if ($duplicates -ne 1) { throw "Expected 1 copy of the marker, found ${duplicates}" }
+          Write-Host "Update-SessionPath OK"
+
+      - name: Conda discovery and environment detection
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          $conda = Get-CondaPath
+          if (-not $conda) { throw "Get-CondaPath found nothing, but the runner has conda" }
+          Write-Host "Found conda at ${conda}"
+
+          # No cdl environment exists yet, so this must be false rather than
+          # throwing or matching some other environment name.
+          if (Test-CDLEnvironment) { throw "Reported a cdl environment that does not exist" }
+          Write-Host "Conda discovery OK"
+
+      - name: Test-Administrator returns a boolean
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          $isAdmin = Test-Administrator
+          if ($isAdmin -isnot [bool]) { throw "Expected a boolean, got $($isAdmin.GetType())" }
+          Write-Host "Test-Administrator returned ${isAdmin}"
+
+      - name: Package check source is valid Python
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          # The embedded Python must survive the trip through PowerShell intact.
+          # Compiling it is the real check that no interpolation mangled it.
+          $script:PackageCheckSource | Set-Content -Path check.py -Encoding utf8
+          python -m py_compile check.py
+          if ($LASTEXITCODE -ne 0) { throw "Embedded Python source does not compile" }
+
+          $text = Get-Content -Raw check.py
+          foreach ($needle in 'importlib.import_module', 'getattr', '__version__') {
+            if ($text -notmatch [regex]::Escape($needle)) {
+              throw "Embedded Python lost '${needle}' in transit"
+            }
+          }
+          Write-Host "Embedded Python is intact and compiles"
+
+      - name: Test-CDLPackages reports failure when the environment is absent
+        shell: ${{ matrix.shell }}
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          # There is no cdl environment on this runner, so this must return
+          # false rather than throwing or claiming success.
+          $result = Test-CDLPackages
+          if ($result) { throw "Claimed packages are fine with no cdl environment" }
+          Write-Host "Absent-environment handling OK"
+
+  # ==========================================================================
+  # The real thing: build the actual cdl environment and verify the actual
+  # package check against it. Slow (conda solves pytorch + jupyter), so it is
+  # opt-in rather than running on every push.
+  # ==========================================================================
+  environment:
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_full_environment
+    timeout-minutes: 120
+    env:
+      CDL_SETUP_NO_AUTORUN: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put conda on PATH
+        shell: pwsh
+        run: |
+          "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Create the real cdl environment
+        shell: pwsh
+        run: conda env create -f scripts/cdl-environment.yml
+
+      - name: Test-CDLEnvironment sees it
+        shell: pwsh
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          if (-not (Test-CDLEnvironment)) { throw "Did not detect the cdl environment" }
+          Write-Host "Environment detected"
+
+      - name: Test-CDLPackages against the real environment
+        shell: pwsh
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          if (-not (Test-CDLPackages)) { throw "Package verification failed" }
+          Write-Host "All packages verified in the real environment"
