@@ -246,6 +246,12 @@ class GitHubService:
         """
         Get list of pending organization invitations.
 
+        Note that `login` is None whenever GitHub recorded the invite against
+        an email address rather than an account, which is what happens for
+        users whose email is private -- Sreshth Tiwari's came back as
+        {"login": None, "email": "SreshthTiwari@users.noreply.github.com"}.
+        Match on `email` as well before concluding someone is uninvited.
+
         Returns:
             List of invitation dictionaries
         """
@@ -256,7 +262,7 @@ class GitHubService:
                     "id": inv.id,
                     "login": inv.login,
                     "email": inv.email,
-                    "created_at": inv.created_at.isoformat() if inv.created_at else None,
+                    "invited_at": inv.created_at.isoformat() if inv.created_at else None,
                 })
         except GithubException as e:
             logger.error(f"Error getting invitations: {e}")

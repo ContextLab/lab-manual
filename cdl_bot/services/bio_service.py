@@ -19,25 +19,59 @@ from .dartmouth_chat import chat as dartmouth_chat
 logger = logging.getLogger(__name__)
 
 
+PRONOUN_GROUPS = {
+    "he": {"he", "him", "his"},
+    "she": {"she", "her", "hers"},
+}
+
+
+def stated_pronouns(text: str) -> frozenset:
+    """Which gendered pronoun groups a bio uses, if any.
+
+    Compares groups rather than exact words: rewriting "His research
+    interests lie in X" as "He is passionate about X" keeps the person's
+    pronouns and is a fine edit, while turning it into "Their research
+    interests" or "with research interests in X" does not.
+    """
+    words = set(re.findall(r"[a-z]+", (text or "").lower()))
+    return frozenset(
+        group for group, forms in PRONOUN_GROUPS.items() if words & forms
+    )
+
+
 class BioService:
     """Service for editing member bios using Claude API."""
+
+    # How many times to re-ask when an edit changes the bio's pronouns.
+    PRONOUN_ATTEMPTS = 3
 
     # Style guidelines for bio editing
     STYLE_GUIDELINES = """
 Style guidelines for CDL lab member bios:
 1. Use third person voice (e.g., "Jane studies..." not "I study...")
-2. Use first names only after the first mention
-3. Keep it to 3-4 sentences maximum
-4. Write in a clear, engaging, and fun style
-5. Focus on research interests and personality
-6. Remove any private information (addresses, phone numbers, personal emails)
-7. Remove any inappropriate content
-8. Match the tone of existing CDL bios - professional but personable
+2. PRONOUNS: if the original bio already uses gendered pronouns (he/him/his,
+   she/her/hers), keep exactly those -- the person wrote them about
+   themselves, so never swap them for "they/them" and never reword them away.
+   ONLY when the original contains no pronouns at all may you use "they/them"
+   or reword to avoid pronouns. Never infer pronouns from the name.
+3. Use first names only after the first mention
+4. Keep it to 3-4 sentences maximum
+5. Write in a clear, engaging, and fun style
+6. Focus on research interests and personality
+7. Remove any private information (addresses, phone numbers, personal emails)
+8. Remove any inappropriate content
+9. Match the tone of existing CDL bios - professional but personable
 """
 
-    # Example bios for few-shot learning
+    # Example bios for few-shot learning.
+    #
+    # Every one of these happens to use a gendered pronoun, which on its own
+    # reads as an instruction to pick one. The note keeps them as tone
+    # examples without letting them override rule 2 above.
     EXAMPLE_BIOS = """
-Example edited bios from the CDL website:
+Example edited bios from the CDL website. Note that these people's pronouns
+come from the bios they submitted -- match the TONE of these examples, not
+their pronoun choices:
 
 Example 1:
 "Jeremy is an Associate Professor of Psychological and Brain Sciences at Dartmouth and directs the Contextual Dynamics Lab. He enjoys thinking about brains, computers, and cats."
@@ -84,7 +118,7 @@ Example 3:
         # Extract first name for the prompt
         first_name = name.split()[0] if name else "the member"
 
-        prompt = f"""Please edit the following bio to match our lab's style guidelines.
+        base_prompt = f"""Please edit the following bio to match our lab's style guidelines.
 
 {self.STYLE_GUIDELINES}
 
@@ -97,17 +131,63 @@ Original bio:
 {raw_bio}
 
 Please provide ONLY the edited bio text, with no additional commentary, explanations, or quotation marks. The bio should be ready to publish as-is."""
+        prompt = base_prompt
+
+        # Checked in code, not trusted to the prompt. Even with the pronoun
+        # rule spelled out in the style guidelines, the model would rewrite
+        # "His research interests lie in causal inference" as "...with
+        # research interests in causal inference" -- pronoun gone, rule
+        # technically unbroken -- and invent "she" for a member named Jamie.
+        # These bios go straight onto a public page about real people.
+        wanted = stated_pronouns(raw_bio)
 
         try:
-            edited_bio = dartmouth_chat(
-                prompt,
-                model=self.model,
-                max_tokens=500,
-                api_key=self.api_key,
-            ).strip()
+            for attempt in range(self.PRONOUN_ATTEMPTS):
+                edited_bio = dartmouth_chat(
+                    prompt,
+                    model=self.model,
+                    max_tokens=500,
+                    api_key=self.api_key,
+                ).strip()
 
-            # Clean up any stray quotation marks
-            edited_bio = edited_bio.strip('"\'')
+                # Clean up any stray quotation marks
+                edited_bio = edited_bio.strip('"\'')
+
+                got = stated_pronouns(edited_bio)
+                if got == wanted:
+                    break
+
+                if wanted:
+                    insist = (
+                        "Your previous attempt REMOVED the pronouns the "
+                        f"person used about themselves "
+                        f"({', '.join(sorted(wanted))}). Keep them. Do not "
+                        "rephrase to avoid them."
+                    )
+                else:
+                    insist = (
+                        "Your previous attempt ADDED gendered pronouns "
+                        f"({', '.join(sorted(got))}) that the original did "
+                        "not use. Do not guess someone's pronouns. Use "
+                        '"they/them" or reword to avoid pronouns.'
+                    )
+                logger.warning(
+                    "Bio edit for %s changed the bio's pronouns (%s -> %s); "
+                    "retrying (%d/%d)",
+                    name,
+                    sorted(wanted) or "none",
+                    sorted(got) or "none",
+                    attempt + 1,
+                    self.PRONOUN_ATTEMPTS,
+                )
+                prompt = f"{base_prompt}\n\n{insist}"
+            else:
+                logger.error(
+                    "Bio edit for %s kept changing the bio's pronouns; "
+                    "keeping the submitted text.",
+                    name,
+                )
+                return raw_bio.strip(), None
 
             # Validate the output
             is_valid, validation_error = self._validate_bio(edited_bio, first_name)

@@ -18,7 +18,52 @@ import pytest
 # Ensure scripts package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from cdl_bot.services.bio_service import BioService
+from cdl_bot.services.bio_service import BioService, stated_pronouns
+
+
+class TestStatedPronouns:
+    """The check that decides whether an edit may be published.
+
+    Prompt wording alone did not hold: the model would satisfy "keep his
+    pronouns" by rewriting the sentence so no pronoun was needed.
+    """
+
+    def test_finds_masculine_pronouns(self):
+        assert stated_pronouns("His research interests lie in memory.") == {"he"}
+        assert stated_pronouns("He studies memory.") == {"he"}
+
+    def test_finds_feminine_pronouns(self):
+        assert stated_pronouns("She enjoys running and baking.") == {"she"}
+        assert stated_pronouns("Her work is on causal inference.") == {"she"}
+
+    def test_a_pronoun_free_bio_reports_nothing(self):
+        assert stated_pronouns("Sreshth studies causal inference.") == frozenset()
+
+    def test_they_them_is_not_a_gendered_group(self):
+        assert stated_pronouns("They study memory; their work is on LLMs.") == (
+            frozenset()
+        )
+
+    def test_substrings_do_not_count_as_pronouns(self):
+        assert stated_pronouns("The history of these theories is here.") == (
+            frozenset()
+        )
+
+    def test_rewording_a_pronoun_away_is_visible(self):
+        """The exact regression: pronoun removed, sentence still fine."""
+        submitted = "Sreshth is a major at Dartmouth. His interests are in ML."
+        reworded = "Sreshth is a major at Dartmouth with interests in ML."
+        assert stated_pronouns(submitted) != stated_pronouns(reworded)
+
+    def test_a_different_wording_of_the_same_pronoun_is_allowed(self):
+        """"He is passionate about X" still counts as his pronouns."""
+        submitted = "Sreshth is a major. His interests are in ML."
+        rephrased = "Sreshth is a major. He is passionate about ML."
+        assert stated_pronouns(submitted) == stated_pronouns(rephrased)
+
+    def test_empty_and_missing_text(self):
+        assert stated_pronouns("") == frozenset()
+        assert stated_pronouns(None) == frozenset()
 
 
 class TestBioServiceInit:
@@ -105,6 +150,61 @@ class TestBioEditing:
         assert "maria" in edited_bio.lower()
 
         print(f"Edited: {edited_bio}")
+
+    def test_edit_keeps_pronouns_the_person_wrote(self, bio_service):
+        """A submitted bio's own pronouns are not the bot's to change.
+
+        The style guidelines said nothing about pronouns and all three
+        few-shot examples used gendered ones, which left the model free to
+        pick. These are real people on a public page.
+
+        Compared by group, not by exact word: rewriting "His research
+        interests lie in causal inference" as "He is passionate about causal
+        inference" keeps his pronouns and is a fine edit.
+        """
+        raw_bio = (
+            "Sreshth is a Mathematics and Computer Science double major at "
+            "Dartmouth College. His research interests lie in causal "
+            "inference and machine learning."
+        )
+
+        edited_bio, error = bio_service.edit_bio(raw_bio, "Sreshth Tiwari")
+
+        assert error is None
+        assert stated_pronouns(raw_bio) == {"he"}
+        assert stated_pronouns(edited_bio) == {"he"}, (
+            f"changed his stated pronouns: {edited_bio}"
+        )
+
+    def test_edit_keeps_her_pronouns_too(self, bio_service):
+        """The same rule, so it is not pinned for one pronoun only."""
+        raw_bio = (
+            "Sadie is a '27 from Nashville, Tennessee. She enjoys running "
+            "and baking."
+        )
+
+        edited_bio, error = bio_service.edit_bio(raw_bio, "Sadie Jackson")
+
+        assert error is None
+        assert stated_pronouns(edited_bio) == {"she"}, (
+            f"changed her stated pronouns: {edited_bio}"
+        )
+
+    def test_edit_does_not_infer_pronouns_from_the_name(self, bio_service):
+        """With no pronoun in the original, do not guess one from the name.
+
+        The bot invented "she" for a member named Jamie before the guard
+        went in.
+        """
+        raw_bio = "im jamie, a sophomore who likes fMRI and coding"
+
+        edited_bio, error = bio_service.edit_bio(raw_bio, "Jamie Rivera")
+
+        assert error is None
+        assert stated_pronouns(raw_bio) == frozenset()
+        assert stated_pronouns(edited_bio) == frozenset(), (
+            f"invented pronouns for a name: {edited_bio}"
+        )
 
     def test_edit_empty_bio(self, bio_service):
         """Test handling of empty bio."""
