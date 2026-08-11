@@ -114,6 +114,15 @@ dependencies:
   # at the top of this file before adding anything that compiles)
   - pip
   - pip:
+    # Repeat the numpy cap here. A version pinned under `dependencies:`
+    # constrains only conda's solver: conda installed numpy 1.26.4 and then
+    # this pip stage replaced it with 2.4.6, which brought back the exact
+    # deepdish/quail/supereeg breakage the cap exists to prevent. Listing it
+    # among the pip requirements makes pip resolve against it too, so a
+    # package that genuinely needs numpy 2 now reports a conflict instead of
+    # silently clobbering the pin.
+    - numpy>=1.24,<2
+
     # Transformers and HuggingFace
     - transformers>=4.30
     - diffusers>=0.21
