@@ -69,6 +69,12 @@ jobs:
       - name: Run the bot tests
         env:
           DARTMOUTH_CHAT_API_KEY: ${{ secrets.DARTMOUTH_CHAT_API_KEY }}
+          # Automatically provided by Actions -- no secret needed. It is an
+          # installation token scoped to THIS repository, so it can look up
+          # public users but may not have read:org for ContextLab's teams.
+          # Which of the GitHub tests that is actually enough for is measured
+          # in the step below rather than assumed.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WEBSITE_REPO_PATH: ${{ github.workspace }}/website
         run: |
           pytest tests/test_onboarding/ -v -rs --junitxml=bot-results.xml
