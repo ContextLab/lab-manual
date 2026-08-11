@@ -97,10 +97,6 @@ class TestTeamListing:
                 "Set GITHUB_TOKEN to a PAT with read:org to run these."
             )
 
-    def test_get_teams_returns_list(self, github_service):
-        """Test that get_teams returns a list."""
-        assert isinstance(self._teams(github_service), list)
-
     def test_get_teams_contains_expected_teams(self, github_service):
         """Test that known teams are in the list."""
         teams = self._teams(github_service)
@@ -116,13 +112,26 @@ class TestTeamListing:
             assert isinstance(team["id"], int)
             assert isinstance(team["name"], str)
 
-    def test_get_teams_includes_lab_default(self, github_service):
-        """Test that 'Lab default' team exists."""
+    def test_the_configured_default_team_exists(self, github_service):
+        """Every new member is added to the default team, so it must exist.
+
+        This used to be named test_get_teams_includes_lab_default and assert
+        only `len(team_names) > 0`, which is what the test above already
+        covers -- it never checked for the team at all. The name is worth
+        making true: both onboarding paths hardcode this team,
+        cdl_bot/config.py as `default_team` and the website's
+        onboard_member.py as `teams_to_add`. Renaming or deleting it in the
+        org would strand every new member outside it.
+        """
+        from cdl_bot.config import GitHubConfig
+
+        default_team = getattr(GitHubConfig, "default_team", None) or "Lab default"
         team_names = [team["name"] for team in self._teams(github_service)]
 
-        # Check for common team names that should exist
-        # Note: Actual team names depend on the org setup
-        assert len(team_names) > 0
+        assert default_team in team_names, (
+            f"the configured default team {default_team!r} is not in "
+            f"ContextLab: {sorted(team_names)}"
+        )
 
     def test_an_unreadable_org_raises_rather_than_returning_empty(self):
         """The distinction this whole class depends on.
