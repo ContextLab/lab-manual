@@ -106,8 +106,16 @@ dependencies:
   - pytest-cov
 
   # Neuroimaging (lightweight dependencies)
+  #
+  # nilearn is capped below 0.14. supereeg does
+  #     from nilearn.input_data import NiftiMasker
+  # at import time, and 0.14.0 finally deleted the long-deprecated
+  # nilearn.input_data shim (checked against the published wheels: present up
+  # to and including 0.13.0, gone in 0.14.0). With nilearn 0.14 installed,
+  # `import supereeg` fails outright with ModuleNotFoundError.
+  # Lift the cap once supereeg imports from nilearn.maskers instead.
   - nibabel
-  - nilearn
+  - nilearn<0.14
 
   # pip-installed packages
   # (pure-Python or not available on conda-forge -- see the maintenance note
