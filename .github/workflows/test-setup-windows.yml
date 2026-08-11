@@ -154,8 +154,12 @@ jobs:
           if ((Get-ExitCode) -ne 0) { throw "A clean run must report 0" }
 
           # Leave a nonzero $LASTEXITCODE behind, exactly the way a routine
-          # `winget list` for a not-yet-installed package does.
-          & git definitely-not-a-subcommand 2>$null
+          # `winget list` for a not-yet-installed package does. This goes
+          # through Invoke-Native because a bare `& git ... 2>$null` is itself
+          # terminating under $ErrorActionPreference = 'Stop', which is what
+          # GitHub sets for PowerShell steps -- the precise hazard the helper
+          # exists to absorb, and it kills Windows PowerShell 5.1 here.
+          Invoke-Native 'git' @('definitely-not-a-subcommand') | Out-Null
           if ($LASTEXITCODE -eq 0) { throw "Expected git to fail" }
 
           if ((Get-ExitCode) -ne 0) {
@@ -226,7 +230,10 @@ jobs:
 
       - name: Put conda on PATH
         run: |
-          # windows-latest ships Miniconda; $env:CONDA points at it.
+          # windows-latest ships Miniconda; $env:CONDA points at it. The root
+          # itself matters too -- python.exe lives there, not in Scripts.
+          "$env:CONDA" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:CONDA" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
@@ -338,6 +345,94 @@ jobs:
           exit 0
 
   # ==========================================================================
+  # Does the embedded Python actually RUN under `conda run` on Windows? Every
+  # other check is satisfied by Test-CDLPackages returning $false, which it
+  # also does when conda refuses to start it at all.
+  # ==========================================================================
+  package-check:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      CDL_SETUP_NO_AUTORUN: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put conda on PATH
+        shell: pwsh
+        run: |
+          "$env:CONDA" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Create a minimal real cdl environment
+        shell: pwsh
+        run: |
+          # Real conda, real environment, just a small package set so this
+          # stays fast. The full cdl-environment.yml is the `environment` job.
+          conda create -y -n cdl python=3.11 numpy
+          if ($LASTEXITCODE -ne 0) { throw "conda create failed" }
+
+      - name: The package check really executes inside the environment
+        shell: pwsh
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+
+          # Capture what the function prints, so the assertions can be about
+          # what the Python actually emitted rather than just a true/false.
+          $transcript = Join-Path $env:TEMP 'cdl-check.txt'
+          Start-Transcript -Path $transcript | Out-Null
+          Test-CDLPackages | Out-Null
+          Stop-Transcript | Out-Null
+          $text = Get-Content -Raw $transcript
+          Write-Host $text
+
+          # On Windows, `conda run ... python -c <multi-line source>` aborts
+          # with "Support for scripts where arguments contain newlines not
+          # implemented" -- conda builds a .bat wrapper and only tolerates a
+          # newline when the command is a single argument. That failure looks
+          # identical to a missing package unless we check that the Python
+          # actually produced its own output.
+          foreach ($bad in 'newlines not implemented', 'NotImplementedError') {
+            if ($text -match [regex]::Escape($bad)) {
+              Write-Host "::error::conda refused to run the check: $bad"
+              exit 1
+            }
+          }
+
+          # numpy IS installed above, so a real run must report its version.
+          if ($text -notmatch 'numpy:\s*\d+\.\d+') {
+            Write-Host "::error::No numpy version in the output; the embedded Python never ran"
+            exit 1
+          }
+
+          # And a package that is genuinely absent must be reported as such,
+          # proving the failure path reports per package rather than wholesale.
+          if ($text -notmatch 'torch: FAILED') {
+            Write-Host "::error::Expected a per-package FAILED line for torch"
+            exit 1
+          }
+          Write-Host "The embedded Python ran inside the cdl environment"
+          exit 0
+
+      - name: A complete environment reports success
+        shell: pwsh
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+          # Install the rest so Test-CDLPackages has to return $true. Without
+          # a positive case, every assertion is satisfied by it always failing.
+          conda install -y -n cdl pandas pytorch scikit-learn numba -c conda-forge
+          if ($LASTEXITCODE -ne 0) { throw "conda install failed" }
+          conda run -n cdl python -m pip install umap-learn hypertools
+          if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
+
+          if (-not (Test-CDLPackages)) {
+            Write-Host "::error::All packages are present but the check still failed"
+            exit 1
+          }
+          Write-Host "Full package check passes against a real environment"
+          exit 0
+
+  # ==========================================================================
   # The real thing: build the actual cdl environment and verify the actual
   # package check against it. Slow (conda solves pytorch + jupyter), so it is
   # opt-in rather than running on every push.
@@ -354,6 +449,7 @@ jobs:
       - name: Put conda on PATH
         shell: pwsh
         run: |
+          "$env:CONDA" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "$env:CONDA\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "$env:CONDA\Library\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 

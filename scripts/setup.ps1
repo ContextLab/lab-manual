@@ -23,8 +23,10 @@ $ErrorActionPreference = "Stop"
 
 # TLS 1.2 is not the default in Windows PowerShell 5.1, and raw.githubusercontent.com
 # and repo.anaconda.com both refuse anything older, so every download below fails
-# without this.
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# without this. -bor rather than assignment, so anything newer the platform
+# already offers (TLS 1.3) stays enabled.
+[Net.ServicePointManager]::SecurityProtocol =
+    [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 # Log file
 $LogFile = "$env:USERPROFILE\.cdl-setup.log"
@@ -135,7 +137,9 @@ function Invoke-Native {
     $ErrorActionPreference = 'Continue'
     try {
         $global:LASTEXITCODE = 0
-        $output = & $Command @Arguments 2>&1 | Out-String
+        # -Width, or Out-String wraps at the host's console width and callers
+        # matching against the text (Test-WingetInstalled) miss a long row.
+        $output = & $Command @Arguments 2>&1 | Out-String -Width 4096
         return [PSCustomObject]@{
             Output   = $output
             ExitCode = $LASTEXITCODE
@@ -158,7 +162,10 @@ function Update-SessionPath {
     #>
     $machine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     $user = [System.Environment]::GetEnvironmentVariable("Path", "User")
-    $combined = "$machine;$user;$env:Path" -split ';' |
+    # Existing process entries come FIRST. Add-CondaToPath deliberately
+    # prepends, and putting the registry values ahead of it would demote the
+    # conda we just chose behind any other one already on the machine PATH.
+    $combined = "$env:Path;$machine;$user" -split ';' |
         Where-Object { $_ } |
         Select-Object -Unique
     $env:Path = $combined -join ';'
@@ -230,7 +237,12 @@ function Install-WingetPackage {
 
     # winget returns 0x8A15002B (-1978335189) when the package is already
     # installed, which is a success for our purposes.
-    if ($result.ExitCode -eq 0 -or $result.ExitCode -eq -1978335189) {
+    # winget reports "nothing to do" two different ways, and both mean the
+    # package is present: 0x8A15002B UPDATE_NOT_APPLICABLE (-1978335189) and
+    # 0x8A150061 PACKAGE_ALREADY_INSTALLED (-1978335135). Treating either as a
+    # failure would log an installed package as broken.
+    $alreadyPresent = @(-1978335189, -1978335135)
+    if ($result.ExitCode -eq 0 -or $alreadyPresent -contains $result.ExitCode) {
         Write-LogSuccess "$Name installed"
         return $true
     }
@@ -419,6 +431,15 @@ function Install-Conda {
             return
         }
     }
+    catch {
+        # Without this, $ErrorActionPreference = 'Stop' propagates a failed
+        # download straight out through Main, so Show-Summary never runs and
+        # the user is told nothing at all -- for the single most likely
+        # real-world failure, a flaky network.
+        Write-LogError "Miniconda installation failed: $($_.Exception.Message)"
+        Add-FailedStep "Miniconda"
+        return
+    }
     finally {
         # Runs even if the download or install threw, so a half-downloaded
         # installer is not left in TEMP.
@@ -479,6 +500,13 @@ function Install-CDLEnvironment {
             Add-FailedStep "CDL environment"
             return
         }
+    }
+    catch {
+        # As in Install-Conda: a failed download would otherwise terminate the
+        # whole script and skip the summary.
+        Write-LogError "CDL environment setup failed: $($_.Exception.Message)"
+        Add-FailedStep "CDL environment"
+        return
     }
     finally {
         if (Test-Path $envFile) {
@@ -566,9 +594,27 @@ function Test-CDLPackages {
         interpreter. `conda run` needs no profile and targets the environment
         explicitly.
     #>
-    $result = Invoke-Native "conda" @(
-        "run", "-n", "cdl", "--no-capture-output", "python", "-c", $script:PackageCheckSource
-    )
+    # The source goes to a FILE rather than `python -c`. On Windows, conda run
+    # builds a .bat wrapper, and it refuses any multi-line argument unless it
+    # is the only one: "Support for scripts where arguments contain newlines
+    # not implemented." `-c` plus this here-string is three arguments, so it
+    # raised on every real Windows machine while working fine on macOS and
+    # Linux, which take conda's bash path instead.
+    $scriptPath = Join-Path $env:TEMP "cdl-package-check.py"
+    try {
+        # ASCII, not UTF8: Windows PowerShell 5.1 writes a BOM for UTF8.
+        # The source is pure ASCII, so this sidesteps the question entirely.
+        Set-Content -Path $scriptPath -Value $script:PackageCheckSource -Encoding ASCII
+
+        $result = Invoke-Native "conda" @(
+            "run", "-n", "cdl", "--no-capture-output", "python", $scriptPath
+        )
+    }
+    finally {
+        if (Test-Path $scriptPath) {
+            Remove-Item $scriptPath -Force -ErrorAction SilentlyContinue
+        }
+    }
 
     if (-not $result.Ran) {
         Write-LogWarning "conda not available, cannot verify packages"
@@ -653,7 +699,9 @@ function Test-Installation {
 # ============================================================================
 
 function Show-Summary {
-    $failed = $script:FailedSteps | Select-Object -Unique
+    # @() around the pipeline: with no failures it emits nothing, and asking
+    # $null for .Count is not something to rely on across editions.
+    $failed = @($script:FailedSteps | Select-Object -Unique)
     $ok = $failed.Count -eq 0
 
     Write-Host ""
