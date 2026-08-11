@@ -77,17 +77,33 @@ class TestUsernameValidation:
 
 
 class TestTeamListing:
-    """Tests for GitHub organization team listing."""
+    """Tests for GitHub organization team listing.
+
+    Listing an org's teams needs read:org on ContextLab. Actions' automatic
+    GITHUB_TOKEN is scoped to a single repository and does not have it, so
+    these skip there with instructions rather than failing. Everything else in
+    this file runs fine on that token.
+    """
+
+    @staticmethod
+    def _teams(github_service):
+        from cdl_bot.services.github_service import TeamsUnavailableError
+
+        try:
+            return github_service.get_teams()
+        except TeamsUnavailableError as exc:
+            pytest.skip(
+                f"token cannot see {github_service.org_name}'s teams ({exc}). "
+                "Set GITHUB_TOKEN to a PAT with read:org to run these."
+            )
 
     def test_get_teams_returns_list(self, github_service):
         """Test that get_teams returns a list."""
-        teams = github_service.get_teams()
-        assert isinstance(teams, list)
+        assert isinstance(self._teams(github_service), list)
 
     def test_get_teams_contains_expected_teams(self, github_service):
         """Test that known teams are in the list."""
-        teams = github_service.get_teams()
-        team_names = [team["name"] for team in teams]
+        teams = self._teams(github_service)
 
         # ContextLab should have at least some teams
         assert len(teams) > 0
@@ -102,12 +118,28 @@ class TestTeamListing:
 
     def test_get_teams_includes_lab_default(self, github_service):
         """Test that 'Lab default' team exists."""
-        teams = github_service.get_teams()
-        team_names = [team["name"] for team in teams]
+        team_names = [team["name"] for team in self._teams(github_service)]
 
         # Check for common team names that should exist
         # Note: Actual team names depend on the org setup
         assert len(team_names) > 0
+
+    def test_an_unreadable_org_raises_rather_than_returning_empty(self):
+        """The distinction this whole class depends on.
+
+        get_teams() used to swallow a GithubException and return [], which is
+        indistinguishable from "the org has no teams". The bot uses it to pick
+        which teams a new member joins, so that silently onboarded people into
+        nothing and reported success.
+        """
+        from cdl_bot.services.github_service import (
+            GitHubService,
+            TeamsUnavailableError,
+        )
+
+        service = GitHubService("not-a-real-token", "ContextLab")
+        with pytest.raises(TeamsUnavailableError, match="read:org"):
+            service.get_teams()
 
 
 class TestMembershipChecks:

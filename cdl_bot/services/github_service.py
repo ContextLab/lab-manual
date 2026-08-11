@@ -18,6 +18,10 @@ from github.Team import Team
 logger = logging.getLogger(__name__)
 
 
+class TeamsUnavailableError(RuntimeError):
+    """The org's teams could not be listed, as opposed to there being none."""
+
+
 class GitHubService:
     """Service for GitHub organization operations."""
 
@@ -99,7 +103,18 @@ class GitHubService:
                 })
             logger.info(f"Retrieved {len(teams)} teams from {self.org_name}")
         except GithubException as e:
-            logger.error(f"Error retrieving teams: {e}")
+            # Do NOT return [] here. An under-scoped token -- Actions' own
+            # GITHUB_TOKEN, for instance, which is scoped to a single
+            # repository and has no read:org -- fails this call, and an empty
+            # list is indistinguishable from "the org has no teams". Callers
+            # use this to decide which teams to add a new member to, so
+            # swallowing the error silently onboards them into nothing and
+            # reports success.
+            raise TeamsUnavailableError(
+                f"Could not list teams for {self.org_name}: {e}. The token "
+                "needs read:org on that organization; Actions' automatic "
+                "GITHUB_TOKEN is repository-scoped and does not have it."
+            ) from e
         return teams
 
     def get_team_by_name(self, team_name: str) -> Optional[Team]:
