@@ -12,9 +12,38 @@ To run these tests:
 IMPORTANT: These tests use REAL API calls and imports - no mocks or simulations.
 """
 
-import pytest
-import sys
+import os
 import platform
+import sys
+from pathlib import Path
+
+import pytest
+
+
+def _in_cdl_environment() -> bool:
+    """Are we running inside the conda environment these tests describe?"""
+    if os.environ.get("CDL_ENV_TESTS") == "1":
+        return True
+    if os.environ.get("CONDA_DEFAULT_ENV") == "cdl":
+        return True
+    return Path(sys.prefix).name == "cdl"
+
+
+# These tests assert things about the cdl conda environment -- that pytorch,
+# umap, hypertools, quail, timecorr and supereeg are installed and working.
+# They say nothing about the code in this repository. Run against some other
+# interpreter they report that interpreter's missing packages, which is how a
+# plain `pytest tests/` came to show ~16 failures that no change here could
+# fix. Set CDL_ENV_TESTS=1 to force them to run anywhere.
+if not _in_cdl_environment():
+    pytest.skip(
+        "not running inside the 'cdl' conda environment -- these tests check "
+        "that environment, not this repository. Create it with "
+        "`conda env create -f scripts/cdl-environment.yml`, then "
+        "`conda activate cdl` and re-run. CI runs them for real in the "
+        "'Test CDL environment' workflow.",
+        allow_module_level=True,
+    )
 
 
 class TestCorePackages:

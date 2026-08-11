@@ -10,6 +10,8 @@ from pathlib import Path
 import sys
 
 import pytest
+import hashlib
+
 from PIL import Image
 
 # Ensure scripts package is importable
@@ -126,10 +128,17 @@ class TestHandDrawnBorder:
         assert output_img.size[1] > 400
 
     def test_border_contains_green(self, temp_dir):
-        """Test that the border contains Dartmouth green color."""
+        """The border is drawn in the website's primary green.
+
+        The colour comes from the SVG template, so it is the website's
+        --primary-green rgb(0, 112, 60) after rasterising, not the
+        rgb(0, 105, 62) the removed PIL fallback painted. Antialiasing means
+        no exact match exists anywhere, so this samples the whole image with a
+        tolerance instead of probing one corner -- the corners are
+        transparent, which is why the old exact-match probe could not pass.
+        """
         service = ImageService()
 
-        # Create input image (white)
         input_img = Image.new("RGB", (400, 400), color=(255, 255, 255))
         input_path = temp_dir / "input.png"
         input_img.save(input_path)
@@ -137,25 +146,19 @@ class TestHandDrawnBorder:
         output_path = temp_dir / "output.png"
         service.add_hand_drawn_border(input_path, output_path)
 
-        output_img = Image.open(output_path).convert("RGB")
+        output_img = Image.open(output_path).convert("RGBA")
+        target = (0, 112, 60)
+        green = sum(
+            1 for r, g, b, a in output_img.getdata()
+            if a > 200
+            and abs(r - target[0]) < 25
+            and abs(g - target[1]) < 25
+            and abs(b - target[2]) < 25
+        )
 
-        # Check corners (where border should be)
-        # The border should contain Dartmouth green (0, 105, 62)
-        # Check a few pixels in the border area
-        found_green = False
-        dartmouth_green = (0, 105, 62)
-
-        # Sample the border area
-        for x in range(20):
-            for y in range(20):
-                pixel = output_img.getpixel((x, y))
-                if pixel == dartmouth_green:
-                    found_green = True
-                    break
-            if found_green:
-                break
-
-        assert found_green, "Dartmouth green not found in border area"
+        assert green > 1000, (
+            f"only {green} green pixels; the border does not look drawn"
+        )
 
     def test_reproducible_with_seed(self, temp_dir):
         """Test that results are reproducible with same seed."""
@@ -182,53 +185,80 @@ class TestHandDrawnBorder:
             for y in range(0, img1.size[1], 50):
                 assert img1.getpixel((x, y)) == img2.getpixel((x, y))
 
-    def test_different_seeds_produce_different_results(self, temp_dir):
-        """Test that different seeds produce different results."""
+    def test_different_seeds_can_produce_different_borders(self, temp_dir):
+        """Different seeds select different designs from the SVG template.
+
+        The template holds a handful of borders, so two given seeds may well
+        collide. Sampling several and requiring more than one distinct result
+        is the honest assertion.
+        """
         service = ImageService()
 
-        # Create input image
         input_img = Image.new("RGB", (400, 400), color=(128, 128, 128))
         input_path = temp_dir / "input.png"
         input_img.save(input_path)
 
-        output1_path = temp_dir / "output1.png"
-        output2_path = temp_dir / "output2.png"
+        digests = set()
+        for seed in range(12):
+            output_path = temp_dir / f"seeded_{seed}.png"
+            service.add_hand_drawn_border(input_path, output_path, seed=seed)
+            digests.add(hashlib.md5(output_path.read_bytes()).hexdigest())
 
-        # Process with different seeds
-        service.add_hand_drawn_border(input_path, output1_path, seed=42)
-        service.add_hand_drawn_border(input_path, output2_path, seed=123)
+        assert len(digests) > 1, "every seed produced the same border"
 
-        img1 = Image.open(output1_path)
-        img2 = Image.open(output2_path)
+    def test_unseeded_calls_are_random(self, temp_dir):
+        """Without a seed, add_borders.py picks a border at random.
 
-        # Find at least one difference in the border region
-        differences_found = False
-        for x in range(10, 30):  # Border region
-            for y in range(10, 30):
-                if img1.getpixel((x, y)) != img2.getpixel((x, y)):
-                    differences_found = True
-                    break
-            if differences_found:
-                break
-
-        assert differences_found, "Different seeds should produce different wobble patterns"
-
-    def test_jpeg_output(self, temp_dir):
-        """Test output as JPEG format."""
+        This is why the callers pass one: re-running onboarding would
+        otherwise hand a member a different border every time.
+        """
         service = ImageService()
 
-        # Create input PNG
+        input_img = Image.new("RGB", (400, 400), color=(128, 128, 128))
+        input_path = temp_dir / "input.png"
+        input_img.save(input_path)
+
+        digests = set()
+        for i in range(12):
+            output_path = temp_dir / f"unseeded_{i}.png"
+            service.add_hand_drawn_border(input_path, output_path)
+            digests.add(hashlib.md5(output_path.read_bytes()).hexdigest())
+
+        assert len(digests) > 1, "unseeded output was identical every time"
+
+    def test_non_png_output_is_refused(self, temp_dir):
+        """Borders have transparent corners, so only PNG can hold the result.
+
+        The output used to be written to whatever name was asked for, which
+        produced a PNG wearing a .jpg extension.
+        """
+        service = ImageService()
+
         input_img = Image.new("RGB", (400, 400), color=(200, 200, 200))
         input_path = temp_dir / "input.png"
         input_img.save(input_path)
 
         output_path = temp_dir / "output.jpg"
+        with pytest.raises(ValueError, match="must be a .png"):
+            service.add_hand_drawn_border(input_path, output_path)
+
+        assert not output_path.exists()
+
+    def test_output_is_png_with_transparency(self, temp_dir):
+        service = ImageService()
+
+        input_img = Image.new("RGB", (400, 400), color=(200, 200, 200))
+        input_path = temp_dir / "input.png"
+        input_img.save(input_path)
+
+        output_path = temp_dir / "output.png"
         service.add_hand_drawn_border(input_path, output_path)
 
-        assert output_path.exists()
-        # Verify it's actually a JPEG
         with Image.open(output_path) as img:
-            assert img.format == "JPEG"
+            assert img.format == "PNG"
+            assert img.mode == "RGBA"
+            # The doodle borders do not fill the square, so the corner is clear.
+            assert img.getpixel((0, 0))[3] == 0
 
 
 class TestMakeSquare:
@@ -280,86 +310,67 @@ class TestMakeSquare:
         assert output_path.exists()
 
 
-class TestProcessPhoto:
-    """Tests for the process_photo convenience method."""
+class TestRemovedApiIsGone:
+    """process_photo and the wobble knobs went with the PIL fallback.
 
-    def test_process_photo_creates_file(self, temp_dir):
-        """Test that process_photo creates the expected output file."""
+    ffa04f2 replaced the hand-rolled border with the website's real SVG
+    templates and deleted both, but left these tests behind asserting the old
+    behaviour. Restoring either would reintroduce borders that do not match
+    context-lab.com/people, so what is worth pinning is that they stay gone
+    and that a caller passing a dead argument is told, rather than ignored.
+    """
+
+    def test_process_photo_is_not_resurrected(self):
+        assert not hasattr(ImageService(), "process_photo")
+
+    def test_wobble_amount_is_rejected(self, temp_dir):
         service = ImageService()
-
-        # Create input image
-        input_img = Image.new("RGB", (500, 500), color=(150, 150, 150))
-        input_path = temp_dir / "original.png"
-        input_img.save(input_path)
-
-        output_dir = temp_dir / "output"
-        output_dir.mkdir()
-
-        result = service.process_photo(input_path, output_dir, "test_member")
-
-        assert result.exists()
-        assert "test_member" in result.name
-        assert "_bordered" in result.name
-
-    def test_process_photo_reproducible_by_member_id(self, temp_dir):
-        """Test that same member_id produces same result."""
-        service = ImageService()
-
-        # Create input image
-        input_img = Image.new("RGB", (500, 500), color=(150, 150, 150))
-        input_path = temp_dir / "original.png"
-        input_img.save(input_path)
-
-        output_dir1 = temp_dir / "output1"
-        output_dir2 = temp_dir / "output2"
-        output_dir1.mkdir()
-        output_dir2.mkdir()
-
-        result1 = service.process_photo(input_path, output_dir1, "same_member")
-        result2 = service.process_photo(input_path, output_dir2, "same_member")
-
-        # Images should be identical (same seed from same member_id)
-        img1 = Image.open(result1)
-        img2 = Image.open(result2)
-
-        # Sample comparison
-        for x in range(0, min(img1.size[0], 200), 25):
-            for y in range(0, min(img1.size[1], 200), 25):
-                assert img1.getpixel((x, y)) == img2.getpixel((x, y))
-
-
-class TestCustomWobble:
-    """Tests for wobble amount configuration."""
-
-    def test_zero_wobble_straight_lines(self, temp_dir):
-        """Test that zero wobble produces straighter borders."""
-        service = ImageService()
-
         input_img = Image.new("RGB", (400, 400), color=(255, 255, 255))
         input_path = temp_dir / "input.png"
         input_img.save(input_path)
 
-        # Process with no wobble
-        output_path = temp_dir / "straight.png"
-        service.add_hand_drawn_border(input_path, output_path, wobble_amount=0, seed=42)
+        # It used to vanish into **kwargs, so a caller tuning a removed knob
+        # got silence and no effect.
+        with pytest.raises(TypeError):
+            service.add_hand_drawn_border(
+                input_path, temp_dir / "out.png", wobble_amount=5.0
+            )
 
-        # Process with wobble
-        output_wobble_path = temp_dir / "wobbly.png"
-        service.add_hand_drawn_border(input_path, output_wobble_path, wobble_amount=5.0, seed=42)
 
-        # Both should exist
-        assert output_path.exists()
-        assert output_wobble_path.exists()
+class TestSeedReachesTheScript:
+    """The seed has to reach add_borders.py to mean anything.
 
-        # They should be different
-        img_straight = Image.open(output_path)
-        img_wobbly = Image.open(output_wobble_path)
+    add_borders.py chooses with random.choice, so before --seed existed the
+    parameter was accepted and discarded: six runs at seed=42 gave four
+    different images, and the bot's seed=hash(user_id) promised a stability
+    it never had.
+    """
 
-        # Find differences in border region
-        differences = 0
-        for x in range(10, 30):
-            for y in range(10, 30):
-                if img_straight.getpixel((x, y)) != img_wobbly.getpixel((x, y)):
-                    differences += 1
+    def test_same_seed_is_byte_identical(self, temp_dir):
+        service = ImageService()
+        input_img = Image.new("RGB", (400, 400), color=(150, 150, 150))
+        input_path = temp_dir / "original.png"
+        input_img.save(input_path)
 
-        assert differences > 0, "Wobble setting should affect the output"
+        digests = set()
+        for i in range(5):
+            output_path = temp_dir / f"same_{i}.png"
+            service.add_hand_drawn_border(input_path, output_path, seed=42)
+            digests.add(hashlib.md5(output_path.read_bytes()).hexdigest())
+
+        assert len(digests) == 1, f"seed=42 gave {len(digests)} different images"
+
+    def test_a_member_keeps_their_border_across_runs(self, temp_dir):
+        """What the callers actually want: seed=hash(user_id) is stable."""
+        service = ImageService()
+        input_img = Image.new("RGB", (500, 500), color=(150, 150, 150))
+        input_path = temp_dir / "original.png"
+        input_img.save(input_path)
+
+        member_seed = hash("U123456") % (2 ** 31)
+        first = temp_dir / "first.png"
+        second = temp_dir / "second.png"
+        service.add_hand_drawn_border(input_path, first, seed=member_seed)
+        service.add_hand_drawn_border(input_path, second, seed=member_seed)
+
+        assert first.read_bytes() == second.read_bytes()

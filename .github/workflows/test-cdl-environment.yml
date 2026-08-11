@@ -1,0 +1,114 @@
+name: Test CDL environment
+
+# tests/test_cdl_environment.py checks that the environment new lab members
+# are told to install actually works -- pytorch, umap, hypertools, quail,
+# timecorr, supereeg. It says nothing about the code in this repository, so it
+# skips itself unless it is running inside that environment. This workflow is
+# where it genuinely runs.
+#
+# Building the environment takes a long time (conda solves pytorch, jupyter
+# and transformers), so this is not on every push. It runs when the
+# environment definition changes, on a weekly schedule to catch upstream
+# breakage before a student does, and on demand.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'scripts/cdl-environment.yml'
+      - 'tests/test_cdl_environment.py'
+      - '.github/workflows/test-cdl-environment.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'scripts/cdl-environment.yml'
+      - 'tests/test_cdl_environment.py'
+      - '.github/workflows/test-cdl-environment.yml'
+  schedule:
+    # Mondays, 09:00 UTC.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  cdl-environment:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: macos-latest
+            label: macOS (Apple silicon)
+          - os: windows-latest
+            label: Windows
+
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+
+    defaults:
+      run:
+        # A login shell so `conda activate` works: activation is a shell
+        # function that conda's profile script defines.
+        shell: bash -el {0}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: cdl
+          environment-file: scripts/cdl-environment.yml
+          auto-activate-base: false
+          miniforge-version: latest
+
+      - name: Report the environment
+        run: |
+          conda info
+          conda list
+
+      - name: Confirm we are actually inside the cdl environment
+        run: |
+          # The tests skip themselves outside it, and a skipped suite that
+          # reports success is exactly the false green this job exists to
+          # avoid.
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          assert Path(sys.prefix).name == "cdl", f"prefix is {sys.prefix}"
+          print("running in", sys.prefix)
+          PY
+
+      - name: Run the environment tests
+        run: |
+          pytest tests/test_cdl_environment.py -v -rs --tb=short \
+            --junitxml=cdl-env-results.xml
+
+      - name: Fail if the suite skipped instead of running
+        if: always()
+        run: |
+          # A suite that skips itself exits 0. That is the false green this
+          # job exists to prevent, so require real passes and no skips.
+          python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          suite = ET.parse("cdl-env-results.xml").getroot().find("testsuite")
+          total = int(suite.get("tests", 0))
+          skipped = int(suite.get("skipped", 0))
+          errors = int(suite.get("errors", 0))
+          failures = int(suite.get("failures", 0))
+          passed = total - skipped - errors - failures
+          print(f"{total} collected: {passed} passed, {skipped} skipped, "
+                f"{failures} failed, {errors} errors")
+
+          if total == 0:
+              sys.exit("::error::No environment tests ran at all.")
+          if skipped:
+              sys.exit(f"::error::{skipped} test(s) skipped; the environment "
+                       "was not fully verified.")
+          print("The environment tests really ran.")
+          PY

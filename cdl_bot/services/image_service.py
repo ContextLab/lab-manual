@@ -61,16 +61,31 @@ class ImageService:
         output_path: Union[str, Path],
         use_face_detection: bool = True,
         seed: Optional[int] = None,
-        **kwargs,
     ) -> Path:
         """
-        Add a hand-drawn border to an image.
+        Add a hand-drawn border to an image, via the website's add_borders.py.
 
-        Uses the website repo's add_borders.py (real SVG borders with face
-        detection) when available. Falls back to a simple PIL border otherwise.
+        The borders are real SVG doodles from the website's template, so the
+        result matches context-lab.com/people exactly.
+
+        `seed` makes the choice of border deterministic. add_borders.py picks
+        one at random otherwise, which means re-running onboarding hands the
+        same member a different border each time.
+
+        Output is always PNG: the borders have transparent corners, and no
+        other format here preserves the alpha channel.
         """
         input_path = Path(input_path)
         output_path = Path(output_path)
+
+        if output_path.suffix.lower() != ".png":
+            # Previously the PNG was moved to whatever name was asked for, so
+            # "photo.jpg" was a PNG wearing a .jpg extension.
+            raise ValueError(
+                f"Output must be a .png file, got '{output_path.name}'. "
+                "Hand-drawn borders have transparent corners, which only PNG keeps."
+            )
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         if not self._can_use_add_borders():
@@ -78,10 +93,16 @@ class ImageService:
                 "Cannot process photo: website repo not configured or add_borders.py not found. "
                 "Set WEBSITE_REPO_PATH in .env to the path of the contextlab.github.io repo."
             )
-        return self._add_border_via_script(input_path, output_path, use_face_detection)
+        return self._add_border_via_script(
+            input_path, output_path, use_face_detection, seed
+        )
 
     def _add_border_via_script(
-        self, input_path: Path, output_path: Path, use_face_detection: bool
+        self,
+        input_path: Path,
+        output_path: Path,
+        use_face_detection: bool,
+        seed: Optional[int] = None,
     ) -> Path:
         """Use the website repo's add_borders.py for real SVG borders."""
         script = self.website_repo_path / "scripts" / "add_borders.py"
@@ -99,6 +120,8 @@ class ImageService:
             ]
             if use_face_detection:
                 cmd.append("--face")
+            if seed is not None:
+                cmd.extend(["--seed", str(seed)])
 
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=120,
