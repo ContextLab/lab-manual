@@ -233,6 +233,32 @@ install_latex() {
     esac
 }
 
+install_librsvg() {
+    log "Checking librsvg installation..."
+
+    # scripts/add_borders.py in the website repo shells out to rsvg-convert to
+    # rasterise the hand-drawn SVG border templates. Without it, processing a
+    # member photo dies with "No borders could be loaded!" -- and it is a
+    # system package, so no amount of pip installing fixes it.
+    if command_exists rsvg-convert; then
+        log_success "rsvg-convert already installed"
+        return
+    fi
+
+    case "$OS" in
+        macos)
+            log "Installing librsvg..."
+            brew install librsvg
+            log_success "librsvg installed"
+            ;;
+        ubuntu)
+            log "Installing librsvg2-bin..."
+            sudo apt install -y librsvg2-bin
+            log_success "librsvg2-bin installed"
+            ;;
+    esac
+}
+
 install_dropbox() {
     log "Checking Dropbox installation..."
 
@@ -530,6 +556,7 @@ main() {
     install_slack
     install_vscode
     install_latex
+    install_librsvg
     install_dropbox
 
     # Install Conda and set up environment

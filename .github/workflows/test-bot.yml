@@ -48,6 +48,16 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install an SVG renderer
+        run: |
+          # add_borders.py rasterises the border templates with rsvg-convert.
+          # It is a system package, not a pip one, so nothing in
+          # requirements-build.txt supplies it -- without this the image tests
+          # fail with "No borders could be loaded!".
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+          rsvg-convert --version
+
       - name: Install
         run: |
           pip install -e .
