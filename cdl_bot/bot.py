@@ -152,10 +152,14 @@ def main():
         else:
             logger.warning("Google Calendar integration not configured")
 
+        # `config.anthropic` keeps its name from before bios moved to
+        # Dartmouth's service (see config.py); only the wording was stale.
         if config.anthropic:
-            logger.info("Anthropic bio editing enabled")
+            logger.info("Bio editing enabled (chat.dartmouth.edu)")
         else:
-            logger.warning("Anthropic bio editing not configured")
+            logger.warning(
+                "Bio editing not configured (set DARTMOUTH_CHAT_API_KEY)"
+            )
 
         # Create the app
         app = create_app(config)
