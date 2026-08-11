@@ -2,7 +2,7 @@
 Tests for the BioService.
 
 IMPORTANT: These tests make REAL Claude API calls.
-Requires ANTHROPIC_API_KEY environment variable to be set.
+Requires DARTMOUTH_CHAT_API_KEY to be set (chat.dartmouth.edu).
 
 Tests verify:
 - Bio editing produces third-person text
@@ -27,13 +27,19 @@ class TestBioServiceInit:
     def test_init_with_valid_key(self, anthropic_api_key):
         """Test initialization with a valid API key."""
         service = BioService(anthropic_api_key)
-        assert service.client is not None
-        assert service.model == "claude-sonnet-4-20250514"
+        assert service.api_key == anthropic_api_key
+        assert service.model == "qwen.qwen3.5-122b"
 
     def test_init_with_custom_model(self, anthropic_api_key):
         """Test initialization with a custom model."""
-        service = BioService(anthropic_api_key, model="claude-3-haiku-20240307")
-        assert service.model == "claude-3-haiku-20240307"
+        service = BioService(anthropic_api_key, model="qwen.qwen3-vl:32b")
+        assert service.model == "qwen.qwen3-vl:32b"
+
+    def test_default_model_is_reachable(self, anthropic_api_key):
+        """The model we default to must actually exist on the deployment."""
+        from cdl_bot.services.dartmouth_chat import list_models
+
+        assert BioService(anthropic_api_key).model in list_models(anthropic_api_key)
 
 
 class TestBioEditing:

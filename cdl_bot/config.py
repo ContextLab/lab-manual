@@ -115,23 +115,42 @@ class GoogleCalendarConfig:
 
 
 @dataclass
-class AnthropicConfig:
-    """Anthropic API configuration for bio editing."""
+class LLMConfig:
+    """LLM configuration for bio editing.
+
+    Bios go through Dartmouth's own chat.dartmouth.edu rather than a paid
+    third-party API. It costs the lab nothing and does not stop working when
+    a personal account runs out of credit, which is what had been happening:
+    every bio call returned "Your credit balance is too low to access the
+    Anthropic API."
+
+    Get a key at chat.dartmouth.edu -> Settings -> Account -> API Keys and
+    put it in cdl_bot/.env as DARTMOUTH_CHAT_API_KEY.
+    """
     api_key: str
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "qwen.qwen3.5-122b"
 
     @classmethod
-    def from_env(cls) -> "AnthropicConfig":
-        """Load Anthropic configuration from environment variables."""
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
+    def from_env(cls) -> "LLMConfig":
+        """Load LLM configuration from environment variables."""
+        api_key = os.environ.get("DARTMOUTH_CHAT_API_KEY")
 
         if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+            raise ValueError(
+                "DARTMOUTH_CHAT_API_KEY environment variable is required. "
+                "Create a key at chat.dartmouth.edu -> Settings -> Account -> "
+                "API Keys and add it to cdl_bot/.env."
+            )
 
         return cls(
             api_key=api_key,
-            model=os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+            model=os.environ.get("DARTMOUTH_CHAT_MODEL", "qwen.qwen3.5-122b"),
         )
+
+
+# The bot referred to this config as `anthropic` throughout. The name is kept
+# as an alias so existing call sites keep working while they migrate.
+AnthropicConfig = LLMConfig
 
 
 @dataclass
@@ -140,7 +159,7 @@ class Config:
     slack: SlackConfig
     github: GitHubConfig
     google_calendar: Optional[GoogleCalendarConfig]
-    anthropic: Optional[AnthropicConfig]
+    anthropic: Optional[LLMConfig]
 
     # Image processing settings
     border_color: tuple = (0, 105, 62)  # Dartmouth green RGB
@@ -166,7 +185,7 @@ class Config:
             google_calendar = None
 
         try:
-            anthropic = AnthropicConfig.from_env()
+            anthropic = LLMConfig.from_env()
         except ValueError:
             anthropic = None
 

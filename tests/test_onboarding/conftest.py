@@ -33,62 +33,20 @@ def github_token():
 
 @pytest.fixture
 def anthropic_api_key():
-    """Get Anthropic API key from environment, and check the account can use it.
+    """The Dartmouth Chat API key, skipping the suite when it is absent.
 
-    A key that exists but cannot serve requests -- an exhausted credit
-    balance, a rate limit, an overloaded API -- is the same situation as no
-    key at all: the service is unavailable, and nothing about this repository
-    is under test. Without this check those runs surfaced as eight assertion
-    failures inside BioService that read exactly like code defects.
-
-    The check is deliberately narrow. Only availability conditions skip;
-    every other error, including a malformed request of ours, still fails.
+    Named for history: the bot's bio calls used to go to Anthropic and every
+    one of them failed with "Your credit balance is too low to access the
+    Anthropic API." They now go to Dartmouth's own service, which the lab
+    already pays for.
     """
-    key = os.environ.get("ANTHROPIC_API_KEY")
+    key = os.environ.get("DARTMOUTH_CHAT_API_KEY")
     if not key:
-        pytest.skip("ANTHROPIC_API_KEY not set - skipping Claude API tests")
-
-    reason = _anthropic_unavailable_reason(key)
-    if reason:
-        pytest.skip(f"Anthropic API unavailable: {reason}")
+        pytest.skip(
+            "DARTMOUTH_CHAT_API_KEY not set - create one at chat.dartmouth.edu "
+            "-> Settings -> Account -> API Keys and add it to cdl_bot/.env"
+        )
     return key
-
-
-# Probed once per session: a live call per test would multiply the cost of
-# the very thing we are checking is affordable.
-_ANTHROPIC_STATUS = {}
-
-
-def _anthropic_unavailable_reason(key):
-    """Return why the Anthropic API cannot serve us, or None if it can."""
-    if "reason" in _ANTHROPIC_STATUS:
-        return _ANTHROPIC_STATUS["reason"]
-
-    reason = None
-    try:
-        import anthropic
-
-        anthropic.Anthropic(api_key=key).messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=4,
-            messages=[{"role": "user", "content": "ok"}],
-        )
-    except Exception as exc:  # noqa: BLE001 - classified below
-        text = str(exc)
-        unavailable = (
-            "credit balance is too low",
-            "rate_limit",
-            "overloaded",
-            "insufficient_quota",
-        )
-        if any(marker in text.lower() for marker in unavailable):
-            reason = text.split("message':")[-1].strip(" '\"}]")[:160]
-        else:
-            # Anything else is a real failure and must not be skipped away.
-            reason = None
-
-    _ANTHROPIC_STATUS["reason"] = reason
-    return reason
 
 
 @pytest.fixture

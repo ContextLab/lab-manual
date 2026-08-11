@@ -13,7 +13,8 @@ import logging
 import re
 from typing import Optional
 
-import anthropic
+from .dartmouth_chat import DartmouthChatError, DEFAULT_MODEL
+from .dartmouth_chat import chat as dartmouth_chat
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +49,22 @@ Example 3:
 "Lucy joined the lab as a research assistant after graduating from Dartmouth. She's excited to explore computational approaches to understanding memory and cognition."
 """
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: str = None, model: str = DEFAULT_MODEL):
         """
         Initialize the bio service.
 
+        Bios go through Dartmouth's own chat.dartmouth.edu rather than a paid
+        third-party API: it costs the lab nothing, and it does not stop working
+        when a personal account runs out of credit -- which is exactly what had
+        happened, with every bio call returning "Your credit balance is too low
+        to access the Anthropic API."
+
         Args:
-            api_key: Anthropic API key
-            model: Claude model to use
+            api_key: Dartmouth Chat API key. Falls back to
+                DARTMOUTH_CHAT_API_KEY in the environment or cdl_bot/.env.
+            model: model id; see dartmouth_chat.list_models().
         """
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.api_key = api_key
         self.model = model
 
     def edit_bio(self, raw_bio: str, name: str) -> tuple[str, Optional[str]]:
@@ -91,13 +99,12 @@ Original bio:
 Please provide ONLY the edited bio text, with no additional commentary, explanations, or quotation marks. The bio should be ready to publish as-is."""
 
         try:
-            message = self.client.messages.create(
+            edited_bio = dartmouth_chat(
+                prompt,
                 model=self.model,
                 max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            edited_bio = message.content[0].text.strip()
+                api_key=self.api_key,
+            ).strip()
 
             # Clean up any stray quotation marks
             edited_bio = edited_bio.strip('"\'')
@@ -110,8 +117,8 @@ Please provide ONLY the edited bio text, with no additional commentary, explanat
             logger.info(f"Edited bio for {name}: {len(raw_bio)} -> {len(edited_bio)} chars")
             return edited_bio, None
 
-        except anthropic.APIError as e:
-            error_msg = f"Claude API error: {e}"
+        except DartmouthChatError as e:
+            error_msg = f"Dartmouth Chat API error: {e}"
             logger.error(error_msg)
             return "", error_msg
         except Exception as e:
@@ -188,13 +195,12 @@ Please provide a brief list of specific suggestions for improvement. Focus on:
 Keep your response concise and actionable."""
 
         try:
-            message = self.client.messages.create(
+            suggestions = dartmouth_chat(
+                prompt,
                 model=self.model,
                 max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            suggestions = message.content[0].text.strip()
+                api_key=self.api_key,
+            ).strip()
             return suggestions, None
 
         except Exception as e:
