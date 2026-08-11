@@ -143,6 +143,31 @@ jobs:
           }
           Write-Host "File execution path OK"
 
+      - name: The exit code comes from the failure list, not $LASTEXITCODE
+        env:
+          # Without this, loading the file runs Main and starts installing
+          # Slack, VS Code, MiKTeX, Dropbox and Miniconda on the runner.
+          CDL_SETUP_NO_AUTORUN: '1'
+        run: |
+          Invoke-Expression (Get-Content -Raw ./scripts/setup.ps1)
+
+          if ((Get-ExitCode) -ne 0) { throw "A clean run must report 0" }
+
+          # Leave a nonzero $LASTEXITCODE behind, exactly the way a routine
+          # `winget list` for a not-yet-installed package does.
+          & git definitely-not-a-subcommand 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "Expected git to fail" }
+
+          if ((Get-ExitCode) -ne 0) {
+            throw "A stale native exit code leaked into the script's exit code"
+          }
+
+          Add-FailedStep 'synthetic-failure'
+          if ((Get-ExitCode) -ne 1) { throw "A failed step must report 1" }
+
+          Write-Host "Exit code contract OK"
+          exit 0
+
   # ==========================================================================
   # Lint. PSScriptAnalyzer catches the next class of problem, not this one.
   # ==========================================================================
@@ -213,6 +238,7 @@ jobs:
             throw "Test-Command found a command that does not exist"
           }
           Write-Host "Test-Command OK"
+          exit 0
 
       - name: Invoke-Native survives stderr under ErrorActionPreference=Stop
         run: |
@@ -232,6 +258,7 @@ jobs:
           $missing = Invoke-Native 'definitely-not-a-real-command-xyz'
           if ($missing.Ran) { throw "Invoke-Native claimed a missing command ran" }
           Write-Host "Invoke-Native OK"
+          exit 0
 
       - name: Invoke-Native reports this command's exit code, not a stale one
         run: |
@@ -245,6 +272,7 @@ jobs:
             throw "Unexpected output: $($good.Output)"
           }
           Write-Host "Exit code isolation OK"
+          exit 0
 
       - name: Update-SessionPath keeps process-only entries
         run: |
@@ -258,6 +286,7 @@ jobs:
           $duplicates = @($env:Path -split ';' | Where-Object { $_ -eq $marker }).Count
           if ($duplicates -ne 1) { throw "Expected 1 copy of the marker, found ${duplicates}" }
           Write-Host "Update-SessionPath OK"
+          exit 0
 
       - name: Conda discovery and environment detection
         run: |
@@ -270,6 +299,7 @@ jobs:
           # throwing or matching some other environment name.
           if (Test-CDLEnvironment) { throw "Reported a cdl environment that does not exist" }
           Write-Host "Conda discovery OK"
+          exit 0
 
       - name: Test-Administrator returns a boolean
         run: |
@@ -277,6 +307,7 @@ jobs:
           $isAdmin = Test-Administrator
           if ($isAdmin -isnot [bool]) { throw "Expected a boolean, got $($isAdmin.GetType())" }
           Write-Host "Test-Administrator returned ${isAdmin}"
+          exit 0
 
       - name: Package check source is valid Python
         run: |
@@ -294,6 +325,7 @@ jobs:
             }
           }
           Write-Host "Embedded Python is intact and compiles"
+          exit 0
 
       - name: Test-CDLPackages reports failure when the environment is absent
         run: |
@@ -303,6 +335,7 @@ jobs:
           $result = Test-CDLPackages
           if ($result) { throw "Claimed packages are fine with no cdl environment" }
           Write-Host "Absent-environment handling OK"
+          exit 0
 
   # ==========================================================================
   # The real thing: build the actual cdl environment and verify the actual

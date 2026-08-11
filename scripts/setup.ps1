@@ -70,6 +70,19 @@ function Add-FailedStep {
     $script:FailedSteps += $Name
 }
 
+function Get-ExitCode {
+    <#
+    .SYNOPSIS
+        0 if every step completed, 1 otherwise.
+    .DESCRIPTION
+        Deliberately independent of $LASTEXITCODE. Native commands here fail
+        routinely without meaning anything -- `winget list` returns nonzero
+        when a package simply is not installed yet -- so a run scored on the
+        last native exit code reports failure after a perfectly clean setup.
+    #>
+    return [int](@($script:FailedSteps).Count -gt 0)
+}
+
 function Test-Command {
     param([string]$Command)
     return [bool](Get-Command -Name $Command -ErrorAction SilentlyContinue)
@@ -706,7 +719,8 @@ function Main {
         Write-Host "Close this window, right-click PowerShell, choose" -ForegroundColor Red
         Write-Host "'Run as administrator', and run the command again." -ForegroundColor Red
         Write-Host ""
-        return $false
+        Add-FailedStep "elevation"
+        return
     }
 
     # Initialize log file
@@ -733,11 +747,12 @@ function Main {
     Test-Installation
 
     # Print summary
-    return Show-Summary
+    Show-Summary | Out-Null
 }
 
 # Run main. CDL_SETUP_NO_AUTORUN lets the Windows CI workflow load these
 # functions and exercise them one at a time without installing anything.
 if (-not $env:CDL_SETUP_NO_AUTORUN) {
-    Main | Out-Null
+    Main
+    exit (Get-ExitCode)
 }
