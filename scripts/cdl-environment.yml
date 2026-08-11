@@ -36,7 +36,15 @@ dependencies:
   - python=3.11
 
   # Core scientific computing
-  - numpy>=1.24
+  #
+  # numpy is capped below 2. deepdish 0.3.7 -- its last release, from 2020 --
+  # uses np.ComplexWarning, which numpy 2.0 removed. deepdish is imported at
+  # import time by BOTH supereeg and quail, so with numpy 2.x installed those
+  # two fail on `import` and take deepdish with them. Verified in CI on
+  # numpy 2.4.6: 3 of 4 environment-test failures were this one cause,
+  # "AttributeError: module 'numpy' has no attribute 'ComplexWarning'".
+  # Lift the cap once deepdish is replaced or ships a numpy 2 fix.
+  - numpy>=1.24,<2
   - scipy>=1.11
   - pandas>=2.0
   - polars>=0.19
@@ -60,9 +68,22 @@ dependencies:
   - umap-learn>=0.5
 
   # PyTorch - will install appropriate version for platform (CPU/CUDA/MPS)
+  #
+  # torchaudio is deliberately NOT here. There is no spec that installs it on
+  # every platform we support, and requiring it made `conda env create` fail
+  # outright on Windows -- so no Windows member could build this environment
+  # at all:
+  #     Could not solve for environment specs
+  #     └─ torchaudio >=2.0 * does not exist (perhaps a typo or a missing channel).
+  # conda-forge builds torchaudio for linux-64, linux-aarch64, osx-64 and
+  # osx-arm64, but not win-64. PyPI is the mirror image: it has Windows wheels
+  # but dropped Intel-Mac ones after 2.2.2, so moving it to the pip section
+  # below would break Intel Macs exactly the way llvmlite did in issue #190.
+  # Nothing in the lab currently imports it; if you need it, install it
+  # yourself with `conda install -n cdl -c conda-forge torchaudio` (or pip on
+  # Windows), and please open an issue so we can find a real answer.
   - pytorch>=2.0
   - torchvision>=0.15
-  - torchaudio>=2.0
 
   # Jupyter
   - jupyter

@@ -272,9 +272,14 @@ class TestHuggingFaceContextLab:
         """
         from datasets import load_dataset
 
-        # Load a small subset of the austen-corpus
+        # A slice asks for AT MOST 10 rows. austen-corpus holds 7, so
+        # requiring exactly 10 was asserting the corpus's size rather than
+        # that Hugging Face access works -- and it broke the moment the
+        # corpus changed, which is the dataset's business, not the
+        # environment's.
         ds = load_dataset("contextlab/austen-corpus", split="train[:10]")
-        assert len(ds) == 10
+        assert 0 < len(ds) <= 10
+        assert ds.column_names, "dataset loaded but has no columns"
         print(f"Loaded {len(ds)} samples from contextlab/austen-corpus")
 
 
