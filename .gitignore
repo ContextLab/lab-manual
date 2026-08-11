@@ -77,3 +77,13 @@ env/
 notes/
 .omc/
 cdl_bot/CDL_scheduler.ipynb
+
+# Editor backups of the secrets file. cdl_bot/.env is ignored but
+# cdl_bot/.env~ was not, so an editor's backup copy -- holding the Slack,
+# GitHub and Dartmouth Chat keys in full -- was one `git add -A` from being
+# committed.
+*.env~
+.env.*
+!.env.example
+**/.env
+**/.env~

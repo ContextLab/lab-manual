@@ -1,0 +1,98 @@
+name: Test CDL Bot
+
+# The bot's own test suite had no CI at all: its bio tests only ever ran on
+# whoever happened to run pytest locally, and for a long stretch they were not
+# running there either, because every call returned "Your credit balance is too
+# low to access the Anthropic API". Bios now go through chat.dartmouth.edu, so
+# they can run here on the repository's own key.
+#
+# The image tests need the website repo for its SVG border templates and
+# add_borders.py, so it is checked out alongside.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'cdl_bot/**'
+      - 'tests/test_onboarding/**'
+      - 'pyproject.toml'
+      - '.github/workflows/test-bot.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'cdl_bot/**'
+      - 'tests/test_onboarding/**'
+      - 'pyproject.toml'
+      - '.github/workflows/test-bot.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the bot
+        uses: actions/checkout@v4
+
+      - name: Check out the website repo for its border templates
+        uses: actions/checkout@v4
+        with:
+          repository: ContextLab/contextlab.github.io
+          path: website
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install
+        run: |
+          pip install -e .
+          pip install pytest
+          # add_borders.py runs as a subprocess out of the website checkout,
+          # so its own dependencies have to be present too.
+          pip install -r website/requirements-build.txt
+
+      - name: Run the bot tests
+        env:
+          DARTMOUTH_CHAT_API_KEY: ${{ secrets.DARTMOUTH_CHAT_API_KEY }}
+          WEBSITE_REPO_PATH: ${{ github.workspace }}/website
+        run: |
+          pytest tests/test_onboarding/ -v -rs --junitxml=bot-results.xml
+
+      - name: Fail if the bio tests skipped instead of running
+        if: always()
+        run: |
+          # A skipped suite exits 0. These tests spent months skipping on a
+          # billing error, so silence is exactly the outcome to guard against.
+          python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          suite = ET.parse("bot-results.xml").getroot().find("testsuite")
+          total = int(suite.get("tests", 0))
+          skipped = int(suite.get("skipped", 0))
+          failures = int(suite.get("failures", 0))
+          errors = int(suite.get("errors", 0))
+          print(f"{total} collected: {total - skipped - failures - errors} passed, "
+                f"{skipped} skipped, {failures} failed, {errors} errors")
+
+          if total == 0:
+              sys.exit("::error::No bot tests ran at all.")
+
+          skipped_bio = [
+              case.get("name")
+              for case in suite.iter("testcase")
+              if case.get("classname", "").endswith("test_bio_service")
+              and case.find("skipped") is not None
+          ]
+          if skipped_bio:
+              sys.exit(
+                  "::error::The bio tests skipped, so the LLM was never "
+                  f"exercised: {skipped_bio[:5]}"
+              )
+          print("The bio tests really ran against chat.dartmouth.edu.")
+          PY
