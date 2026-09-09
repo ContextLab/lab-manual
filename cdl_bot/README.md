@@ -47,11 +47,18 @@ Admin selects access to revoke (GitHub, calendars). Generates a checklist — do
 1. Director runs `/cdl-schedule` — config modal auto-populates projects from database
 2. Creates When2Meet survey (Mon-Fri weekly) and posts to #general with project list and emoji reactions
 3. "Collect Responses" scrapes respondent names, checks for :zoom: individual meeting requests
-4. Assignment modal: director assigns respondents to projects, marks senior/external
-5. Algorithm maximizes attendance with PI-required, senior 3x weighting, day concentration
-6. Director reviews proposed schedule, approves to post announcement
+4. 1-on-1 review: for each person who reacted :zoom:, director picks accept/deny and a
+   duration (15/30/45/60 min, weekly, plus biweekly for 15/30/60). Accepted meetings enter
+   the algorithm as `<name> one-on-one` groups
+5. Assignment modal: director assigns respondents to projects, marks senior/external
+6. Algorithm maximizes attendance with PI-required, senior 3x weighting, day concentration
+7. Director reviews proposed schedule, approves to post announcement
 
-**Project database** (`data/projects.json`): Stores emoji, Slack channels, description, and default duration per project. Auto-populated from previous terms. New projects added during scheduling are saved for future use.
+Individual meetings are requested rather than listed: the survey tells everyone to react
+with :zoom: if they want one, and any `<name> one-on-one` group is filtered out of the post
+to #general (`exclude_from_survey` in `handlers/schedule.py`).
+
+**Project database** (`data/projects.json`): Stores emoji, Slack channels, description, and default duration per project. Auto-populated from previous terms. New projects added during scheduling are saved for future use — except the `<name> one-on-one` meetings synthesized from :zoom: reactions, which are per-term and are not persisted (`_durable_projects` in `handlers/schedule.py`).
 
 Project format in the config modal (one per line):
 ```
