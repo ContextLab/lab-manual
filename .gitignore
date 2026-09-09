@@ -34,7 +34,7 @@ cdl_bot/.env
 cdl_bot/output/
 cdl_bot/*.json
 cdl_bot/secrets/
-cdl_bot/data/
+cdl_bot/data/*
 !cdl_bot/data/projects.json
 .cdl-bot.pid
 .cdl-bot.log

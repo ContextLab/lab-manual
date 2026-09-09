@@ -254,6 +254,47 @@ class TestProjectStore:
         assert "Lab meeting" in text
         assert "Office Hours" not in text
 
+    def test_survey_list_excludes_individual_meetings(self):
+        """Individual meetings must never be named in the public survey post."""
+        from cdl_bot.project_store import ProjectStore
+        from cdl_bot.handlers.schedule import ONE_ON_ONE_SUFFIX
+        store = ProjectStore()
+        text = store.get_survey_project_list(
+            ["Lab Meeting", "Sam Haskel one-on-one"],
+            {"Lab Meeting": ":raising_hand:", "Sam Haskel one-on-one": ":zoom:"},
+            exclude_from_survey=["Office Hours", ONE_ON_ONE_SUFFIX.strip()],
+        )
+        assert "Lab meeting" in text
+        assert "Sam Haskel" not in text
+
+    def test_one_on_ones_never_reach_the_database(self, tmp_path):
+        """Per-term 1-on-1s must not be synced back as durable projects.
+
+        They are regenerated from :zoom: reactions every term, so persisting
+        them would prefill next term's config modal with last term's names.
+        """
+        from cdl_bot.project_store import ProjectStore
+        from cdl_bot.handlers.schedule import _durable_projects
+        db_path = tmp_path / "projects.json"
+        db_path.write_text("{}")
+        store = ProjectStore(db_path)
+
+        # What session.groups looks like after zoom review: real projects
+        # plus synthesized individual meetings.
+        session_groups = ["Kraken", "Sam Haskel one-on-one", "Lab Meeting"]
+        store.sync_from_session(
+            _durable_projects(session_groups),
+            {"Kraken": 4, "Sam Haskel one-on-one": 2.5, "Lab Meeting": 4},
+            {"Kraken": ":octopus:", "Sam Haskel one-on-one": ":zoom:",
+             "Lab Meeting": ":raising_hand:"},
+        )
+
+        reloaded = ProjectStore(db_path)
+        assert reloaded.get("Kraken") is not None
+        assert reloaded.get("Lab Meeting") is not None
+        assert reloaded.get("Sam Haskel one-on-one") is None
+        assert "one-on-one" not in reloaded.get_config_text()
+
 
 # ── Handler Utility Tests ────────────────────────────────────────────────────
 

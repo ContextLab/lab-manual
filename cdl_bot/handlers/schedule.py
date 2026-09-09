@@ -33,6 +33,21 @@ from ..services.scheduling_service import (
 
 logger = logging.getLogger(__name__)
 
+# Individual meetings are named "<person> one-on-one" and are synthesized
+# fresh each term from :zoom: reactions on the survey (see
+# handle_zoom_review_submit). They are per-term, not durable projects.
+ONE_ON_ONE_SUFFIX = " one-on-one"
+
+
+def _durable_projects(names: list) -> list:
+    """Drop per-term individual meetings from a list of project names.
+
+    Individual meetings live only for the term that created them, so writing
+    them to the project database would make last term's 1-on-1s prefill the
+    config modal and list people by name in the public survey announcement.
+    """
+    return [n for n in names if not n.lower().endswith(ONE_ON_ONE_SUFFIX)]
+
 
 def _derive_term() -> tuple[str, str, str]:
     """
@@ -288,7 +303,8 @@ def register_schedule_handlers(app: App, config: Config):
         # Sync new/changed projects to the database immediately
         # so the survey announcement can use descriptions and channels
         get_project_store().sync_from_session(
-            project_names, durations, emojis, descriptions, channels,
+            _durable_projects(project_names), durations, emojis,
+            descriptions, channels,
         )
 
         try:
@@ -380,7 +396,7 @@ def register_schedule_handlers(app: App, config: Config):
         channel_id_map = _build_channel_id_map(client, project_store, project_names)
         project_list_text = project_store.get_survey_project_list(
             project_names, session.project_emojis,
-            exclude_from_survey=["Office Hours"],
+            exclude_from_survey=["Office Hours", ONE_ON_ONE_SUFFIX.strip()],
             channel_id_map=channel_id_map,
         )
 
@@ -861,7 +877,7 @@ def register_schedule_handlers(app: App, config: Config):
             respondent_name = matched or slack_name
             req["respondent_name"] = respondent_name
 
-            meeting_name = f"{respondent_name} one-on-one"
+            meeting_name = f"{respondent_name}{ONE_ON_ONE_SUFFIX}"
             # Use PI canonical name + matched respondent name
             session.groups[meeting_name] = [respondent_name] + list(session.pi)
             session.preferred_durations[meeting_name] = req["duration_blocks"]
@@ -1083,7 +1099,7 @@ def register_schedule_handlers(app: App, config: Config):
 
             # Sync projects back to database for future terms
             get_project_store().sync_from_session(
-                list(session.groups.keys()),
+                _durable_projects(list(session.groups.keys())),
                 session.preferred_durations,
                 session.project_emojis,
                 session.project_descriptions,
