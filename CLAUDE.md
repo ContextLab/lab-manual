@@ -12,7 +12,7 @@ This is the lab manual for the Contextual Dynamics Laboratory (CDL) at Dartmouth
 ```bash
 ./compile.sh
 ```
-Runs `latex` 5x (for cross-references/index), then `pdflatex`, and cleans up intermediate files. Requires a LaTeX distribution (`brew install --cask mactex` on macOS).
+Runs `pdflatex` 6x (for cross-references/index) and cleans up intermediate files. Requires a LaTeX distribution (`brew install --cask mactex` on macOS).
 
 **Run bot tests:**
 ```bash

@@ -285,6 +285,42 @@ install_dropbox() {
     esac
 }
 
+install_cdlbib() {
+    log "Checking cdlbib installation..."
+
+    # cdlbib manages the lab's shared bibliography (cdl.bib). Its installer puts
+    # the command in ~/.local/bin, which may not be on PATH yet in this session.
+    local cdlbib_cmd=""
+    if command_exists cdlbib; then
+        cdlbib_cmd="cdlbib"
+    elif [ -x "$HOME/.local/bin/cdlbib" ]; then
+        cdlbib_cmd="$HOME/.local/bin/cdlbib"
+    fi
+
+    if [ -n "$cdlbib_cmd" ]; then
+        log_success "cdlbib already installed: $("$cdlbib_cmd" --version)"
+    else
+        log "Installing cdlbib..."
+        if curl -LsSf https://raw.githubusercontent.com/ContextLab/CDL-bibliography/master/install.sh | sh; then
+            cdlbib_cmd="$HOME/.local/bin/cdlbib"
+        fi
+        if [ ! -x "$cdlbib_cmd" ]; then
+            log_warning "cdlbib installation failed; see https://github.com/ContextLab/CDL-bibliography#installation"
+            return
+        fi
+        log_success "cdlbib installed: $("$cdlbib_cmd" --version)"
+    fi
+
+    # Link cdl.bib into the personal TeX tree so that every LaTeX document on
+    # this computer can use \bibliography{cdl}.
+    log "Linking the shared bibliography into your TeX tree..."
+    if "$cdlbib_cmd" setup; then
+        log_success "Shared bibliography linked (cdl.bib)"
+    else
+        log_warning "Could not link the shared bibliography; run 'cdlbib setup' after restarting your shell"
+    fi
+}
+
 # ============================================================================
 # Conda Installation
 # ============================================================================
@@ -450,6 +486,13 @@ verify_installation() {
         log_warning "LaTeX: Not found (may require shell restart)"
     fi
 
+    # Check cdlbib
+    if command_exists cdlbib || [ -x "$HOME/.local/bin/cdlbib" ]; then
+        log_success "cdlbib: Installed"
+    else
+        log_warning "cdlbib: Not found"
+    fi
+
     # Check Conda
     if command_exists conda; then
         log_success "Conda: $(conda --version)"
@@ -505,6 +548,7 @@ print_summary() {
     echo "  - VS Code"
     echo "  - LaTeX"
     echo "  - Dropbox"
+    echo "  - cdlbib (shared lab bibliography)"
     echo "  - Miniconda"
     echo "  - CDL conda environment"
     echo ""
@@ -558,6 +602,7 @@ main() {
     install_latex
     install_librsvg
     install_dropbox
+    install_cdlbib
 
     # Install Conda and set up environment
     install_conda
