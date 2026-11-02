@@ -128,7 +128,7 @@ class LLMConfig:
     put it in cdl_bot/.env as DARTMOUTH_CHAT_API_KEY.
     """
     api_key: str
-    model: str = "qwen.qwen3.5-122b"
+    model: str = "qwen.qwen3.8-27b"
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
@@ -144,7 +144,7 @@ class LLMConfig:
 
         return cls(
             api_key=api_key,
-            model=os.environ.get("DARTMOUTH_CHAT_MODEL", "qwen.qwen3.5-122b"),
+            model=os.environ.get("DARTMOUTH_CHAT_MODEL", "qwen.qwen3.8-27b"),
         )
 
 

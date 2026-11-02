@@ -29,7 +29,7 @@ import requests
 BASE_URL = os.environ.get("DARTMOUTH_CHAT_BASE_URL", "https://chat.dartmouth.edu")
 
 # Confirmed present on the deployment. `list_models()` shows the other 42.
-DEFAULT_MODEL = "qwen.qwen3.5-122b"
+DEFAULT_MODEL = "qwen.qwen3.8-27b"
 
 DEFAULT_TIMEOUT = 180
 
