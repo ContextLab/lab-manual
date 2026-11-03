@@ -636,8 +636,8 @@ def _build_form_blocks(role=None, grad_type=None):
                 "multiline": True,
                 "placeholder": {"type": "plain_text", "text": "Tell us about yourself and your research interests..."},
             },
-            "label": {"type": "plain_text", "text": "Short Bio"},
-            "hint": {"type": "plain_text", "text": "3-4 sentences about you. We'll edit it for style consistency."},
+            "label": {"type": "plain_text", "text": "Short Bio for the lab web page"},
+            "hint": {"type": "plain_text", "text": "3-4 sentences about yourself and your research interests. We'll edit it for style consistency."},
         },
         {
             "type": "input",
@@ -655,7 +655,7 @@ def _build_form_blocks(role=None, grad_type=None):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": ":camera: *Photo:* After submitting this form, please upload a profile photo by sending it as a message in this conversation.",
+                "text": ":camera: *Photo:* After submitting this form, please send a profile photo via DM to Jeremy.",
             },
         },
     ])
